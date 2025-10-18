@@ -1,30 +1,28 @@
-import Box from '@mui/material/Box';
-import {LoginForm} from './components/LoginForm';
+import React, { useContext, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthContext, FirebaseContext } from './store/Context';
-import React,{useEffect,useContext} from 'react';
-import {BrowserRouter as Router, Routes, Route} from 'react-router-dom'
+import { onAuthStateChanged } from 'firebase/auth';
+import HomePage from './pages/HomePage';
+import LoginPage from './pages/LoginPage';
 
 function App() {
-  const {setUser}=useContext(AuthContext);
-  const {firebase}=useContext(FirebaseContext)
-  useEffect(()=>{
-    firebase.auth().onAuthStateChanged((user)=>{
-      setUser(user)
-    })
-    
-  })
+  const { user, setUser } = useContext(AuthContext);
+  const { auth } = useContext(FirebaseContext);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+    });
+    return () => unsubscribe(); // Cleanup the listener on unmount
+  }, [auth, setUser]);
+
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        backgroundColor: '#fbf9fa'
-      }}
-    >
-      <LoginForm />
-    </Box>
+    <Router>
+      <Routes>
+        <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" />} />
+        <Route path="/" element={user ? <HomePage /> : <Navigate to="/login" />} />
+      </Routes>
+    </Router>
   );
 }
 
