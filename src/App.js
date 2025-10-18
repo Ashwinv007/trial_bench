@@ -1,9 +1,9 @@
-import SignIn from './components/SignIn';
+import {LoginForm} from './components/LoginForm';
 
 function App() {
   return (
     <div className="App">
-      <SignIn />
+      <LoginForm />
     </div>
   );
 }
