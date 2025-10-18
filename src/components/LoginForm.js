@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
+import {FirebaseContext} from '../store/Context'
+import {useNavigate} from 'react-router-dom'
+
 import { 
   Box, 
   TextField, 
@@ -14,10 +17,19 @@ import { Star } from 'lucide-react';
 export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const {firebase}=useContext(FirebaseContext);
+  const navigate=useNavigate()
+  
 
-  const handleSubmit = (e) => {
+  const handleLogin = (e) => {
     e.preventDefault();
     console.log('Login attempt with:', { email, password });
+    firebase.auth().signInWithEmailAndPassword(email,password).then(()=>{
+      navigate('/')
+    }).catch((error)=>{
+      alert(error.message);
+    })
+    
     // Add your login logic here
   };
 
@@ -60,7 +72,7 @@ export function LoginForm() {
           </Typography>
 
           {/* Form */}
-          <Box component="form" onSubmit={handleSubmit}>
+          <Box component="form" onSubmit={handleLogin}>
             <Stack spacing={2.5}>
               {/* Email Field */}
               <Box>
