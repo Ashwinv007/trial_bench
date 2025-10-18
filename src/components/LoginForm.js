@@ -35,7 +35,7 @@ export function LoginForm() {
         <Stack spacing={3}>
           {/* Logo/Brand */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-            <Star size={20} fill="#1976d2" color="#1976d2" />
+            {/* <Star size={20} fill="#1976d2" color="#1976d2" /> */}
             <Typography 
               variant="h6" 
               sx={{ 
@@ -43,7 +43,7 @@ export function LoginForm() {
                 fontWeight: 600
               }}
             >
-              Sitemark
+              Trial Bench
             </Typography>
           </Box>
 
