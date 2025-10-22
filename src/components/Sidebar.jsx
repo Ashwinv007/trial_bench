@@ -1,10 +1,11 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Dashboard as DashboardIcon, People, Description, TrendingUp } from '@mui/icons-material';
+import { Dashboard as DashboardIcon, People, Description,ContactPage, TrendingUp } from '@mui/icons-material';
 import styles from './Sidebar.module.css';
 
 const navItems = [
   { label: 'Dashboard', icon: DashboardIcon, path: '/' },
-  { label: 'Leads', icon: People, path: '/leads' },
+  { label: 'Leads', icon: ContactPage, path: '/leads' },
+  { label: 'Members', icon: People, path: '/members' },
   { label: 'Invoices', icon: Description, path: '/invoices' },
   { label: 'Rate Suggester', icon: TrendingUp, path: '/rate-suggester' },
 ];

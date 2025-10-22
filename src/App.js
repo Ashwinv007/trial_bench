@@ -4,6 +4,7 @@ import { AuthContext, FirebaseContext } from './store/Context';
 import { onAuthStateChanged } from 'firebase/auth';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
+import LeadsPage from './pages/LeadsPage';
 import './theme.css';
 
 
@@ -23,6 +24,9 @@ function App() {
       <Routes>
         <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" />} />
         <Route path="/" element={user ? <HomePage /> : <Navigate to="/login" />} />
+        <Route path="/leads" element={user ? <LeadsPage /> : <Navigate to="/login" />} />
+
+
         
       </Routes>
     </Router>
