@@ -4,6 +4,8 @@ import { AuthContext, FirebaseContext } from './store/Context';
 import { onAuthStateChanged } from 'firebase/auth';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
+import './theme.css';
+
 
 function App() {
   const { user, setUser } = useContext(AuthContext);
@@ -21,6 +23,7 @@ function App() {
       <Routes>
         <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" />} />
         <Route path="/" element={user ? <HomePage /> : <Navigate to="/login" />} />
+        
       </Routes>
     </Router>
   );
