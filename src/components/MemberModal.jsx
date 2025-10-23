@@ -21,7 +21,6 @@ export default function MemberModal({ open, onClose, onSave, editMember = null }
   const [formData, setFormData] = useState({
     name: '',
     package: '',
-    type: 'NA',
     companyName: '',
     dob: '',
     whatsapp: '',
@@ -35,7 +34,6 @@ export default function MemberModal({ open, onClose, onSave, editMember = null }
       setFormData({
         name: editMember.name || '',
         package: editMember.package || '',
-        type: editMember.type === 'NA' ? 'Individual' : 'Company',
         companyName: editMember.type !== 'NA' ? editMember.type : '',
         dob: editMember.dob || '',
         whatsapp: editMember.whatsapp || '',
@@ -45,7 +43,6 @@ export default function MemberModal({ open, onClose, onSave, editMember = null }
       setFormData({
         name: '',
         package: '',
-        type: 'NA',
         companyName: '',
         dob: '',
         whatsapp: '',
@@ -195,107 +192,76 @@ export default function MemberModal({ open, onClose, onSave, editMember = null }
             />
           </Box>
 
-          {/* Package and Type */}
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography sx={{ fontSize: '13px', fontWeight: 500, color: '#424242', mb: 0.75 }}>
-                Package <span style={{ color: '#d32f2f' }}>*</span>
+          {/* Package */}
+          <Box>
+            <Typography sx={{ fontSize: '13px', fontWeight: 500, color: '#424242', mb: 0.75 }}>
+              Package <span style={{ color: '#d32f2f' }}>*</span>
+            </Typography>
+            <Select
+              fullWidth
+              size="small"
+              value={formData.package}
+              onChange={(e) => handleChange('package', e.target.value)}
+              displayEmpty
+              error={!!errors.package}
+              sx={{
+                fontSize: '14px',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: errors.package ? '#d32f2f' : '#e0e0e0',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#2b7a8e',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#2b7a8e',
+                },
+              }}
+            >
+              <MenuItem value="" disabled>
+                <span style={{ color: '#9e9e9e' }}>Select package</span>
+              </MenuItem>
+              <MenuItem value="Dedicated Desk">Dedicated Desk</MenuItem>
+              <MenuItem value="Flexible Desk">Flexible Desk</MenuItem>
+              <MenuItem value="Cabin">Cabin</MenuItem>
+              <MenuItem value="Virtual Office">Virtual Office</MenuItem>
+              <MenuItem value="Meeting Room">Meeting Room</MenuItem>
+            </Select>
+            {errors.package && (
+              <Typography sx={{ fontSize: '12px', color: '#d32f2f', mt: 0.5, ml: 1.75 }}>
+                {errors.package}
               </Typography>
-              <Select
-                fullWidth
-                size="small"
-                value={formData.package}
-                onChange={(e) => handleChange('package', e.target.value)}
-                displayEmpty
-                error={!!errors.package}
-                sx={{
-                  fontSize: '14px',
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: errors.package ? '#d32f2f' : '#e0e0e0',
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#2b7a8e',
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#2b7a8e',
-                  },
-                }}
-              >
-                <MenuItem value="" disabled>
-                  <span style={{ color: '#9e9e9e' }}>Select package</span>
-                </MenuItem>
-                <MenuItem value="Dedicated Desk">Dedicated Desk</MenuItem>
-                <MenuItem value="Flexible Desk">Flexible Desk</MenuItem>
-                <MenuItem value="Cabin">Cabin</MenuItem>
-                <MenuItem value="Virtual Office">Virtual Office</MenuItem>
-                <MenuItem value="Meeting Room">Meeting Room</MenuItem>
-              </Select>
-              {errors.package && (
-                <Typography sx={{ fontSize: '12px', color: '#d32f2f', mt: 0.5, ml: 1.75 }}>
-                  {errors.package}
-                </Typography>
-              )}
-            </Box>
-
-            <Box sx={{ flex: 1 }}>
-              <Typography sx={{ fontSize: '13px', fontWeight: 500, color: '#424242', mb: 0.75 }}>
-                Type <span style={{ color: '#d32f2f' }}>*</span>
-              </Typography>
-              <Select
-                fullWidth
-                size="small"
-                value={formData.type}
-                onChange={(e) => handleChange('type', e.target.value)}
-                sx={{
-                  fontSize: '14px',
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#e0e0e0',
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#2b7a8e',
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#2b7a8e',
-                  },
-                }}
-              >
-                <MenuItem value="Individual">Individual</MenuItem>
-                <MenuItem value="Company">Company</MenuItem>
-              </Select>
-            </Box>
+            )}
           </Box>
 
-          {/* Company Name - Only show if type is Company */}
-          {formData.type === 'Company' && (
-            <Box>
-              <Typography sx={{ fontSize: '13px', fontWeight: 500, color: '#424242', mb: 0.75 }}>
-                Company Name <span style={{ color: '#d32f2f' }}>*</span>
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Enter company name"
-                value={formData.companyName}
-                onChange={(e) => handleChange('companyName', e.target.value)}
-                error={!!errors.companyName}
-                helperText={errors.companyName}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    fontSize: '14px',
-                    '& fieldset': {
-                      borderColor: '#e0e0e0',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: '#2b7a8e',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#2b7a8e',
-                    },
+          {/* Company Name */}
+          <Box>
+            <Typography sx={{ fontSize: '13px', fontWeight: 500, color: '#424242', mb: 0.75 }}>
+              Company Name (optional)
+            </Typography>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Leave blank for individual members"
+              value={formData.companyName}
+              onChange={(e) => handleChange('companyName', e.target.value)}
+              error={!!errors.companyName}
+              helperText={errors.companyName}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  fontSize: '14px',
+                  '& fieldset': {
+                    borderColor: '#e0e0e0',
                   },
-                }}
-              />
-            </Box>
-          )}
+                  '&:hover fieldset': {
+                    borderColor: '#2b7a8e',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#2b7a8e',
+                  },
+                },
+              }}
+            />
+          </Box>
 
           {/* Date of Birth */}
           <Box>
