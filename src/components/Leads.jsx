@@ -1,5 +1,6 @@
 import { AddCircleOutline, Person } from '@mui/icons-material';
 import styles from './Leads.module.css';
+import { useNavigate } from 'react-router-dom';
 
 const leadsData = [
   {
@@ -65,6 +66,12 @@ const leadsData = [
 ];
 
 export default function Leads() {
+  const navigate = useNavigate();
+
+  function onAddLead() {
+    navigate('/add-lead');
+  }
+
   return (
     <div className={styles.container}>
       <div className={styles.content}>
@@ -74,7 +81,7 @@ export default function Leads() {
             <h1 className={styles.title}>Leads</h1>
             <p className={styles.subtitle}>Manage your Leads and followUps.</p>
           </div>
-          <button className={styles.addButton}>
+          <button className={styles.addButton} onClick={onAddLead}>
             <AddCircleOutline className={styles.addIcon} />
             Add Lead
           </button>

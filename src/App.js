@@ -5,7 +5,9 @@ import { onAuthStateChanged } from 'firebase/auth';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import LeadsPage from './pages/LeadsPage';
+import AddLeadPage from './pages/AddLeadPage';
 import './theme.css';
+import MembersPage from './pages/MembersPage';
 
 
 function App() {
@@ -25,6 +27,8 @@ function App() {
         <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" />} />
         <Route path="/" element={user ? <HomePage /> : <Navigate to="/login" />} />
         <Route path="/leads" element={user ? <LeadsPage /> : <Navigate to="/login" />} />
+        <Route path="/add-lead" element={user ? <AddLeadPage /> : <Navigate to="/login" />} />
+        <Route path="/members" element={user ? <MembersPage /> : <Navigate to="/login" />} />
 
 
         
