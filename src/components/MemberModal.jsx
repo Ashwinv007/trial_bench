@@ -75,9 +75,6 @@ export default function MemberModal({ open, onClose, onSave, editMember = null }
     if (!formData.package) {
       newErrors.package = 'Package is required';
     }
-    if (formData.type === 'Company' && !formData.companyName.trim()) {
-      newErrors.companyName = 'Company name is required';
-    }
     if (!formData.whatsapp.trim()) {
       newErrors.whatsapp = 'WhatsApp number is required';
     }
@@ -96,7 +93,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null }
       const memberData = {
         name: formData.name,
         package: formData.package,
-        type: formData.type === 'Company' ? formData.companyName : 'NA',
+        type: formData.companyName.trim() ? formData.companyName.trim() : 'NA',
         dob: formData.dob,
         whatsapp: formData.whatsapp,
         email: formData.email,
@@ -271,7 +268,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null }
             <TextField
               fullWidth
               size="small"
-              placeholder="dd/mm/yyyy"
+              type="date"
               value={formData.dob}
               onChange={(e) => handleChange('dob', e.target.value)}
               sx={{
@@ -287,6 +284,9 @@ export default function MemberModal({ open, onClose, onSave, editMember = null }
                     borderColor: '#2b7a8e',
                   },
                 },
+              }}
+              InputLabelProps={{
+                shrink: true,
               }}
             />
           </Box>

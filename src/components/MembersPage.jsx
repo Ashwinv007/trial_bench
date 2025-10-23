@@ -35,7 +35,7 @@ export default function MembersPage() {
       name: 'Alice Johnson',
       package: 'Dedicated Desk',
       type: 'NA',
-      dob: '15/05/1990',
+      dob: '1990-05-15',
       whatsapp: '+918078514587',
       email: 'alice@innovate.com',
     },
@@ -51,7 +51,7 @@ export default function MembersPage() {
       name: 'Bob Williams',
       package: 'Flexible Desk',
       type: 'NA',
-      dob: '22/08/1985',
+      dob: '1985-08-22',
       whatsapp: '+918078514589',
       email: 'bob@solutions.io',
     },
@@ -59,7 +59,7 @@ export default function MembersPage() {
       name: 'Diana Prince',
       package: 'Virtual Office',
       type: 'NA',
-      dob: '30/11/1992',
+      dob: '1992-11-30',
       whatsapp: '+918078514590',
       email: 'diana@themyscira.corp',
     },
@@ -75,11 +75,17 @@ export default function MembersPage() {
       name: 'John Smith',
       package: 'Dedicated Desk',
       type: 'NA',
-      dob: '12/03/1988',
+      dob: '1988-03-12',
       whatsapp: '+918078514592',
       email: 'john@techsolutions.com',
     },
   ]);
+
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return '';
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  };
 
   const handleOpenAddModal = () => {
     setEditingMember(null);
@@ -133,7 +139,12 @@ export default function MembersPage() {
 
     // Date filter
     if (dateFilter.trim()) {
-      filtered = filtered.filter((member) => member.dob === dateFilter);
+      filtered = filtered.filter((member) => {
+        if (!member.dob) return false;
+        const [year, month, day] = member.dob.split('-');
+        const formattedDob = `${day}/${month}/${year}`;
+        return formattedDob.includes(dateFilter);
+      });
     }
 
     return filtered;
@@ -266,12 +277,12 @@ export default function MembersPage() {
             <MenuItem value="Meeting Room">Meeting Room</MenuItem>
           </Select>
           <TextField
-            placeholder="dd/mm/yyyy"
+            placeholder="DD/MM/YYYY"
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
             size="small"
             sx={{
-              width: '140px',
+              width: '180px',
               bgcolor: '#ffffff',
               '& .MuiOutlinedInput-root': {
                 fontSize: '14px',
@@ -285,6 +296,9 @@ export default function MembersPage() {
                   borderColor: '#2b7a8e',
                 },
               },
+            }}
+            InputLabelProps={{
+              shrink: true,
             }}
           />
           <Button
@@ -437,7 +451,7 @@ export default function MembersPage() {
                         borderBottom: '1px solid #e0e0e0',
                       }}
                     >
-                      {member.dob}
+                      {formatDateForDisplay(member.dob)}
                     </TableCell>
                     <TableCell
                       sx={{
