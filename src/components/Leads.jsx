@@ -1,72 +1,32 @@
 import { AddCircleOutline, Person } from '@mui/icons-material';
 import styles from './Leads.module.css';
 import { useNavigate } from 'react-router-dom';
-
-const leadsData = [
-  {
-    id: 1,
-    name: 'Alice Johnson',
-    initials: 'AJ',
-    phone: '+918078514587',
-    whatsapp: '+918078514587',
-    email: 'alice@innovate.com',
-    sourceType: 'Social Media',
-    sourceDetail: 'Instagram',
-    purposeOfVisit: 'Dedicated',
-    status: 'New',
-  },
-  {
-    id: 2,
-    name: 'Bob Williams',
-    initials: 'BW',
-    phone: '+918078514588',
-    whatsapp: '+918078514588',
-    email: 'bob@solutions.io',
-    sourceType: 'Referral',
-    sourceDetail: 'Sarah Mitchell',
-    purposeOfVisit: 'Flexi',
-    status: 'Contacted',
-  },
-  {
-    id: 3,
-    name: 'Charlie Brown',
-    initials: 'CB',
-    phone: '+918078514589',
-    whatsapp: '+918078514589',
-    email: 'charlie@creative.co',
-    sourceType: 'Social Media',
-    sourceDetail: 'LinkedIn',
-    purposeOfVisit: 'Private Cabin',
-    status: 'Qualified',
-  },
-  {
-    id: 4,
-    name: 'Diana Prince',
-    initials: 'DP',
-    phone: '+918078514590',
-    whatsapp: '+918078514590',
-    email: 'diana@themyscira.corp',
-    sourceType: 'Referral',
-    sourceDetail: 'John Davis',
-    purposeOfVisit: 'Dedicated',
-    status: 'Converted',
-  },
-  {
-    id: 5,
-    name: 'Ethan Hunt',
-    initials: 'EH',
-    phone: '+918078514591',
-    whatsapp: '+918078514591',
-    email: 'ethan@mission.com',
-    sourceType: 'Social Media',
-    sourceDetail: 'Facebook',
-    purposeOfVisit: 'Flexi',
-    status: 'New',
-  },
-];
+import { useContext, useEffect, useState } from 'react';
+import { FirebaseContext } from '../store/Context';
+import { collection, getDocs } from 'firebase/firestore';
 
 export default function Leads() {
   const navigate = useNavigate();
+  const { db } = useContext(FirebaseContext);
+  const [leads, setLeads] = useState([]);
+
+  useEffect(() => {
+    if (db) {
+      console.log('Database reference is available:', db);
+      const fetchLeads = async () => {
+        try {
+          const leadsCollection = collection(db, 'leads');
+          const leadsSnapshot = await getDocs(leadsCollection);
+          const leadsData = leadsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setLeads(leadsData);
+          console.log('Fetched leads:', leadsData);
+        } catch (error) {
+          console.error("Error fetching leads:", error);
+        }
+      };
+      fetchLeads();
+    }
+  }, [db]);
 
   function onAddLead() {
     navigate('/add-lead');
@@ -102,7 +62,7 @@ export default function Leads() {
               </tr>
             </thead>
             <tbody>
-              {leadsData.map((lead) => (
+              {leads.map((lead) => (
                 <tr key={lead.id}>
                   <td>
                     <span className={styles.nameText}>{lead.name}</span>
