@@ -1,14 +1,14 @@
 import { AddCircleOutline, Person } from '@mui/icons-material';
 import styles from './Leads.module.css';
-import { useNavigate } from 'react-router-dom';
 import { useContext, useEffect, useState } from 'react';
 import { FirebaseContext } from '../store/Context';
 import { collection, getDocs } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 
 export default function Leads() {
-  const navigate = useNavigate();
   const { db } = useContext(FirebaseContext);
   const [leads, setLeads] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (db) {
@@ -28,10 +28,6 @@ export default function Leads() {
     }
   }, [db]);
 
-  function onAddLead() {
-    navigate('/add-lead');
-  }
-
   return (
     <div className={styles.container}>
       <div className={styles.content}>
@@ -41,7 +37,7 @@ export default function Leads() {
             <h1 className={styles.title}>Leads</h1>
             <p className={styles.subtitle}>Manage your Leads and followUps.</p>
           </div>
-          <button className={styles.addButton} onClick={onAddLead}>
+          <button className={styles.addButton} onClick={() => navigate('/add-lead')}>
             <AddCircleOutline className={styles.addIcon} />
             Add Lead
           </button>

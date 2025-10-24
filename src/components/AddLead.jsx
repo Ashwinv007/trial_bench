@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
+import { FirebaseContext } from '../store/Context';
+import { collection, addDoc } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 import { 
   CheckCircle, 
   ArrowBack, 
@@ -10,7 +13,7 @@ import {
 } from '@mui/icons-material';
 import styles from './AddLead.module.css';
 
-export default function AddLead({ onBack }) {
+export default function AddLead() {
   const [formData, setFormData] = useState({
     name: '',
     status: '',
@@ -18,9 +21,8 @@ export default function AddLead({ onBack }) {
     phone: '+91',
     whatsapp: '+91',
     email: '',
-    source: '',
-    referralName: '',
-    socialPlatform: '',
+    sourceType: '',
+    sourceDetail: '',
     clientType: '',
     companyName: '',
     convertedEmail: '',
@@ -49,20 +51,37 @@ export default function AddLead({ onBack }) {
     }
   ]);
 
+  const { db } = useContext(FirebaseContext);
+  const navigate = useNavigate();
+
+  const handleSaveLead = async () => {
+    try {
+      const newLead = { ...formData };
+      const leadsCollection = collection(db, 'leads');
+      await addDoc(leadsCollection, newLead);
+      navigate('/leads');
+    } catch (error) {
+      console.error("Error adding document: ", error);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => {
+      const newState = {...prev, [name]: value};
+      
+      // Auto-copy phone to whatsapp
+      if (name === 'phone') {
+        newState.whatsapp = value;
+      }
 
-    // Auto-copy phone to whatsapp
-    if (name === 'phone') {
-      setFormData(prev => ({
-        ...prev,
-        whatsapp: value
-      }));
-    }
+      // When sourceType changes, reset sourceDetail if not applicable
+      if (name === 'sourceType' && value !== 'Referral' && value !== 'Social Media') {
+        newState.sourceDetail = '';
+      }
+
+      return newState;
+    });
 
     // Show converted modal when status is Converted
     if (name === 'status' && value === 'Converted') {
@@ -120,9 +139,7 @@ export default function AddLead({ onBack }) {
       <div className={styles.content}>
         {/* Header */}
         <div className={styles.header}>
-          <button className={styles.backButton} onClick={onBack}>
-            <ArrowBack />
-          </button>
+
           <div className={styles.headerText}>
             <h1 className={styles.title}>Add New Lead</h1>
             <p className={styles.subtitle}>Capture and manage new lead information</p>
@@ -320,8 +337,8 @@ export default function AddLead({ onBack }) {
               <div className={styles.formGroup}>
                 <label className={styles.label}>Source *</label>
                 <select
-                  name="source"
-                  value={formData.source}
+                  name="sourceType"
+                  value={formData.sourceType}
                   onChange={handleInputChange}
                   className={styles.select}
                 >
@@ -337,13 +354,13 @@ export default function AddLead({ onBack }) {
               </div>
 
               {/* Referral Name */}
-              {formData.source === 'Referral' && (
+              {formData.sourceType === 'Referral' && (
                 <div className={styles.formGroup}>
                   <label className={styles.label}>Referral Person Name</label>
                   <input
                     type="text"
-                    name="referralName"
-                    value={formData.referralName}
+                    name="sourceDetail"
+                    value={formData.sourceDetail}
                     onChange={handleInputChange}
                     placeholder="Enter referral person name"
                     className={styles.input}
@@ -352,13 +369,13 @@ export default function AddLead({ onBack }) {
               )}
 
               {/* Social Media Platform */}
-              {formData.source === 'Social Media' && (
+              {formData.sourceType === 'Social Media' && (
                 <div className={styles.formGroup}>
                   <label className={styles.label}>Social Media Platform</label>
                   <input
                     type="text"
-                    name="socialPlatform"
-                    value={formData.socialPlatform}
+                    name="sourceDetail"
+                    value={formData.sourceDetail}
                     onChange={handleInputChange}
                     placeholder="e.g., Instagram, LinkedIn, Facebook"
                     className={styles.input}
@@ -367,7 +384,7 @@ export default function AddLead({ onBack }) {
               )}
 
               {/* Save Button */}
-              <button className={styles.saveButton}>
+              <button className={styles.saveButton} onClick={handleSaveLead}>
                 <Save className={styles.buttonIcon} />
                 Save Lead
               </button>
