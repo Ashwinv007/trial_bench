@@ -8,6 +8,7 @@ import LeadsPage from './pages/LeadsPage';
 import AddLeadPage from './pages/AddLeadPage';
 import './theme.css';
 import MembersPage from './pages/MembersPage';
+import EditLeadPage from './pages/EditLeadPage';
 
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
         <Route path="/" element={user ? <HomePage /> : <Navigate to="/login" />} />
         <Route path="/leads" element={user ? <LeadsPage /> : <Navigate to="/login" />} />
         <Route path="/add-lead" element={user ? <AddLeadPage /> : <Navigate to="/login" />} />
+        <Route path="/lead/:id" element={user ? <EditLeadPage /> : <Navigate to="/login" />} />
         <Route path="/members" element={user ? <MembersPage /> : <Navigate to="/login" />} />
 
 
