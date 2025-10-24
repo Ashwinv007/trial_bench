@@ -21,7 +21,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null }
   const [formData, setFormData] = useState({
     name: '',
     package: '',
-    companyName: '',
+    company: '',
     dob: '',
     whatsapp: '',
     email: '',
@@ -34,7 +34,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null }
       setFormData({
         name: editMember.name || '',
         package: editMember.package || '',
-        companyName: editMember.type !== 'NA' ? editMember.type : '',
+        company: editMember.company !== 'NA' ? editMember.company : '',
         dob: editMember.dob || '',
         whatsapp: editMember.whatsapp || '',
         email: editMember.email || '',
@@ -43,7 +43,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null }
       setFormData({
         name: '',
         package: '',
-        companyName: '',
+        company: '',
         dob: '',
         whatsapp: '',
         email: '',
@@ -93,7 +93,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null }
       const memberData = {
         name: formData.name,
         package: formData.package,
-        type: formData.companyName.trim() ? formData.companyName.trim() : 'NA',
+        company: formData.company.trim() ? formData.company.trim() : 'NA',
         dob: formData.dob,
         whatsapp: formData.whatsapp,
         email: formData.email,
@@ -239,10 +239,10 @@ export default function MemberModal({ open, onClose, onSave, editMember = null }
               fullWidth
               size="small"
               placeholder="Leave blank for individual members"
-              value={formData.companyName}
-              onChange={(e) => handleChange('companyName', e.target.value)}
-              error={!!errors.companyName}
-              helperText={errors.companyName}
+              value={formData.company}
+              onChange={(e) => handleChange('company', e.target.value)}
+              error={!!errors.company}
+              helperText={errors.company}
               sx={{
                 '& .MuiOutlinedInput-root': {
                   fontSize: '14px',
