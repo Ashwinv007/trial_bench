@@ -64,7 +64,7 @@ export default function Leads() {
             </thead>
             <tbody>
               {leads.map((lead) => (
-                <tr key={lead.id}>
+                <tr key={lead.id} onClick={() => navigate(`/lead/${lead.id}`)} style={{ cursor: 'pointer' }}>
                   <td>
                     <span className={styles.nameText}>{lead.name}</span>
                   </td>
