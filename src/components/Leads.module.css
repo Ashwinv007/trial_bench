@@ -178,14 +178,14 @@
   color: #1e40af;
 }
 
-.statusBadge.contacted {
+.statusBadge.follow-up {
   background-color: #fef3c7;
   color: #92400e;
 }
 
-.statusBadge.qualified {
-  background-color: var(--color-teal-bg);
-  color: var(--color-teal-dark);
+.statusBadge.not-interested {
+  background-color: #fee2e2;
+  color: #991b1b;
 }
 
 .statusBadge.converted {
