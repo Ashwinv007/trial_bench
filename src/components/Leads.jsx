@@ -28,6 +28,11 @@ export default function Leads() {
     }
   }, [db]);
 
+  const getStatusClass = (status) => {
+    if (!status) return '';
+    return status.toLowerCase().replace(' ', '-');
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.content}>
@@ -64,7 +69,7 @@ export default function Leads() {
                     <span className={styles.nameText}>{lead.name}</span>
                   </td>
                   <td>
-                    <span className={`${styles.statusBadge} ${styles[lead.status.toLowerCase()]}`}>
+                    <span className={`${styles.statusBadge} ${styles[getStatusClass(lead.status)]}`}>
                       {lead.status}
                     </span>
                   </td>
