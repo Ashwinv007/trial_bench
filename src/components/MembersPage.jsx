@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useContext, useEffect } from 'react';
 import { FirebaseContext } from '../store/Context';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, addDoc } from 'firebase/firestore';
 import {
   Box,
   Typography,
@@ -74,7 +74,7 @@ export default function MembersPage() {
     setEditingIndex(null);
   };
 
-  const handleSaveMember = (memberData) => {
+  const handleSaveMember = async (memberData) => {
     if (editingIndex !== null) {
       // Edit existing member
       const updatedMembers = [...allMembers];
@@ -82,7 +82,12 @@ export default function MembersPage() {
       setAllMembers(updatedMembers);
     } else {
       // Add new member
-      setAllMembers([...allMembers, memberData]);
+      try {
+        const docRef = await addDoc(collection(db, "members"), memberData);
+        setAllMembers([...allMembers, { ...memberData, id: docRef.id }]);
+      } catch (error) {
+        console.error("Error adding member: ", error);
+      }
     }
   };
 
