@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect } from 'react';
 import { FirebaseContext } from '../store/Context';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, addDoc, deleteDoc } from 'firebase/firestore';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   CheckCircle, 
@@ -15,6 +15,7 @@ import styles from './AddLead.module.css'; // Reusing styles
 
 export default function EditLead() {
   const [formData, setFormData] = useState(null);
+  const [originalLead, setOriginalLead] = useState(null);
   const [showConvertedModal, setShowConvertedModal] = useState(false);
   const [note, setNote] = useState('');
   const [followUpDays, setFollowUpDays] = useState('');
@@ -31,6 +32,7 @@ export default function EditLead() {
       if (docSnap.exists()) {
         const leadData = docSnap.data();
         setFormData(leadData);
+        setOriginalLead(leadData);
         if (leadData.activities) {
           setActivities(leadData.activities);
         }
@@ -49,12 +51,37 @@ export default function EditLead() {
 
   const handleUpdateLead = async () => {
     try {
-      const leadRef = doc(db, "leads", id);
-      await updateDoc(leadRef, {
-        ...formData,
-        activities: activities
-      });
-      navigate('/leads');
+      if (formData.status === 'Converted' && originalLead.status !== 'Converted') {
+        // This is a new conversion
+        const memberData = {
+          name: formData.name,
+          package: formData.purposeOfVisit,
+          company: formData.companyName || 'NA',
+          dob: formData.birthday,
+          whatsapp: formData.convertedWhatsapp || formData.whatsapp,
+          email: formData.convertedEmail || formData.email,
+          sourceType: formData.sourceType,
+          sourceDetail: formData.sourceDetail,
+          phone: formData.phone
+        };
+
+        const membersCollection = collection(db, 'members');
+        await addDoc(membersCollection, memberData);
+
+        const leadRef = doc(db, "leads", id);
+        await deleteDoc(leadRef);
+
+        navigate('/members');
+
+      } else {
+        // Just update the lead
+        const leadRef = doc(db, "leads", id);
+        await updateDoc(leadRef, {
+          ...formData,
+          activities: activities
+        });
+        navigate('/leads');
+      }
     } catch (error) {
       console.error("Error updating document: ", error);
     }
