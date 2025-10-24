@@ -1,4 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useContext, useEffect } from 'react';
+import { FirebaseContext } from '../store/Context';
+import { collection, getDocs } from 'firebase/firestore';
 import {
   Box,
   Typography,
@@ -30,56 +32,23 @@ export default function MembersPage() {
   const [editingMember, setEditingMember] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
 
-  const [allMembers, setAllMembers] = useState([
-    {
-      name: 'Alice Johnson',
-      package: 'Dedicated Desk',
-      type: 'NA',
-      dob: '1990-05-15',
-      whatsapp: '+918078514587',
-      email: 'alice@innovate.com',
-    },
-    {
-      name: 'TechCorp Solutions',
-      package: 'Cabin',
-      type: 'TechCorp Solutions',
-      dob: '',
-      whatsapp: '+918078514588',
-      email: 'contact@techcorp.io',
-    },
-    {
-      name: 'Bob Williams',
-      package: 'Flexible Desk',
-      type: 'NA',
-      dob: '1985-08-22',
-      whatsapp: '+918078514589',
-      email: 'bob@solutions.io',
-    },
-    {
-      name: 'Diana Prince',
-      package: 'Virtual Office',
-      type: 'NA',
-      dob: '1992-11-30',
-      whatsapp: '+918078514590',
-      email: 'diana@themyscira.corp',
-    },
-    {
-      name: 'StartUp Hub Inc',
-      package: 'Meeting Room',
-      type: 'StartUp Hub Inc',
-      dob: '',
-      whatsapp: '+918078514591',
-      email: 'info@startuphub.com',
-    },
-    {
-      name: 'John Smith',
-      package: 'Dedicated Desk',
-      type: 'NA',
-      dob: '1988-03-12',
-      whatsapp: '+918078514592',
-      email: 'john@techsolutions.com',
-    },
-  ]);
+  const { db } = useContext(FirebaseContext);
+  const [allMembers, setAllMembers] = useState([]);
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        const membersCollection = collection(db, 'members');
+        const membersSnapshot = await getDocs(membersCollection);
+        const membersList = membersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        setAllMembers(membersList);
+      } catch (error) {
+        console.error("Error fetching members: ", error);
+      }
+    };
+
+    fetchMembers();
+  }, [db]);
 
   const formatDateForDisplay = (dateString) => {
     if (!dateString) return '';
@@ -442,7 +411,7 @@ export default function MembersPage() {
                         borderBottom: '1px solid #e0e0e0',
                       }}
                     >
-                      {member.type}
+                      {member.company}
                     </TableCell>
                     <TableCell
                       sx={{
