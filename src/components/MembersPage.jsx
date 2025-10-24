@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useContext, useEffect } from 'react';
 import { FirebaseContext } from '../store/Context';
-import { collection, getDocs, addDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc } from 'firebase/firestore';
 import {
   Box,
   Typography,
@@ -62,7 +62,8 @@ export default function MembersPage() {
     setModalOpen(true);
   };
 
-  const handleOpenEditModal = (member, index) => {
+  const handleOpenEditModal = (member) => {
+    const index = allMembers.findIndex(m => m.id === member.id);
     setEditingMember(member);
     setEditingIndex(index);
     setModalOpen(true);
@@ -77,9 +78,15 @@ export default function MembersPage() {
   const handleSaveMember = async (memberData) => {
     if (editingIndex !== null) {
       // Edit existing member
-      const updatedMembers = [...allMembers];
-      updatedMembers[editingIndex] = memberData;
-      setAllMembers(updatedMembers);
+      try {
+        const memberDoc = doc(db, "members", editingMember.id);
+        await updateDoc(memberDoc, memberData);
+        const updatedMembers = [...allMembers];
+        updatedMembers[editingIndex] = { ...memberData, id: editingMember.id };
+        setAllMembers(updatedMembers);
+      } catch (error) {
+        console.error("Error updating member: ", error);
+      }
     } else {
       // Add new member
       try {
@@ -102,7 +109,8 @@ export default function MembersPage() {
         (member) =>
           member.name.toLowerCase().includes(query) ||
           member.email.toLowerCase().includes(query) ||
-          member.whatsapp.toLowerCase().includes(query)
+          member.whatsapp.toLowerCase().includes(query)||
+          member.company.toLowerCase().includes(query)
       );
     }
 
@@ -372,10 +380,10 @@ export default function MembersPage() {
             </TableHead>
             <TableBody>
               {filteredMembers.length > 0 ? (
-                filteredMembers.map((member, index) => (
+                filteredMembers.map((member) => (
                   <TableRow
-                    key={index}
-                    onClick={() => handleOpenEditModal(member, member.originalIndex)}
+                    key={member.id}
+                    onClick={() => handleOpenEditModal(member)}
                     sx={{
                       cursor: 'pointer',
                       '&:hover': {
@@ -482,7 +490,7 @@ export default function MembersPage() {
       <MemberModal
         open={modalOpen}
         onClose={handleCloseModal}
-        member={editingMember}
+        editMember={editingMember}
         onSave={handleSaveMember}
       />
     </Box>
