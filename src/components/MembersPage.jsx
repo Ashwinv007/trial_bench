@@ -27,7 +27,7 @@ import MemberModal from './MemberModal';
 export default function MembersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [packageFilter, setPackageFilter] = useState('All Packages');
-  const [dateFilter, setDateFilter] = useState('');
+  const [monthFilter, setMonthFilter] = useState('All Months');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
@@ -119,18 +119,17 @@ export default function MembersPage() {
       filtered = filtered.filter((member) => member.package === packageFilter);
     }
 
-    // Date filter
-    if (dateFilter.trim()) {
+    // Month filter
+    if (monthFilter !== 'All Months') {
       filtered = filtered.filter((member) => {
         if (!member.dob) return false;
-        const [year, month, day] = member.dob.split('-');
-        const formattedDob = `${day}/${month}/${year}`;
-        return formattedDob.includes(dateFilter);
+        const month = new Date(member.dob).getMonth();
+        return month === parseInt(monthFilter);
       });
     }
 
     return filtered;
-  }, [searchQuery, packageFilter, dateFilter, allMembers]);
+  }, [searchQuery, packageFilter, monthFilter, allMembers]);
 
   return (
     <Box
@@ -215,7 +214,7 @@ export default function MembersPage() {
             onClick={() => {
               setSearchQuery('');
               setPackageFilter('All Packages');
-              setDateFilter('');
+              setMonthFilter('All Months');
             }}
             sx={{
               textTransform: 'none',
@@ -258,31 +257,39 @@ export default function MembersPage() {
             <MenuItem value="Virtual Office">Virtual Office</MenuItem>
             <MenuItem value="Meeting Room">Meeting Room</MenuItem>
           </Select>
-          <TextField
-            placeholder="DD/MM/YYYY"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
+          <Select
+            value={monthFilter}
+            onChange={(e) => setMonthFilter(e.target.value)}
             size="small"
             sx={{
-              width: '180px',
+              minWidth: '150px',
               bgcolor: '#ffffff',
-              '& .MuiOutlinedInput-root': {
-                fontSize: '14px',
-                '& fieldset': {
-                  borderColor: '#e0e0e0',
-                },
-                '&:hover fieldset': {
-                  borderColor: '#2b7a8e',
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: '#2b7a8e',
-                },
+              fontSize: '14px',
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#e0e0e0',
+              },
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#2b7a8e',
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#2b7a8e',
               },
             }}
-            InputLabelProps={{
-              shrink: true,
-            }}
-          />
+          >
+            <MenuItem value="All Months">All Months</MenuItem>
+            <MenuItem value="0">January</MenuItem>
+            <MenuItem value="1">February</MenuItem>
+            <MenuItem value="2">March</MenuItem>
+            <MenuItem value="3">April</MenuItem>
+            <MenuItem value="4">May</MenuItem>
+            <MenuItem value="5">June</MenuItem>
+            <MenuItem value="6">July</MenuItem>
+            <MenuItem value="7">August</MenuItem>
+            <MenuItem value="8">September</MenuItem>
+            <MenuItem value="9">October</MenuItem>
+            <MenuItem value="10">November</MenuItem>
+            <MenuItem value="11">December</MenuItem>
+          </Select>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
