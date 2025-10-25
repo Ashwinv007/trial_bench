@@ -107,10 +107,10 @@ export default function MembersPage() {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (member) =>
-          member.name.toLowerCase().includes(query) ||
-          member.email.toLowerCase().includes(query) ||
-          member.whatsapp.toLowerCase().includes(query)||
-          member.company.toLowerCase().includes(query)
+          member.name.toLowerCase().startsWith(query) ||
+          member.email.toLowerCase().startsWith(query) ||
+          member.whatsapp.toLowerCase().startsWith(query)||
+          member.company.toLowerCase().startsWith(query)
       );
     }
 
