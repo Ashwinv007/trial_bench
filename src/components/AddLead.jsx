@@ -56,7 +56,7 @@ export default function AddLead() {
 
   const handleSaveLead = async () => {
     try {
-      const newLead = { ...formData };
+      const newLead = { ...formData, activities: activities };
       const leadsCollection = collection(db, 'leads');
       await addDoc(leadsCollection, newLead);
       navigate('/leads');
