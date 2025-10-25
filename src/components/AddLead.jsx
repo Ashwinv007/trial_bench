@@ -251,21 +251,7 @@ export default function AddLead() {
                     />
                   </div>
 
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>Select Package</label>
-                    <select
-                      name="package"
-                      value={formData.package}
-                      onChange={handleInputChange}
-                      className={styles.select}
-                    >
-                      <option value="">Select package</option>
-                      <option value="Basic">Basic - ₹5,000/month</option>
-                      <option value="Standard">Standard - ₹10,000/month</option>
-                      <option value="Premium">Premium - ₹15,000/month</option>
-                      <option value="Enterprise">Enterprise - Custom</option>
-                    </select>
-                  </div>
+
 
                   <button className={styles.welcomeButton} onClick={handleSendWelcomeEmail}>
                     <EmailIcon className={styles.buttonIcon} />
