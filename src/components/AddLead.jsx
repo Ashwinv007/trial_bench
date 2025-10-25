@@ -242,13 +242,15 @@ export default function AddLead() {
 
                   <div className={styles.formGroup}>
                     <label className={styles.label}>Birthday</label>
-                    <input
-                      type="date"
-                      name="birthday"
-                      value={formData.birthday}
-                      onChange={handleInputChange}
-                      className={styles.input}
-                    />
+                    <div className={styles.dateInputWrapper}>
+                      <input
+                        type="date"
+                        name="birthday"
+                        value={formData.birthday}
+                        onChange={handleInputChange}
+                        className={styles.dateInput}
+                      />
+                    </div>
                   </div>
 
 
