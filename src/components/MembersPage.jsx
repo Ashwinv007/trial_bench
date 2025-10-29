@@ -128,6 +128,13 @@ export default function MembersPage() {
       });
     }
 
+    // Sort by company
+    filtered.sort((a, b) => {
+      const companyA = a.company || '';
+      const companyB = b.company || '';
+      return companyA.localeCompare(companyB);
+    });
+
     return filtered;
   }, [searchQuery, packageFilter, monthFilter, allMembers]);
 
