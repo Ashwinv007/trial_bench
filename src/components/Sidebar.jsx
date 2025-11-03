@@ -5,6 +5,7 @@ import styles from './Sidebar.module.css';
 const navItems = [
   { label: 'Dashboard', icon: DashboardIcon, path: '/' },
   { label: 'Leads', icon: ContactPage, path: '/leads' },
+  {label: 'Agreements', icon: Description, path: '/agreements' },
   { label: 'Members', icon: People, path: '/members' },
   { label: 'Invoices', icon: Description, path: '/invoices' },
   { label: 'Rate Suggester', icon: TrendingUp, path: '/rate-suggester' },
