@@ -25,7 +25,9 @@ export default function Agreements() {
     endDate: '',
     serviceAgreementType: '',
     totalMonthlyPayment: '',
-    preparedBy: '',
+    authorizorName: '',
+    designation: '',
+    preparedByNew: '',
   });
 
   useEffect(() => {
@@ -70,7 +72,9 @@ export default function Agreements() {
       endDate: agreement.endDate || '',
       serviceAgreementType: agreement.serviceAgreementType || '',
       totalMonthlyPayment: agreement.totalMonthlyPayment || '',
-      preparedBy: agreement.preparedBy || '',
+      authorizorName: agreement.authorizorName || '',
+      designation: agreement.designation || '',
+      preparedByNew: agreement.preparedByNew || '',
     });
     setIsModalOpen(true);
   };
@@ -149,7 +153,7 @@ export default function Agreements() {
     const secondPage = pages[1];
 
     // Prepared By - Page 1
-    firstPage.drawText(formData.preparedBy, {
+    firstPage.drawText(formData.preparedByNew, {
       x: 60,
       y: 52,
       font: helveticaFont,
@@ -192,6 +196,15 @@ export default function Agreements() {
         secondPage.drawText(line, { x: 150, y, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
         y -= 12; // Adjust for next line
       }
+
+      // New fields
+      secondPage.drawText(formData.memberLegalName, { x: 150, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText('Individual', { x: 150, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(formData.agreementDate), { x: 150, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+
+      secondPage.drawText(formData.preparedByNew, { x: 370, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText('Director', { x: 370, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(formData.agreementDate), { x: 415, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
     }
 
     const pdfBytes = await pdfDoc.save();
@@ -419,15 +432,39 @@ export default function Agreements() {
                   size="small"
                   type="number"
                 />
+
+              </div>
+            </div>
+
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>Authorization Details</h3>
+              <div className={styles.formGrid}>
                 <TextField
                   label="Prepared By"
-                  name="preparedBy"
-                  value={formData.preparedBy}
+                  name="preparedByNew"
+                  value={formData.preparedByNew}
                   onChange={handleInputChange}
                   fullWidth
                   variant="outlined"
                   size="small"
-                  style={{ gridColumn: '1 / -1' }}
+                />
+                <TextField
+                  label="Authorizor Name"
+                  name="authorizorName"
+                  value={formData.authorizorName}
+                  onChange={handleInputChange}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                />
+                <TextField
+                  label="Designation"
+                  name="designation"
+                  value={formData.designation}
+                  onChange={handleInputChange}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
                 />
               </div>
             </div>
