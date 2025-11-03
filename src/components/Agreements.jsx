@@ -3,7 +3,9 @@ import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton } fro
 import { Close } from '@mui/icons-material';
 import styles from './Agreements.module.css';
 import { FirebaseContext } from '../store/Context';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { saveAs } from 'file-saver';
 
 export default function Agreements() {
   const { db } = useContext(FirebaseContext);
@@ -33,14 +35,16 @@ export default function Agreements() {
         const agreementsSnapshot = await getDocs(agreementsCollection);
         const agreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        const leadPromises = agreementsData.map(agreement => {
+        const validAgreements = agreementsData.filter(agreement => agreement.leadId);
+
+        const leadPromises = validAgreements.map(agreement => {
           const leadDocRef = doc(db, 'leads', agreement.leadId);
           return getDoc(leadDocRef);
         });
 
         const leadSnapshots = await Promise.all(leadPromises);
 
-        const combinedData = agreementsData.map((agreement, index) => {
+        const combinedData = validAgreements.map((agreement, index) => {
           const leadData = leadSnapshots[index].data();
           return { ...agreement, ...leadData };
         });
@@ -84,10 +88,15 @@ export default function Agreements() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Update the agreement data
+    if (!selectedAgreement) return;
+
+    const agreementRef = doc(db, 'agreements', selectedAgreement.id);
+    await updateDoc(agreementRef, formData);
+
+    // Update the local state as well
     setAgreements((prev) =>
       prev.map((agreement) =>
         agreement.id === selectedAgreement.id
@@ -97,6 +106,99 @@ export default function Agreements() {
     );
 
     handleCloseModal();
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const year = date.getUTCFullYear();
+    return `${month}/${day}/${year}`;
+  };
+
+  const handleGenerateAgreement = async () => {
+    const url = '/tb_agreement.pdf';
+    const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
+
+    const pdfDoc = await PDFDocument.load(existingPdfBytes);
+    const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+    const pages = pdfDoc.getPages();
+    const firstPage = pages[0];
+    const secondPage = pages[1];
+
+    // Prepared By - Page 1
+    firstPage.drawText(formData.preparedBy, {
+      x: 60,
+      y: 52,
+      font: helveticaFont,
+      size: 15,
+      color: rgb(0.8, 0.8, 0.8),
+    });
+
+    // Top Agreement Number - All pages from 2 onwards
+    for (let i = 1; i < pages.length; i++) {
+      pages[i].drawText(formData.agreementNumber, {
+        x: 480,
+        y: 729,
+        font: helveticaFont,
+        size: 8.5,
+        color: rgb(0.8, 0.8, 0.8),
+      });
+    }
+
+    // Agreement Details - Page 2
+    if (secondPage) {
+      // Service Agreement Type
+      secondPage.drawText(formData.serviceAgreementType, {
+        x: 185,
+        y: 394,
+        font: helveticaFont,
+        size: 9.5,
+        color: rgb(0, 0, 0),
+      });
+
+      // End Date
+      secondPage.drawText(formatDate(formData.endDate), {
+        x: 350,
+        y: 408,
+        font: helveticaFont,
+        size: 9.5,
+        color: rgb(0, 0, 0),
+      });
+
+      // Start Date
+      secondPage.drawText(formatDate(formData.startDate), {
+        x: 175,
+        y: 408,
+        font: helveticaFont,
+        size: 9.5,
+        color: rgb(0, 0, 0),
+      });
+
+      // Agreement Number
+      secondPage.drawText(formData.agreementNumber, {
+        x: 160,
+        y: 437,
+        font: helveticaFont,
+        size: 9.5,
+        color: rgb(0, 0, 0),
+      });
+
+      // Agreement Date
+      secondPage.drawText(formatDate(formData.agreementDate), {
+        x: 145,
+        y: 451,
+        font: helveticaFont,
+        size: 9.5,
+        color: rgb(0, 0, 0),
+      });
+    }
+
+    const pdfBytes = await pdfDoc.save();
+
+    saveAs(new Blob([pdfBytes], { type: 'application/pdf' }), 'agreement.pdf');
   };
 
   return (
@@ -345,6 +447,18 @@ export default function Agreements() {
                 }}
               >
                 Cancel
+              </Button>
+              <Button 
+                onClick={handleGenerateAgreement} 
+                variant="contained"
+                style={{
+                  backgroundColor: '#1a4d5c',
+                  color: 'white',
+                  textTransform: 'none',
+                  padding: '8px 24px'
+                }}
+              >
+                Generate Agreement
               </Button>
               <Button 
                 type="submit" 

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Editor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>PDF Editor</h1>
+    <input type="file" id="pdf-upload" accept=".pdf">
+    <div id="content-entries">
+        <div class="content-entry">
+            <h3>Content Entry 1</h3>
+            <input type="text" class="content-input" placeholder="Enter content">
+            <input type="number" class="x-coordinate" placeholder="X Coordinate (e.g., 100)" value="100">
+            <input type="number" class="y-coordinate" placeholder="Y Coordinate (e.g., 680)" value="680">
+            <input type="number" class="page-number" placeholder="Page Number" value="1">
+            <input type="number" class="font-size-input" placeholder="Font Size" value="12">
+            <input type="number" class="max-width-input" placeholder="Max Width" value="400">
+            <input type="color" class="color-input" value="#000000">
+            <button class="remove-content-btn">Remove</button>
+            <button class="duplicate-content-btn">Duplicate</button>
+            <button class="move-up-btn">Move Up</button>
+            <button class="move-down-btn">Move Down</button>
+        </div>
+    </div>
+    <button id="add-content-btn">+</button>
+    <button id="edit-pdf">Edit PDF</button>
+    <button id="clear-all-btn">Clear All</button>
+    <div id="pdf-container"></div>
+
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
