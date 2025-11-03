@@ -117,6 +117,26 @@ export default function Agreements() {
     return `${month}/${day}/${year}`;
   };
 
+  const splitTextIntoLines = (text, font, fontSize, maxWidth) => {
+    const words = text.split(' ');
+    let line = '';
+    const lines = [];
+  
+    for (const word of words) {
+      const testLine = line + word + ' ';
+      const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+      if (testWidth > maxWidth) {
+        lines.push(line.trim());
+        line = word + ' ';
+      } else {
+        line = testLine;
+      }
+    }
+    lines.push(line.trim());
+  
+    return lines.slice(0, 3);
+  };
+
   const handleGenerateAgreement = async () => {
     const url = '/tb_agreement.pdf';
     const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
@@ -148,52 +168,30 @@ export default function Agreements() {
       });
     }
 
-    // Agreement Details - Page 2
+    // Page 2 Details
     if (secondPage) {
-      // Service Agreement Type
-      secondPage.drawText(formData.serviceAgreementType, {
-        x: 185,
-        y: 394,
-        font: helveticaFont,
-        size: 9.5,
-        color: rgb(0, 0, 0),
-      });
+      // Agreement Details
+      secondPage.drawText(formData.serviceAgreementType, { x: 185, y: 394, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(formData.endDate), { x: 330, y: 408, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(formData.startDate), { x: 175, y: 408, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formData.agreementNumber, { x: 160, y: 437, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(formData.agreementDate), { x: 145, y: 451, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
 
-      // End Date
-      secondPage.drawText(formatDate(formData.endDate), {
-        x: 350,
-        y: 408,
-        font: helveticaFont,
-        size: 9.5,
-        color: rgb(0, 0, 0),
-      });
+      // Member Details
+      secondPage.drawText(formData.memberLegalName, { x: 170, y: 608, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formData.memberCIN, { x: 130, y: 594, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formData.memberGST, { x: 174, y: 579, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formData.memberPAN, { x: 133, y: 565, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formData.memberKYC, { x: 133, y: 551, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
 
-      // Start Date
-      secondPage.drawText(formatDate(formData.startDate), {
-        x: 175,
-        y: 408,
-        font: helveticaFont,
-        size: 9.5,
-        color: rgb(0, 0, 0),
-      });
-
-      // Agreement Number
-      secondPage.drawText(formData.agreementNumber, {
-        x: 160,
-        y: 437,
-        font: helveticaFont,
-        size: 9.5,
-        color: rgb(0, 0, 0),
-      });
-
-      // Agreement Date
-      secondPage.drawText(formatDate(formData.agreementDate), {
-        x: 145,
-        y: 451,
-        font: helveticaFont,
-        size: 9.5,
-        color: rgb(0, 0, 0),
-      });
+      // Address (with line wrapping)
+      const address = formData.memberAddress.replace(/\n/g, ' ');
+      const addressLines = splitTextIntoLines(address, helveticaFont, 9.5, 300);
+      let y = 536.5;
+      for (const line of addressLines) {
+        secondPage.drawText(line, { x: 150, y, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+        y -= 12; // Adjust for next line
+      }
     }
 
     const pdfBytes = await pdfDoc.save();
