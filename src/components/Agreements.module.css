@@ -88,24 +88,7 @@
   font-weight: var(--font-weight-medium);
 }
 
-.packageBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  background-color: var(--color-teal-bg);
-  color: var(--color-teal-dark);
-}
 
-.packageDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: var(--color-teal);
-}
 
 /* Modal Styles */
 .section {

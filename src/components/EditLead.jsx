@@ -65,13 +65,13 @@ export default function EditLead() {
           phone: formData.phone
         };
 
-        const membersCollection = collection(db, 'members');
-        await addDoc(membersCollection, memberData);
+        const agreementsCollection = collection(db, 'agreements');
+        await addDoc(agreementsCollection, memberData);
 
         const leadRef = doc(db, "leads", id);
         await deleteDoc(leadRef);
 
-        navigate('/members');
+        navigate('/agreements');
 
       } else {
         // Just update the lead

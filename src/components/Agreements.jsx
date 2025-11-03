@@ -1,35 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton } from '@mui/material';
 import { Close } from '@mui/icons-material';
 import styles from './Agreements.module.css';
-
-const agreementsData = [
-  {
-    id: 1,
-    name: 'Diana Prince',
-    package: 'Dedicated Desk',
-    dob: '02/11/2025',
-    email: 'diana@themyscira.corp',
-    phone: '+918078514590',
-    // Agreement details (initially empty, will be filled via modal)
-    memberLegalName: '',
-    memberCIN: '',
-    memberGST: '',
-    memberPAN: '',
-    memberKYC: '',
-    memberAddress: '',
-    agreementDate: '',
-    agreementNumber: '',
-    startDate: '',
-    endDate: '',
-    serviceAgreementType: '',
-    totalMonthlyPayment: '',
-    preparedBy: '',
-  },
-];
+import { FirebaseContext } from '../store/Context';
+import { collection, getDocs } from 'firebase/firestore';
 
 export default function Agreements() {
-  const [agreements, setAgreements] = useState(agreementsData);
+  const { db } = useContext(FirebaseContext);
+  const [agreements, setAgreements] = useState([]);
   const [selectedAgreement, setSelectedAgreement] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -47,6 +25,18 @@ export default function Agreements() {
     totalMonthlyPayment: '',
     preparedBy: '',
   });
+
+  useEffect(() => {
+    if (db) {
+      const fetchAgreements = async () => {
+        const agreementsCollection = collection(db, 'agreements');
+        const agreementsSnapshot = await getDocs(agreementsCollection);
+        const agreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAgreements(agreementsData);
+      };
+      fetchAgreements();
+    }
+  }, [db]);
 
   const handleRowClick = (agreement) => {
     setSelectedAgreement(agreement);
@@ -130,10 +120,7 @@ export default function Agreements() {
                     <span className={styles.nameText}>{agreement.name}</span>
                   </td>
                   <td>
-                    <span className={styles.packageBadge}>
-                      <span className={styles.packageDot}></span>
-                      {agreement.package}
-                    </span>
+                    {agreement.package}
                   </td>
                   <td>{agreement.dob}</td>
                   <td>{agreement.email}</td>
