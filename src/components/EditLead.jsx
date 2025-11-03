@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect } from 'react';
 import { FirebaseContext } from '../store/Context';
-import { doc, getDoc, updateDoc, collection, addDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, addDoc } from 'firebase/firestore';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   CheckCircle, 
@@ -51,31 +51,42 @@ export default function EditLead() {
 
   const handleUpdateLead = async () => {
     try {
+      const leadRef = doc(db, "leads", id);
+
       if (formData.status === 'Converted' && originalLead.status !== 'Converted') {
         // This is a new conversion
-        const memberData = {
-          name: formData.name,
-          package: formData.purposeOfVisit,
-          company: formData.companyName || 'NA',
-          dob: formData.birthday,
-          whatsapp: formData.convertedWhatsapp || formData.whatsapp,
-          email: formData.convertedEmail || formData.email,
-          sourceType: formData.sourceType,
-          sourceDetail: formData.sourceDetail,
-          phone: formData.phone
+        const agreementData = {
+          leadId: id,
+          // Add any other agreement-specific fields here, initially empty
+          memberLegalName: '',
+          memberCIN: '',
+          memberGST: '',
+          memberPAN: '',
+          memberKYC: '',
+          memberAddress: '',
+          agreementDate: '',
+          agreementNumber: '',
+          startDate: '',
+          endDate: '',
+          serviceAgreementType: '',
+          totalMonthlyPayment: '',
+          preparedBy: '',
         };
 
         const agreementsCollection = collection(db, 'agreements');
-        await addDoc(agreementsCollection, memberData);
+        await addDoc(agreementsCollection, agreementData);
 
-        const leadRef = doc(db, "leads", id);
-        await deleteDoc(leadRef);
+        // Update the lead status to Converted
+        await updateDoc(leadRef, {
+          ...formData,
+          activities: activities,
+          status: 'Converted'
+        });
 
         navigate('/agreements');
 
       } else {
         // Just update the lead
-        const leadRef = doc(db, "leads", id);
         await updateDoc(leadRef, {
           ...formData,
           activities: activities

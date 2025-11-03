@@ -3,7 +3,7 @@ import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton } fro
 import { Close } from '@mui/icons-material';
 import styles from './Agreements.module.css';
 import { FirebaseContext } from '../store/Context';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 
 export default function Agreements() {
   const { db } = useContext(FirebaseContext);
@@ -32,7 +32,20 @@ export default function Agreements() {
         const agreementsCollection = collection(db, 'agreements');
         const agreementsSnapshot = await getDocs(agreementsCollection);
         const agreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setAgreements(agreementsData);
+
+        const leadPromises = agreementsData.map(agreement => {
+          const leadDocRef = doc(db, 'leads', agreement.leadId);
+          return getDoc(leadDocRef);
+        });
+
+        const leadSnapshots = await Promise.all(leadPromises);
+
+        const combinedData = agreementsData.map((agreement, index) => {
+          const leadData = leadSnapshots[index].data();
+          return { ...agreement, ...leadData };
+        });
+
+        setAgreements(combinedData);
       };
       fetchAgreements();
     }
@@ -120,9 +133,9 @@ export default function Agreements() {
                     <span className={styles.nameText}>{agreement.name}</span>
                   </td>
                   <td>
-                    {agreement.package}
+                    {agreement.purposeOfVisit}
                   </td>
-                  <td>{agreement.dob}</td>
+                  <td>{agreement.birthday}</td>
                   <td>{agreement.email}</td>
                   <td>{agreement.phone}</td>
                 </tr>
