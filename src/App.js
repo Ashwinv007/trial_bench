@@ -10,7 +10,7 @@ import './theme.css';
 import MembersPage from './pages/MembersPage';
 import EditLeadPage from './pages/EditLeadPage';
 import AgreementsPage from './pages/AgreementsPage';
-
+import InvoicesPage from './pages/InvoicesPage';
 
 function App() {
   const { user, setUser } = useContext(AuthContext);
@@ -33,6 +33,7 @@ function App() {
         <Route path="/lead/:id" element={user ? <EditLeadPage /> : <Navigate to="/login" />} />
         <Route path="/members" element={user ? <MembersPage /> : <Navigate to="/login" />} />
         <Route path="/agreements" element={user ? <AgreementsPage/>: <Navigate to="/login"/>}/>
+        <Route path="invoices" element={user? <InvoicesPage/>:<Navigate to ="/login"/>} />
 
 
         
