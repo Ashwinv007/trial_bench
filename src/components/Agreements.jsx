@@ -39,18 +39,18 @@ export default function Agreements() {
         const agreementsSnapshot = await getDocs(agreementsCollection);
         const agreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        const validAgreements = agreementsData.filter(agreement => agreement.leadId);
+        const validAgreements = agreementsData.filter(agreement => agreement.memberId);
 
-        const leadPromises = validAgreements.map(agreement => {
-          const leadDocRef = doc(db, 'leads', agreement.leadId);
-          return getDoc(leadDocRef);
+        const memberPromises = validAgreements.map(agreement => {
+          const memberDocRef = doc(db, 'members', agreement.memberId);
+          return getDoc(memberDocRef);
         });
 
-        const leadSnapshots = await Promise.all(leadPromises);
+        const memberSnapshots = await Promise.all(memberPromises);
 
         const combinedData = validAgreements.map((agreement, index) => {
-          const leadData = leadSnapshots[index].data();
-          return { ...agreement, ...leadData };
+          const memberData = memberSnapshots[index].data();
+          return { ...agreement, ...memberData };
         });
 
         setAgreements(combinedData);

@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect } from 'react';
 import { FirebaseContext } from '../store/Context';
-import { doc, getDoc, updateDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, addDoc, deleteDoc } from 'firebase/firestore';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   CheckCircle, 
@@ -55,8 +55,23 @@ export default function EditLead() {
 
       if (formData.status === 'Converted' && originalLead.status !== 'Converted') {
         // This is a new conversion
+
+        // 1. Create a new member
+        const memberData = {
+          ...formData,
+          email: formData.convertedEmail || formData.email,
+          whatsapp: formData.convertedWhatsapp || formData.whatsapp,
+          package: formData.purposeOfVisit,
+          dob: formData.birthday,
+          company: formData.companyName,
+        };
+        const membersCollection = collection(db, 'members');
+        const memberDocRef = await addDoc(membersCollection, memberData);
+        const memberId = memberDocRef.id;
+
+        // 2. Create a new agreement
         const agreementData = {
-          leadId: id,
+          memberId: memberId,
           // Add any other agreement-specific fields here, initially empty
           memberLegalName: '',
           memberCIN: '',
@@ -76,12 +91,8 @@ export default function EditLead() {
         const agreementsCollection = collection(db, 'agreements');
         await addDoc(agreementsCollection, agreementData);
 
-        // Update the lead status to Converted
-        await updateDoc(leadRef, {
-          ...formData,
-          activities: activities,
-          status: 'Converted'
-        });
+        // 3. Delete the lead
+        await deleteDoc(leadRef);
 
         navigate('/agreements');
 
@@ -297,7 +308,6 @@ export default function EditLead() {
                   </button>
                 </div>
               )}
-
               {/* Purpose of Visit */}
               <div className={styles.formGroup}>
                 <label className={styles.label}>Purpose of Visit *</label>
