@@ -28,6 +28,7 @@ export default function Agreements() {
     authorizorName: '',
     designation: '',
     preparedByNew: '',
+    title: '',
   });
 
   useEffect(() => {
@@ -75,6 +76,7 @@ export default function Agreements() {
       authorizorName: agreement.authorizorName || '',
       designation: agreement.designation || '',
       preparedByNew: agreement.preparedByNew || '',
+      title: agreement.title || '',
     });
     setIsModalOpen(true);
   };
@@ -208,7 +210,7 @@ export default function Agreements() {
 
       // New fields
       secondPage.drawText(formData.memberLegalName, { x: 150, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText('Individual', { x: 150, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formData.title, { x: 150, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       // secondPage.drawText(formatDate(formData.agreementDate), { x: 150, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
 
       secondPage.drawText(formData.authorizorName, { x: 370, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
@@ -322,6 +324,15 @@ export default function Agreements() {
                   label="Member Legal Name"
                   name="memberLegalName"
                   value={formData.memberLegalName}
+                  onChange={handleInputChange}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                />
+                <TextField
+                  label="Title"
+                  name="title"
+                  value={formData.title}
                   onChange={handleInputChange}
                   fullWidth
                   variant="outlined"
