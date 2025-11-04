@@ -195,6 +195,11 @@
   color: #991b1b;
 }
 
+.statusBadge.default {
+  background-color: #e5e7eb;
+  color: #4b5563;
+}
+
 /* Empty State */
 .emptyState {
   padding: 48px 24px;

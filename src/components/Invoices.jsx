@@ -1,79 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton } from '@mui/material';
 import { Close, AddCircleOutline } from '@mui/icons-material';
 import styles from './Invoices.module.css';
-
-const invoicesData = [
-  {
-    id: 1,
-    name: 'Diana Prince',
-    phone: '+918078514590',
-    email: 'diana@themyscira.corp',
-    paymentStatus: 'Paid',
-    dateOfPayment: '2025-10-28',
-    legalName: 'Diana Prince Enterprises',
-    address: '123 Paradise Island, Themyscira',
-    invoiceNumber: 'INV-2025-001',
-    date: '2025-10-01',
-    month: 'October',
-    year: '2025',
-    fromDate: '2025-10-01',
-    toDate: '2025-10-31',
-    description: 'Dedicated Desk - October 2025',
-    sacCode: '998599',
-    price: 15000,
-    quantity: 1,
-    totalPrice: 15000,
-    discountPercentage: 0,
-  },
-  {
-    id: 2,
-    name: 'Alice Johnson',
-    phone: '+918078514587',
-    email: 'alice@innovate.com',
-    paymentStatus: 'Unpaid',
-    dateOfPayment: null,
-    legalName: 'Innovate Solutions Ltd',
-    address: '456 Tech Park, Bangalore',
-    invoiceNumber: 'INV-2025-002',
-    date: '2025-10-15',
-    month: 'October',
-    year: '2025',
-    fromDate: '2025-10-01',
-    toDate: '2025-10-31',
-    description: 'Flexi Desk - October 2025',
-    sacCode: '998599',
-    price: 8000,
-    quantity: 1,
-    totalPrice: 8000,
-    discountPercentage: 10,
-  },
-  {
-    id: 3,
-    name: 'Bob Williams',
-    phone: '+918078514588',
-    email: 'bob@solutions.io',
-    paymentStatus: 'Paid',
-    dateOfPayment: '2025-10-30',
-    legalName: 'Williams & Co',
-    address: '789 Business Center, Mumbai',
-    invoiceNumber: 'INV-2025-003',
-    date: '2025-10-05',
-    month: 'October',
-    year: '2025',
-    fromDate: '2025-10-01',
-    toDate: '2025-10-31',
-    description: 'Private Cabin - October 2025',
-    sacCode: '998599',
-    price: 25000,
-    quantity: 1,
-    totalPrice: 25000,
-    discountPercentage: 5,
-  },
-];
+import { FirebaseContext } from '../store/Context';
+import { collection, getDocs } from 'firebase/firestore';
 
 export default function Invoices() {
-  const [invoices, setInvoices] = useState(invoicesData);
+  const { db } = useContext(FirebaseContext);
+  const [invoices, setInvoices] = useState([]);
+
+  useEffect(() => {
+    if (db) {
+      const fetchInvoices = async () => {
+        const invoicesCollection = collection(db, 'invoices');
+        const invoicesSnapshot = await getDocs(invoicesCollection);
+        const invoicesData = invoicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setInvoices(invoicesData);
+      };
+      fetchInvoices();
+    }
+  }, [db]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPaymentDateModalOpen, setIsPaymentDateModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
@@ -315,10 +261,10 @@ export default function Invoices() {
                 >
                   <td>
                     <span 
-                      className={`${styles.statusBadge} ${styles[invoice.paymentStatus.toLowerCase()]}`}
+                      className={`${styles.statusBadge} ${styles[invoice.paymentStatus ? invoice.paymentStatus.toLowerCase() : 'default']}`}
                       onClick={(e) => togglePaymentStatus(invoice, e)}
                     >
-                      {invoice.paymentStatus}
+                      {invoice.paymentStatus || 'Unknown'}
                     </span>
                   </td>
                   <td>
