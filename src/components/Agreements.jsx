@@ -115,10 +115,10 @@ export default function Agreements() {
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
     const day = String(date.getUTCDate()).padStart(2, '0');
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
     const year = date.getUTCFullYear();
-    return `${month}/${day}/${year}`;
+    return `${day}/${month}/${year}`;
   };
 
   const splitTextIntoLines = (text, font, fontSize, maxWidth) => {
@@ -153,12 +153,12 @@ export default function Agreements() {
     const secondPage = pages[1];
 
     // Prepared By - Page 1
-    firstPage.drawText(formData.authorizorName, {
+    firstPage.drawText(formData.preparedByNew, {
       x: 60,
       y: 52,
       font: helveticaFont,
       size: 15,
-      color: rgb(0.8, 0.8, 0.8),
+      color: rgb(0.466, 0.466, 0.466),
     });
 
     // Top Agreement Number - All pages from 2 onwards
@@ -168,7 +168,15 @@ export default function Agreements() {
         y: 729,
         font: helveticaFont,
         size: 8.5,
-        color: rgb(0.8, 0.8, 0.8),
+        color: rgb(0.466, 0.466, 0.466),
+      });
+      // Client signatory - Page 2 onwards
+      pages[i].drawText(`(${formData.memberLegalName})`, {
+        x: 89,
+        y: 105,
+        font: helveticaFont,
+        size: 11,
+        color: rgb(0, 0, 0),
       });
     }
 
@@ -176,7 +184,7 @@ export default function Agreements() {
     if (secondPage) {
       // Agreement Details
       secondPage.drawText(formData.serviceAgreementType, { x: 185, y: 394, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(formData.endDate), { x: 330, y: 408, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(formData.endDate), { x: 350, y: 408, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(formatDate(formData.startDate), { x: 175, y: 408, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(formData.agreementNumber, { x: 160, y: 437, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(formatDate(formData.agreementDate), { x: 145, y: 451, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
@@ -198,13 +206,15 @@ export default function Agreements() {
       }
 
       // New fields
-      secondPage.drawText(formData.authorizorName, { x: 150, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formData.memberLegalName, { x: 150, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText('Individual', { x: 150, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(formData.agreementDate), { x: 150, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      // secondPage.drawText(formatDate(formData.agreementDate), { x: 150, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
 
-      secondPage.drawText(formData.preparedByNew, { x: 370, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formData.authorizorName, { x: 370, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(formData.designation, { x: 370, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(formData.agreementDate), { x: 415, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      const currentDate = new Date();
+      secondPage.drawText(formatDate(currentDate), { x: 415, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(currentDate), { x: 150, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
     }
 
     const pdfBytes = await pdfDoc.save();
