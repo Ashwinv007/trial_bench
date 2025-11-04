@@ -1,25 +1,14 @@
-import { useState, useEffect, useContext } from 'react';
-import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton } from '@mui/material';
+import { useState, useEffect, useContext, useMemo } from 'react';
+import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, Autocomplete, Select, MenuItem } from '@mui/material';
 import { Close, AddCircleOutline } from '@mui/icons-material';
 import styles from './Invoices.module.css';
 import { FirebaseContext } from '../store/Context';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc } from 'firebase/firestore';
 
 export default function Invoices() {
   const { db } = useContext(FirebaseContext);
   const [invoices, setInvoices] = useState([]);
-
-  useEffect(() => {
-    if (db) {
-      const fetchInvoices = async () => {
-        const invoicesCollection = collection(db, 'invoices');
-        const invoicesSnapshot = await getDocs(invoicesCollection);
-        const invoicesData = invoicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setInvoices(invoicesData);
-      };
-      fetchInvoices();
-    }
-  }, [db]);
+  const [members, setMembers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPaymentDateModalOpen, setIsPaymentDateModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
@@ -27,6 +16,7 @@ export default function Invoices() {
   const [paymentDate, setPaymentDate] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [formData, setFormData] = useState({
+    memberId: null,
     legalName: '',
     address: '',
     invoiceNumber: '',
@@ -43,20 +33,54 @@ export default function Invoices() {
     discountPercentage: 0,
   });
 
+  useEffect(() => {
+    if (!db) return;
+
+    const fetchInvoices = async () => {
+      const invoicesCollection = collection(db, 'invoices');
+      const invoicesSnapshot = await getDocs(invoicesCollection);
+      const invoicesData = invoicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setInvoices(invoicesData);
+    };
+
+    const fetchMembers = async () => {
+      const membersCollection = collection(db, 'members');
+      const membersSnapshot = await getDocs(membersCollection);
+      const membersData = membersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMembers(membersData);
+    };
+
+    fetchInvoices();
+    fetchMembers();
+  }, [db]);
+
+  const invoicesWithMemberData = useMemo(() => {
+    if (!invoices.length || !members.length) return [];
+    return invoices.map(invoice => {
+      const member = members.find(m => m.id === invoice.memberId);
+      return {
+        ...invoice,
+        name: member ? member.name : 'Unknown Member',
+        phone: member ? member.whatsapp : 'N/A',
+        email: member ? member.email : 'N/A',
+      };
+    });
+  }, [invoices, members]);
+
   const handleOpenModal = () => {
     setEditingInvoice(null);
-    // Reset form
     setFormData({
+      memberId: null,
       legalName: '',
       address: '',
       invoiceNumber: '',
-      date: '',
+      date: new Date().toISOString().split('T')[0], // Default to today
       month: '',
-      year: '',
+      year: new Date().getFullYear().toString(),
       fromDate: '',
       toDate: '',
       description: '',
-      sacCode: '',
+      sacCode: '998599',
       price: '',
       quantity: 1,
       totalPrice: '',
@@ -66,13 +90,11 @@ export default function Invoices() {
   };
 
   const handleEditInvoice = (invoice, e) => {
-    // Prevent row click if clicking on status badge
-    if (e.target.closest(`.${styles.statusBadge}`)) {
-      return;
-    }
+    if (e.target.closest(`.${styles.statusBadge}`)) return;
 
     setEditingInvoice(invoice);
     setFormData({
+      memberId: invoice.memberId,
       legalName: invoice.legalName,
       address: invoice.address,
       invoiceNumber: invoice.invoiceNumber,
@@ -96,88 +118,82 @@ export default function Invoices() {
     setEditingInvoice(null);
   };
 
+  const handleMemberSelect = (event, member) => {
+    if (member) {
+      setFormData(prev => ({
+        ...prev,
+        memberId: member.id,
+        legalName: member.company && member.company !== 'NA' ? member.company : member.name,
+        address: 'Address field not in member data', // Placeholder
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        memberId: null,
+        legalName: '',
+        address: '',
+      }));
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => {
-      const updated = {
-        ...prev,
-        [name]: value,
-      };
-
-      // Auto-calculate total price when price, quantity, or discount changes
-      if (name === 'price' || name === 'quantity' || name === 'discountPercentage') {
+      const updated = { ...prev, [name]: value };
+      if (['price', 'quantity', 'discountPercentage'].includes(name)) {
         const price = parseFloat(name === 'price' ? value : updated.price) || 0;
         const quantity = parseFloat(name === 'quantity' ? value : updated.quantity) || 0;
         const discount = parseFloat(name === 'discountPercentage' ? value : updated.discountPercentage) || 0;
-        
         const subtotal = price * quantity;
         const discountAmount = (subtotal * discount) / 100;
         updated.totalPrice = (subtotal - discountAmount).toFixed(2);
       }
-
       return updated;
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (editingInvoice) {
-      // Update existing invoice
-      setInvoices((prev) =>
-        prev.map((invoice) =>
-          invoice.id === editingInvoice.id
-            ? { ...invoice, ...formData }
-            : invoice
-        )
-      );
-    } else {
-      // Generate a new invoice
-      const newInvoice = {
-        id: invoices.length + 1,
-        name: formData.legalName.split(' ')[0] + ' ' + (formData.legalName.split(' ')[1] || ''),
-        phone: '+91XXXXXXXXXX', // Placeholder
-        email: 'email@example.com', // Placeholder
-        paymentStatus: 'Unpaid',
-        dateOfPayment: null,
-        ...formData,
-      };
-
-      setInvoices((prev) => [...prev, newInvoice]);
+    if (!formData.memberId) {
+      alert("Please select a member.");
+      return;
     }
 
+    const { name, phone, email, ...invoicePayload } = formData;
+
+    if (editingInvoice) {
+      const invoiceRef = doc(db, "invoices", editingInvoice.id);
+      await updateDoc(invoiceRef, invoicePayload);
+      setInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? { ...inv, ...invoicePayload } : inv));
+    } else {
+      try {
+        const docRef = await addDoc(collection(db, "invoices"), invoicePayload);
+        setInvoices(prev => [...prev, { id: docRef.id, ...invoicePayload }]);
+      } catch (error) {
+        console.error("Error adding document: ", error);
+      }
+    }
     handleCloseModal();
   };
 
-  const togglePaymentStatus = (invoice, e) => {
+  const togglePaymentStatus = async (invoice, e) => {
     e.stopPropagation();
-    
     if (invoice.paymentStatus === 'Paid') {
-      // Mark as unpaid
-      setInvoices((prev) =>
-        prev.map((inv) =>
-          inv.id === invoice.id
-            ? { ...inv, paymentStatus: 'Unpaid', dateOfPayment: null }
-            : inv
-        )
-      );
+      const invoiceRef = doc(db, "invoices", invoice.id);
+      await updateDoc(invoiceRef, { paymentStatus: 'Unpaid', dateOfPayment: null });
+      setInvoices(prev => prev.map(inv => inv.id === invoice.id ? { ...inv, paymentStatus: 'Unpaid', dateOfPayment: null } : inv));
     } else {
-      // Mark as paid - ask for payment date
       setSelectedInvoiceForPayment(invoice);
       setPaymentDate('');
       setIsPaymentDateModalOpen(true);
     }
   };
 
-  const handlePaymentDateSubmit = () => {
+  const handlePaymentDateSubmit = async () => {
     if (paymentDate && selectedInvoiceForPayment) {
-      setInvoices((prev) =>
-        prev.map((inv) =>
-          inv.id === selectedInvoiceForPayment.id
-            ? { ...inv, paymentStatus: 'Paid', dateOfPayment: paymentDate }
-            : inv
-        )
-      );
+      const invoiceRef = doc(db, "invoices", selectedInvoiceForPayment.id);
+      await updateDoc(invoiceRef, { paymentStatus: 'Paid', dateOfPayment: paymentDate });
+      setInvoices(prev => prev.map(inv => inv.id === selectedInvoiceForPayment.id ? { ...inv, paymentStatus: 'Paid', dateOfPayment: paymentDate } : inv));
       setIsPaymentDateModalOpen(false);
       setSelectedInvoiceForPayment(null);
       setPaymentDate('');
@@ -190,8 +206,7 @@ export default function Invoices() {
     return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
-  // Filter invoices based on selected filter
-  const filteredInvoices = invoices.filter((invoice) => {
+  const filteredInvoices = invoicesWithMemberData.filter((invoice) => {
     if (filterStatus === 'All') return true;
     return invoice.paymentStatus === filterStatus;
   });
@@ -422,9 +437,25 @@ export default function Invoices() {
             {/* Client Details Section */}
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>Client Details</h3>
-              <div className={styles.formGrid}>
-                <TextField
-                  label="Legal Name"
+              <div className={styles.formGrid} style={{ gridTemplateColumns: '1fr' }}>
+                <Autocomplete
+                  options={members}
+                  getOptionLabel={(option) => `${option.name} (${option.company !== 'NA' ? option.company : 'Individual'})`}
+                  onChange={handleMemberSelect}
+                  value={members.find(m => m.id === formData.memberId) || null}
+                  disabled={!!editingInvoice}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Select Member"
+                      variant="outlined"
+                      size="small"
+                      required
+                    />
+                  )}
+                />
+                 <TextField
+                  label="Legal Name (for invoice)"
                   name="legalName"
                   value={formData.legalName}
                   onChange={handleInputChange}
@@ -432,7 +463,7 @@ export default function Invoices() {
                   variant="outlined"
                   size="small"
                   required
-                  style={{ gridColumn: '1 / -1' }}
+                  style={{ marginTop: '16px' }}
                 />
                 <TextField
                   label="Address"
@@ -445,7 +476,7 @@ export default function Invoices() {
                   required
                   multiline
                   rows={2}
-                  style={{ gridColumn: '1 / -1' }}
+                  style={{ marginTop: '16px' }}
                 />
               </div>
             </div>
@@ -476,7 +507,7 @@ export default function Invoices() {
                   required
                   InputLabelProps={{ shrink: true }}
                 />
-                <TextField
+                <Select
                   label="Month"
                   name="month"
                   value={formData.month}
@@ -484,8 +515,24 @@ export default function Invoices() {
                   fullWidth
                   variant="outlined"
                   size="small"
-                  placeholder="e.g., January"
-                />
+                  displayEmpty
+                >
+                  <MenuItem value="" disabled>
+                    Select Month
+                  </MenuItem>
+                  <MenuItem value="January">January</MenuItem>
+                  <MenuItem value="February">February</MenuItem>
+                  <MenuItem value="March">March</MenuItem>
+                  <MenuItem value="April">April</MenuItem>
+                  <MenuItem value="May">May</MenuItem>
+                  <MenuItem value="June">June</MenuItem>
+                  <MenuItem value="July">July</MenuItem>
+                  <MenuItem value="August">August</MenuItem>
+                  <MenuItem value="September">September</MenuItem>
+                  <MenuItem value="October">October</MenuItem>
+                  <MenuItem value="November">November</MenuItem>
+                  <MenuItem value="December">December</MenuItem>
+                </Select>
                 <TextField
                   label="Year"
                   name="year"
