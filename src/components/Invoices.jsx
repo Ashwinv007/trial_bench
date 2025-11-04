@@ -31,6 +31,10 @@ export default function Invoices() {
     quantity: 1,
     totalPrice: '',
     discountPercentage: 0,
+    cgstPercentage: 9,
+    sgstPercentage: 9,
+    taxAmount: '',
+    totalAmountPayable: ''
   });
 
   useEffect(() => {
@@ -85,6 +89,10 @@ export default function Invoices() {
       quantity: 1,
       totalPrice: '',
       discountPercentage: 0,
+      cgstPercentage: 9,
+      sgstPercentage: 9,
+      taxAmount: '',
+      totalAmountPayable: ''
     });
     setIsModalOpen(true);
   };
@@ -109,6 +117,10 @@ export default function Invoices() {
       quantity: invoice.quantity,
       totalPrice: invoice.totalPrice,
       discountPercentage: invoice.discountPercentage,
+      cgstPercentage: invoice.cgstPercentage !== undefined ? invoice.cgstPercentage : 9,
+      sgstPercentage: invoice.sgstPercentage !== undefined ? invoice.sgstPercentage : 9,
+      taxAmount: invoice.taxAmount || '',
+      totalAmountPayable: invoice.totalAmountPayable || ''
     });
     setIsModalOpen(true);
   };
@@ -140,14 +152,27 @@ export default function Invoices() {
     const { name, value } = e.target;
     setFormData((prev) => {
       const updated = { ...prev, [name]: value };
-      if (['price', 'quantity', 'discountPercentage'].includes(name)) {
-        const price = parseFloat(name === 'price' ? value : updated.price) || 0;
-        const quantity = parseFloat(name === 'quantity' ? value : updated.quantity) || 0;
-        const discount = parseFloat(name === 'discountPercentage' ? value : updated.discountPercentage) || 0;
-        const subtotal = price * quantity;
-        const discountAmount = (subtotal * discount) / 100;
-        updated.totalPrice = (subtotal - discountAmount).toFixed(2);
-      }
+
+      const price = parseFloat(updated.price) || 0;
+      const quantity = parseInt(updated.quantity, 10) || 0;
+      const discount = parseFloat(updated.discountPercentage) || 0;
+      const cgst = parseFloat(updated.cgstPercentage) || 0;
+      const sgst = parseFloat(updated.sgstPercentage) || 0;
+
+      const subtotal = price * quantity;
+      const discountAmount = (subtotal * discount) / 100;
+      const priceAfterDiscount = subtotal - discountAmount;
+      
+      const cgstAmount = (priceAfterDiscount * cgst) / 100;
+      const sgstAmount = (priceAfterDiscount * sgst) / 100;
+      const totalTax = cgstAmount + sgstAmount;
+      
+      const totalPayable = priceAfterDiscount + totalTax;
+
+      updated.totalPrice = priceAfterDiscount.toFixed(2);
+      updated.taxAmount = totalTax.toFixed(2);
+      updated.totalAmountPayable = totalPayable.toFixed(2);
+
       return updated;
     });
   };
@@ -629,7 +654,7 @@ export default function Invoices() {
                   inputProps={{ step: "0.01", min: "0", max: "100" }}
                 />
                 <TextField
-                  label="Total Price"
+                  label="Price After Discount"
                   name="totalPrice"
                   type="number"
                   value={formData.totalPrice}
@@ -640,6 +665,52 @@ export default function Invoices() {
                     readOnly: true,
                   }}
                   inputProps={{ step: "0.01" }}
+                />
+                <TextField
+                  label="CGST (%)"
+                  name="cgstPercentage"
+                  type="number"
+                  value={formData.cgstPercentage}
+                  onChange={handleInputChange}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  inputProps={{ step: "0.01", min: "0" }}
+                />
+                <TextField
+                  label="SGST (%)"
+                  name="sgstPercentage"
+                  type="number"
+                  value={formData.sgstPercentage}
+                  onChange={handleInputChange}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  inputProps={{ step: "0.01", min: "0" }}
+                />
+                <TextField
+                  label="Total Tax"
+                  name="taxAmount"
+                  type="number"
+                  value={formData.taxAmount}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  InputProps={{
+                    readOnly: true,
+                  }}
+                />
+                <TextField
+                  label="Total Amount Payable"
+                  name="totalAmountPayable"
+                  type="number"
+                  value={formData.totalAmountPayable}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  InputProps={{
+                    readOnly: true,
+                  }}
                 />
               </div>
             </div>
