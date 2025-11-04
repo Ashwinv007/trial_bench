@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from 'react';
-import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, MenuItem } from '@mui/material';
 import { Close } from '@mui/icons-material';
 import styles from './Agreements.module.css';
 import { FirebaseContext } from '../store/Context';
@@ -29,6 +29,7 @@ export default function Agreements() {
     designation: '',
     preparedByNew: '',
     title: '',
+    agreementLength: '',
   });
 
   useEffect(() => {
@@ -58,6 +59,20 @@ export default function Agreements() {
     }
   }, [db]);
 
+  useEffect(() => {
+    if (formData.startDate && formData.agreementLength) {
+      const startDate = new Date(formData.startDate);
+      const length = parseInt(formData.agreementLength, 10);
+      if (!isNaN(startDate.getTime()) && !isNaN(length)) {
+        const endDate = new Date(startDate.setMonth(startDate.getMonth() + length));
+        setFormData((prev) => ({
+          ...prev,
+          endDate: endDate.toISOString().split('T')[0],
+        }));
+      }
+    }
+  }, [formData.startDate, formData.agreementLength]);
+
   const handleRowClick = (agreement) => {
     setSelectedAgreement(agreement);
     setFormData({
@@ -77,6 +92,7 @@ export default function Agreements() {
       designation: agreement.designation || '',
       preparedByNew: agreement.preparedByNew || '',
       title: agreement.title || '',
+      agreementLength: agreement.agreementLength || '',
     });
     setIsModalOpen(true);
   };
@@ -425,6 +441,22 @@ export default function Agreements() {
                   InputLabelProps={{ shrink: true }}
                 />
                 <TextField
+                  label="Length of Agreement"
+                  name="agreementLength"
+                  value={formData.agreementLength}
+                  onChange={handleInputChange}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  select
+                >
+                  {[...Array(11).keys()].map((i) => (
+                    <MenuItem key={i + 1} value={i + 1}>
+                      {i + 1} month(s)
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
                   label="End Date"
                   name="endDate"
                   type="date"
@@ -434,6 +466,7 @@ export default function Agreements() {
                   variant="outlined"
                   size="small"
                   InputLabelProps={{ shrink: true }}
+                  disabled
                 />
                 <TextField
                   label="Service Agreement Type"
