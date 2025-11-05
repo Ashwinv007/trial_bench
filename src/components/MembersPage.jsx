@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useContext, useEffect } from 'react';
 import { FirebaseContext } from '../store/Context';
-import { collection, getDocs, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import {
   Box,
   Typography,
@@ -98,6 +98,13 @@ export default function MembersPage() {
       // Add new member
       try {
         const docRef = await addDoc(collection(db, "members"), memberData);
+        if (primaryMemberId) {
+          const primaryMemberDocRef = doc(db, "members", primaryMemberId);
+          const primaryMemberDoc = await getDoc(primaryMemberDocRef);
+          const primaryMemberData = primaryMemberDoc.data();
+          const subMembers = primaryMemberData.subMembers || [];
+          await updateDoc(primaryMemberDocRef, { subMembers: [...subMembers, docRef.id] });
+        }
         setAllMembers([...allMembers, { ...memberData, id: docRef.id }]);
       } catch (error) {
         console.error("Error adding member: ", error);
@@ -147,7 +154,7 @@ export default function MembersPage() {
       return companyA.localeCompare(companyB);
     });
 
-    return filtered.filter(member => !member.primaryMemberId);
+    return filtered;
   }, [searchQuery, packageFilter, monthFilter, primaryMemberFilter, allMembers]);
 
   return (
