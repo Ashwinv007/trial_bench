@@ -4,6 +4,8 @@ import { Close, AddCircleOutline } from '@mui/icons-material';
 import styles from './Invoices.module.css';
 import { FirebaseContext } from '../store/Context';
 import { collection, getDocs, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { saveAs } from 'file-saver';
 
 const formatDate = (dateString) => {
   if (!dateString) return '-';
@@ -59,6 +61,100 @@ updated.totalAmountPayable = totalPayable.toFixed(2);
   updated.description = generatedDescription;
 
   return updated;
+};
+
+const generateInvoicePdf = async (invoiceData) => {
+  const url = '/tb_invoice.pdf';
+  const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
+
+  const pdfDoc = await PDFDocument.load(existingPdfBytes);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const pages = pdfDoc.getPages();
+  const firstPage = pages[0];
+
+  const {
+    legalName,
+    address,
+    invoiceNumber,
+    date,
+    description,
+    sacCode,
+    price,
+    quantity,
+    discountPercentage,
+    cgstPercentage,
+    sgstPercentage,
+    totalPrice, // This is priceAfterDiscount, which is the subtotal for the bottom part
+    taxAmount,
+    totalAmountPayable
+  } = invoiceData;
+
+  // Calculations
+  const priceNum = parseFloat(price) || 0;
+  const quantityNum = parseInt(quantity, 10) || 0;
+  const discountPerc = parseFloat(discountPercentage) || 0;
+  const cgstPerc = parseFloat(cgstPercentage) || 0;
+  const sgstPerc = parseFloat(sgstPercentage) || 0;
+
+  const lineItemSubtotal = priceNum * quantityNum;
+  const discountAmount = (lineItemSubtotal * discountPerc) / 100;
+  const priceAfterDiscount = parseFloat(totalPrice) || 0;
+  const cgstAmount = (priceAfterDiscount * cgstPerc) / 100;
+  const sgstAmount = (priceAfterDiscount * sgstPerc) / 100;
+
+  // Helper for formatting
+  const formatCurrency = (value) => typeof value === 'number' ? value.toFixed(2) : String(value);
+
+  // Name
+  firstPage.drawText(legalName || '', { x: 66, y: 620, size: 11, font, color: rgb(0, 0, 0), maxWidth: 250 });
+
+  // Address
+  firstPage.drawText(address || '', { x: 66, y: 607, size: 11, font, color: rgb(0, 0, 0), maxWidth: 200, lineHeight: 13 });
+
+  // Invoice Number
+  firstPage.drawText(invoiceNumber || '', { x: 450, y: 634, size: 11, font, color: rgb(0, 0, 0), maxWidth: 200 });
+
+  // Date
+  firstPage.drawText(formatDate(date) || '', { x: 450, y: 618, size: 11, font, color: rgb(0, 0, 0), maxWidth: 200 });
+
+  // --- Table items ---
+  // Description
+  firstPage.drawText(description || '', { x: 66, y: 380, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150,lineHeight:12 });
+
+  // SAC
+  firstPage.drawText(sacCode || '', { x: 306, y: 375, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150 });
+
+  // Price
+  firstPage.drawText(formatCurrency(priceNum), { x: 385, y: 374, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150 });
+
+  // Qty
+  firstPage.drawText(String(quantityNum), { x: 441, y: 374, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150 });
+
+  // Total (line item)
+  firstPage.drawText(formatCurrency(lineItemSubtotal), { x: 500, y: 374, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150 });
+
+  // --- Totals section ---
+  // Subtotal (Price after discount)
+  firstPage.drawText(formatCurrency(priceAfterDiscount), { x: 490, y: 200, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150 });
+
+  // Discount
+  firstPage.drawText(formatCurrency(discountAmount), { x: 490, y: 184, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150 });
+
+  // Tax
+  firstPage.drawText(taxAmount, { x: 490, y: 169, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150 });
+
+  // CGST
+  firstPage.drawText(formatCurrency(cgstAmount), { x: 490, y: 154, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150 });
+
+  // SGST
+  firstPage.drawText(formatCurrency(sgstAmount), { x: 490, y: 137.5, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150 });
+
+  // Amount Payable
+  firstPage.drawText(totalAmountPayable, { x: 490, y: 117, size: 13, font, color: rgb(0, 0, 0), maxWidth: 150 });
+
+  const pdfBytes = await pdfDoc.save();
+  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+  saveAs(blob, `invoice-${invoiceNumber || 'new'}.pdf`);
 };
 
 export default function Invoices() {
@@ -227,7 +323,9 @@ export default function Invoices() {
     } else {
       try {
         const docRef = await addDoc(collection(db, "invoices"), invoicePayload);
-        setInvoices(prev => [...prev, { id: docRef.id, ...invoicePayload }]);
+        const newInvoice = { id: docRef.id, ...invoicePayload };
+        setInvoices(prev => [...prev, newInvoice]);
+        await generateInvoicePdf(newInvoice);
       } catch (error) {
         console.error("Error adding document: ", error);
       }
