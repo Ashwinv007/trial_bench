@@ -167,6 +167,7 @@ export default function Invoices() {
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState(null);
   const [paymentDate, setPaymentDate] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [invoiceGenerated, setInvoiceGenerated] = useState(null);
   const [formData, setFormData] = useState({
     memberId: null,
     legalName: '',
@@ -225,6 +226,7 @@ export default function Invoices() {
 
   const handleOpenModal = () => {
     setEditingInvoice(null);
+    setInvoiceGenerated(null);
     const initialData = {
       memberId: null,
       legalName: '',
@@ -281,6 +283,7 @@ export default function Invoices() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingInvoice(null);
+    setInvoiceGenerated(null);
   };
 
   const handleMemberSelect = (event, member) => {
@@ -307,7 +310,7 @@ export default function Invoices() {
     setFormData((prev) => updateCalculationsAndDescription({ ...prev, [name]: value }, members));
   };
 
-  const handleSubmit = async (e) => {
+ const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.memberId) {
       alert("Please select a member.");
@@ -319,18 +322,19 @@ export default function Invoices() {
     if (editingInvoice) {
       const invoiceRef = doc(db, "invoices", editingInvoice.id);
       await updateDoc(invoiceRef, invoicePayload);
-      setInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? { ...inv, ...invoicePayload } : inv));
+      const updatedInvoice = { ...editingInvoice, ...invoicePayload };
+      setInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? updatedInvoice : inv));
+      setInvoiceGenerated(updatedInvoice);
     } else {
       try {
         const docRef = await addDoc(collection(db, "invoices"), invoicePayload);
         const newInvoice = { id: docRef.id, ...invoicePayload };
         setInvoices(prev => [...prev, newInvoice]);
-        await generateInvoicePdf(newInvoice);
+        setInvoiceGenerated(newInvoice);
       } catch (error) {
         console.error("Error adding document: ", error);
       }
     }
-    handleCloseModal();
   };
 
   const togglePaymentStatus = async (invoice, e) => {
@@ -566,7 +570,7 @@ export default function Invoices() {
               fontSize: '20px',
               fontWeight: 600 
             }}>
-              {editingInvoice ? 'Edit Invoice' : 'Generate Invoice'}
+              {invoiceGenerated ? (editingInvoice ? 'Invoice Updated' : 'Invoice Generated') : (editingInvoice ? 'Edit Invoice' : 'Generate Invoice')}
             </h2>
             <p style={{ 
               margin: '4px 0 0 0', 
@@ -574,7 +578,7 @@ export default function Invoices() {
               fontSize: '14px',
               fontWeight: 400
             }}>
-              {editingInvoice ? 'Update invoice details' : 'Fill in the details to generate a new invoice'}
+              {invoiceGenerated ? 'The invoice has been saved.' : (editingInvoice ? 'Update invoice details' : 'Fill in the details to generate a new invoice')}
             </p>
           </div>
           <IconButton onClick={handleCloseModal} size="small">
@@ -583,6 +587,38 @@ export default function Invoices() {
         </DialogTitle>
         
         <DialogContent style={{ padding: '24px' }}>
+        {invoiceGenerated ? (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <p style={{ margin: '4px 0 24px 0', color: '#64748b', fontSize: '14px', fontWeight: 400 }}>
+                You can now download the invoice or send it via email.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+                <Button
+                  onClick={() => generateInvoicePdf(invoiceGenerated)}
+                  variant="contained"
+                  style={{
+                    backgroundColor: '#2b7a8e',
+                    color: 'white',
+                    textTransform: 'none',
+                    padding: '8px 24px'
+                  }}
+                >
+                  Download Invoice
+                </Button>
+                <Button
+                  variant="outlined"
+                  style={{
+                    color: '#64748b',
+                    borderColor: '#cbd5e1',
+                    textTransform: 'none',
+                    padding: '8px 24px'
+                  }}
+                >
+                  Send Email
+                </Button>
+              </div>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit}>
             {/* Client Details Section */}
             <div className={styles.section}>
@@ -871,6 +907,7 @@ export default function Invoices() {
               </Button>
             </div>
           </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>
