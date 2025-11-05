@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useContext, useEffect } from 'react';
 import { FirebaseContext } from '../store/Context';
-import { collection, getDocs, addDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import {
   Box,
   Typography,
@@ -30,7 +30,7 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 
 function Row(props) {
-  const { member, handleOpenEditModal, allMembers, handleOpenAddModal } = props;
+  const { member, handleOpenEditModal, allMembers, handleOpenAddModal, handleDelete } = props;
   const [open, setOpen] = useState(false);
 
   const subMembers = allMembers.filter(m => member.subMembers && member.subMembers.includes(m.id));
@@ -39,7 +39,6 @@ function Row(props) {
     <React.Fragment>
       <TableRow
         sx={{ '& > *': { borderBottom: 'unset' }, cursor: 'pointer' }}
-        onClick={() => handleOpenEditModal(member)}
       >
         <TableCell>
           {member.primary && (
@@ -55,14 +54,14 @@ function Row(props) {
             </IconButton>
           )}
         </TableCell>
-        <TableCell component="th" scope="row">
+        <TableCell component="th" scope="row" onClick={() => handleOpenEditModal(member)}>
           {member.name}
         </TableCell>
-        <TableCell>{member.package}</TableCell>
-        <TableCell>{member.company}</TableCell>
-        <TableCell>{member.birthday}</TableCell>
-        <TableCell>{member.whatsapp}</TableCell>
-        <TableCell>{member.email}</TableCell>
+        <TableCell onClick={() => handleOpenEditModal(member)}>{member.package}</TableCell>
+        <TableCell onClick={() => handleOpenEditModal(member)}>{member.company}</TableCell>
+        <TableCell onClick={() => handleOpenEditModal(member)}>{member.birthday}</TableCell>
+        <TableCell onClick={() => handleOpenEditModal(member)}>{member.whatsapp}</TableCell>
+        <TableCell onClick={() => handleOpenEditModal(member)}>{member.email}</TableCell>
         <TableCell>
           {member.primary && (
             <IconButton
@@ -74,6 +73,9 @@ function Row(props) {
               <AddIcon />
             </IconButton>
           )}
+        </TableCell>
+        <TableCell>
+          <Button onClick={() => handleDelete(member.id)}>Delete</Button>
         </TableCell>
       </TableRow>
       <TableRow>
@@ -92,6 +94,7 @@ function Row(props) {
                     <TableCell>Birthday</TableCell>
                     <TableCell>WhatsApp</TableCell>
                     <TableCell>Email</TableCell>
+                    <TableCell>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -105,6 +108,9 @@ function Row(props) {
                       <TableCell>{subMember.birthday}</TableCell>
                       <TableCell>{subMember.whatsapp}</TableCell>
                       <TableCell>{subMember.email}</TableCell>
+                      <TableCell>
+                        <Button onClick={() => handleDelete(subMember.id)}>Delete</Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -193,6 +199,15 @@ export default function MembersPage() {
       } catch (error) {
         console.error("Error adding member: ", error);
       }
+    }
+  };
+
+  const handleDelete = async (memberId) => {
+    try {
+      await deleteDoc(doc(db, "members", memberId));
+      setAllMembers(allMembers.filter(member => member.id !== memberId));
+    } catch (error) {
+      console.error("Error deleting member: ", error);
     }
   };
 
@@ -481,12 +496,13 @@ export default function MembersPage() {
                   Email
                 </TableCell>
                 <TableCell />
+                <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filteredMembers.length > 0 ? (
                 filteredMembers.map((member) => (
-                  <Row key={member.id} member={member} handleOpenEditModal={handleOpenEditModal} allMembers={allMembers} handleOpenAddModal={handleOpenAddModal} />
+                  <Row key={member.id} member={member} handleOpenEditModal={handleOpenEditModal} allMembers={allMembers} handleOpenAddModal={handleOpenAddModal} handleDelete={handleDelete} />
                 ))
               ) : (
                 <TableRow>
