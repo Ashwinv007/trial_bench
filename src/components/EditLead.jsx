@@ -63,7 +63,7 @@ export default function EditLead() {
           email: formData.convertedEmail || formData.email,
           whatsapp: formData.convertedWhatsapp || formData.whatsapp,
           package: formData.purposeOfVisit,
-          dob: formData.birthday,
+          birthday: formData.birthday,
           company: formData.companyName,
           primary: true,
         };

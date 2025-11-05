@@ -25,7 +25,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     name: '',
     package: '',
     company: '',
-    dob: '',
+    birthday: '',
     whatsapp: '',
     email: '',
   });
@@ -41,7 +41,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         name: editMember.name || '',
         package: editMember.package || '',
         company: editMember.company !== 'NA' ? editMember.company : '',
-        dob: editMember.dob || '',
+        birthday: editMember.birthday || '',
         whatsapp: editMember.whatsapp || '',
         email: editMember.email || '',
       });
@@ -51,7 +51,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         name: '',
         package: '',
         company: '',
-        dob: '',
+        birthday: '',
         whatsapp: '',
         email: '',
       });
@@ -178,7 +178,10 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
                 <MenuItem value="Meeting Room">Meeting Room</MenuItem>
             </Select>
             <TextField label="Company Name (optional)" fullWidth value={formData.company} onChange={(e) => handleChange('company', e.target.value)} />
-            <TextField label="Date of Birth" fullWidth type="date" value={formData.dob} onChange={(e) => handleChange('dob', e.target.value)} InputLabelProps={{ shrink: true }} />
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField label="Birthday Day" fullWidth type="number" value={formData.birthday.split('/')[0] || ''} onChange={(e) => handleChange('birthday', `${e.target.value}/${formData.birthday.split('/')[1] || ''}`)} />
+              <TextField label="Birthday Month" fullWidth type="number" value={formData.birthday.split('/')[1] || ''} onChange={(e) => handleChange('birthday', `${formData.birthday.split('/')[0] || ''}/${e.target.value}`)} />
+            </Box>
             <TextField label="WhatsApp" fullWidth value={formData.whatsapp} onChange={(e) => handleChange('whatsapp', e.target.value)} error={!!errors.whatsapp} helperText={errors.whatsapp} />
             <TextField label="Email" fullWidth value={formData.email} onChange={(e) => handleChange('email', e.target.value)} error={!!errors.email} helperText={errors.email} />
           </Box>

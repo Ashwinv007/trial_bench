@@ -60,7 +60,7 @@ function Row(props) {
         </TableCell>
         <TableCell>{member.package}</TableCell>
         <TableCell>{member.company}</TableCell>
-        <TableCell>{member.dob}</TableCell>
+        <TableCell>{member.birthday}</TableCell>
         <TableCell>{member.whatsapp}</TableCell>
         <TableCell>{member.email}</TableCell>
         <TableCell>
@@ -89,7 +89,7 @@ function Row(props) {
                     <TableCell>Name</TableCell>
                     <TableCell>Package</TableCell>
                     <TableCell>Company</TableCell>
-                    <TableCell>DOB</TableCell>
+                    <TableCell>Birthday</TableCell>
                     <TableCell>WhatsApp</TableCell>
                     <TableCell>Email</TableCell>
                   </TableRow>
@@ -102,7 +102,7 @@ function Row(props) {
                       </TableCell>
                       <TableCell>{subMember.package}</TableCell>
                       <TableCell>{subMember.company}</TableCell>
-                      <TableCell>{subMember.dob}</TableCell>
+                      <TableCell>{subMember.birthday}</TableCell>
                       <TableCell>{subMember.whatsapp}</TableCell>
                       <TableCell>{subMember.email}</TableCell>
                     </TableRow>
@@ -120,7 +120,6 @@ function Row(props) {
 export default function MembersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [packageFilter, setPackageFilter] = useState('All Packages');
-  const [monthFilter, setMonthFilter] = useState('All Months');
   const [primaryMemberFilter, setPrimaryMemberFilter] = useState('All Members');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
@@ -144,12 +143,6 @@ export default function MembersPage() {
 
     fetchMembers();
   }, [db]);
-
-  const formatDateForDisplay = (dateString) => {
-    if (!dateString) return '';
-    const [year, month, day] = dateString.split('-');
-    return `${day}/${month}/${year}`;
-  };
 
   const handleOpenAddModal = (primaryId = null) => {
     setEditingMember(null);
@@ -224,15 +217,6 @@ export default function MembersPage() {
       filtered = filtered.filter((member) => member.package === packageFilter);
     }
 
-    // Month filter
-    if (monthFilter !== 'All Months') {
-      filtered = filtered.filter((member) => {
-        if (!member.dob) return false;
-        const month = new Date(member.dob).getMonth();
-        return month === parseInt(monthFilter);
-      });
-    }
-
     // Primary member filter
     if (primaryMemberFilter === 'Primary Members') {
       filtered = filtered.filter((member) => member.primary);
@@ -250,7 +234,7 @@ export default function MembersPage() {
     }
 
     return filtered;
-  }, [searchQuery, packageFilter, monthFilter, primaryMemberFilter, allMembers]);
+  }, [searchQuery, packageFilter, primaryMemberFilter, allMembers]);
 
   return (
     <Box
@@ -335,7 +319,6 @@ export default function MembersPage() {
             onClick={() => {
               setSearchQuery('');
               setPackageFilter('All Packages');
-              setMonthFilter('All Months');
               setPrimaryMemberFilter('All Members');
             }}
             sx={{
@@ -378,39 +361,6 @@ export default function MembersPage() {
             <MenuItem value="Cabin">Cabin</MenuItem>
             <MenuItem value="Virtual Office">Virtual Office</MenuItem>
             <MenuItem value="Meeting Room">Meeting Room</MenuItem>
-          </Select>
-          <Select
-            value={monthFilter}
-            onChange={(e) => setMonthFilter(e.target.value)}
-            size="small"
-            sx={{
-              minWidth: '150px',
-              bgcolor: '#ffffff',
-              fontSize: '14px',
-              '& .MuiOutlinedInput-notchedOutline': {
-                borderColor: '#e0e0e0',
-              },
-              '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: '#2b7a8e',
-              },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                borderColor: '#2b7a8e',
-              },
-            }}
-          >
-            <MenuItem value="All Months">All Months</MenuItem>
-            <MenuItem value="0">January</MenuItem>
-            <MenuItem value="1">February</MenuItem>
-            <MenuItem value="2">March</MenuItem>
-            <MenuItem value="3">April</MenuItem>
-            <MenuItem value="4">May</MenuItem>
-            <MenuItem value="5">June</MenuItem>
-            <MenuItem value="6">July</MenuItem>
-            <MenuItem value="7">August</MenuItem>
-            <MenuItem value="8">September</MenuItem>
-            <MenuItem value="9">October</MenuItem>
-            <MenuItem value="10">November</MenuItem>
-            <MenuItem value="11">December</MenuItem>
           </Select>
           <Select
             value={primaryMemberFilter}
@@ -508,7 +458,7 @@ export default function MembersPage() {
                     borderBottom: '1px solid #e0e0e0',
                   }}
                 >
-                  DOB
+                  Birthday
                 </TableCell>
                 <TableCell
                   sx={{

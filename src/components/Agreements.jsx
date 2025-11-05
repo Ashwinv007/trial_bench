@@ -263,7 +263,7 @@ export default function Agreements() {
               <tr>
                 <th>Name</th>
                 <th>Package</th>
-                <th>DOB</th>
+                <th>Birthday</th>
                 <th>Email</th>
                 <th>Phone</th>
               </tr>
