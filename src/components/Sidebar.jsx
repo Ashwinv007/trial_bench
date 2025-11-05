@@ -6,9 +6,9 @@ const navItems = [
   { label: 'Dashboard', icon: DashboardIcon, path: '/' },
   { label: 'Leads', icon: ContactPage, path: '/leads' },
   {label: 'Agreements', icon: Description, path: '/agreements' },
+    { label: 'Invoices', icon: Description, path: '/invoices' },
   { label: 'Members', icon: People, path: '/members' },
-  { label: 'Invoices', icon: Description, path: '/invoices' },
-  { label: 'Rate Suggester', icon: TrendingUp, path: '/rate-suggester' },
+  // { label: 'Rate Suggester', icon: TrendingUp, path: '/rate-suggester' },
 ];
 
 export default function Sidebar() {

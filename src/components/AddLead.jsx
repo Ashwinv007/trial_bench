@@ -56,12 +56,58 @@ export default function AddLead() {
 
   const handleSaveLead = async () => {
     try {
-      const newLead = { ...formData, activities: activities };
-      const leadsCollection = collection(db, 'leads');
-      await addDoc(leadsCollection, newLead);
-      navigate('/leads');
+      if (formData.status === 'Converted') {
+        // 1. Create a new member
+        const memberData = {
+          ...formData,
+          email: formData.convertedEmail || formData.email,
+          whatsapp: formData.convertedWhatsapp || formData.whatsapp,
+          package: formData.purposeOfVisit,
+          dob: formData.birthday,
+          company: formData.companyName,
+          activities: activities
+        };
+        const membersCollection = collection(db, 'members');
+        const memberDocRef = await addDoc(membersCollection, memberData);
+        const memberId = memberDocRef.id;
+
+        // 2. Create a new agreement
+        const agreementData = {
+          memberId: memberId,
+          memberLegalName: '',
+          memberCIN: '',
+          memberGST: '',
+          memberPAN: '',
+          memberKYC: '',
+          memberAddress: '',
+          agreementDate: '',
+          agreementNumber: '',
+          startDate: '',
+          endDate: '',
+          serviceAgreementType: '',
+          totalMonthlyPayment: '',
+          authorizorName: '',
+          designation: '',
+          preparedByNew: '',
+          title: '',
+          agreementLength: '',
+        };
+
+        const agreementsCollection = collection(db, 'agreements');
+        await addDoc(agreementsCollection, agreementData);
+
+        // 3. Navigate to agreements page
+        navigate('/agreements');
+
+      } else {
+        // Just create the lead
+        const newLead = { ...formData, activities: activities };
+        const leadsCollection = collection(db, 'leads');
+        await addDoc(leadsCollection, newLead);
+        navigate('/leads');
+      }
     } catch (error) {
-      console.error("Error adding document: ", error);
+      console.error("Error processing lead: ", error);
     }
   };
 
