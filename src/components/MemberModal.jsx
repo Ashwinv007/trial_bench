@@ -13,7 +13,6 @@ import {
   IconButton,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { 
   CheckCircle, 
   Email as EmailIcon,
@@ -109,6 +108,30 @@ export default function MemberModal({ open, onClose, onSave, editMember = null }
     setFollowUpDays('');
   };
 
+  const handleSendWelcomeEmail = () => {
+    const emailSent = activities.some(activity => activity.type === 'email' && activity.title === 'Welcome Email Sent');
+    if (emailSent) {
+      alert('Welcome email has already been sent to this member.');
+      return;
+    }
+
+    const newActivity = {
+      id: activities.length + 1,
+      type: 'email',
+      title: 'Welcome Email Sent',
+      description: `Welcome email sent to ${formData.email}`,
+      timestamp: new Date().toLocaleString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true 
+      })
+    };
+    setActivities([newActivity, ...activities]);
+  };
+
   const handleSubmit = () => {
     if (validateForm()) {
       const memberData = {
@@ -163,6 +186,10 @@ export default function MemberModal({ open, onClose, onSave, editMember = null }
           <div className={styles.rightPanel} style={{paddingLeft: '10px'}}>
             <div className={styles.timelineCard}>
               <h2 className={styles.sectionTitle}>Timeline Activity Log</h2>
+              <button className={styles.welcomeButton} onClick={handleSendWelcomeEmail} style={{marginBottom: '15px'}}>
+                  <EmailIcon className={styles.buttonIcon} />
+                  Send Welcome Email
+              </button>
               <div className={styles.addNoteSection}>
                 <h3 className={styles.addNoteTitle}>Add Note</h3>
                 <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Enter activity note..." className={styles.textarea} rows="3" />

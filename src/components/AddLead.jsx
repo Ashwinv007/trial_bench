@@ -162,24 +162,6 @@ export default function AddLead() {
     setFollowUpDays('');
   };
 
-  const handleSendWelcomeEmail = () => {
-    const newActivity = {
-      id: activities.length + 1,
-      type: 'email',
-      title: 'Welcome Email Sent',
-      description: `Welcome email sent to ${formData.convertedEmail || formData.email}`,
-      timestamp: new Date().toLocaleString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true 
-      })
-    };
-    setActivities([newActivity, ...activities]);
-  };
-
   return (
     <div className={styles.container}>
       <div className={styles.content}>
@@ -298,13 +280,6 @@ export default function AddLead() {
                       />
                     </div>
                   </div>
-
-
-
-                  <button className={styles.welcomeButton} onClick={handleSendWelcomeEmail}>
-                    <EmailIcon className={styles.buttonIcon} />
-                    Send Welcome Email
-                  </button>
                 </div>
               )}
 

@@ -160,24 +160,6 @@ export default function EditLead() {
     setFollowUpDays('');
   };
 
-  const handleSendWelcomeEmail = () => {
-    const newActivity = {
-      id: activities.length + 1,
-      type: 'email',
-      title: 'Welcome Email Sent',
-      description: `Welcome email sent to ${formData.convertedEmail || formData.email}`,
-      timestamp: new Date().toLocaleString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true 
-      })
-    };
-    setActivities([newActivity, ...activities]);
-  };
-
   if (!formData) {
     return <div>Loading...</div>;
   }
@@ -299,13 +281,6 @@ export default function EditLead() {
                       />
                     </div>
                   </div>
-
-
-
-                  <button className={styles.welcomeButton} onClick={handleSendWelcomeEmail}>
-                    <EmailIcon className={styles.buttonIcon} />
-                    Send Welcome Email
-                  </button>
                 </div>
               )}
               {/* Purpose of Visit */}
