@@ -425,15 +425,14 @@ export default function Invoices() {
                   onClick={(e) => handleEditInvoice(invoice, e)}
                   className={styles.clickableRow}
                 >
-                  <td>
-                    <span 
-                      className={`${styles.statusBadge} ${styles[invoice.paymentStatus ? invoice.paymentStatus.toLowerCase() : 'default']}`}
-                      onClick={(e) => togglePaymentStatus(invoice, e)}
-                    >
-                      {invoice.paymentStatus || 'Unknown'}
-                    </span>
-                  </td>
-                  <td>
+                                    <td>
+                                      <span
+                                        className={`${styles.statusBadge} ${styles[invoice.paymentStatus ? invoice.paymentStatus.toLowerCase() : 'unpaid']}`}
+                                        onClick={(e) => togglePaymentStatus(invoice, e)}
+                                      >
+                                        {invoice.paymentStatus || 'Unpaid'}
+                                      </span>
+                                    </td>                  <td>
                     <span className={styles.nameText}>{invoice.name}</span>
                   </td>
                   <td>{invoice.phone}</td>
