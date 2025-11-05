@@ -12,6 +12,7 @@ export default function Agreements() {
   const [agreements, setAgreements] = useState([]);
   const [selectedAgreement, setSelectedAgreement] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [agreementGenerated, setAgreementGenerated] = useState(null);
   const [formData, setFormData] = useState({
     memberLegalName: '',
     memberCIN: '',
@@ -74,6 +75,7 @@ export default function Agreements() {
   }, [formData.startDate, formData.agreementLength]);
 
   const handleRowClick = (agreement) => {
+    setAgreementGenerated(null);
     setSelectedAgreement(agreement);
     setFormData({
       memberLegalName: agreement.memberLegalName || '',
@@ -100,6 +102,7 @@ export default function Agreements() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedAgreement(null);
+    setAgreementGenerated(null);
   };
 
   const handleInputChange = (e) => {
@@ -118,16 +121,17 @@ export default function Agreements() {
     const agreementRef = doc(db, 'agreements', selectedAgreement.id);
     await updateDoc(agreementRef, formData);
 
-    // Update the local state as well
+    const updatedAgreement = { ...selectedAgreement, ...formData };
+
     setAgreements((prev) =>
       prev.map((agreement) =>
         agreement.id === selectedAgreement.id
-          ? { ...agreement, ...formData }
+          ? updatedAgreement
           : agreement
       )
     );
 
-    handleCloseModal();
+    setAgreementGenerated(updatedAgreement);
   };
 
   const formatDate = (dateString) => {
@@ -159,7 +163,7 @@ export default function Agreements() {
     return lines.slice(0, 3);
   };
 
-  const handleGenerateAgreement = async () => {
+  const generateAgreementPdf = async (agreementData) => {
     const url = '/tb_agreement.pdf';
     const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
 
@@ -171,7 +175,7 @@ export default function Agreements() {
     const secondPage = pages[1];
 
     // Prepared By - Page 1
-    firstPage.drawText(formData.preparedByNew, {
+    firstPage.drawText(agreementData.preparedByNew, {
       x: 60,
       y: 52,
       font: helveticaFont,
@@ -181,7 +185,7 @@ export default function Agreements() {
 
     // Top Agreement Number - All pages from 2 onwards
     for (let i = 1; i < pages.length; i++) {
-      pages[i].drawText(formData.agreementNumber, {
+      pages[i].drawText(agreementData.agreementNumber, {
         x: 480,
         y: 729,
         font: helveticaFont,
@@ -189,7 +193,7 @@ export default function Agreements() {
         color: rgb(0.466, 0.466, 0.466),
       });
       // Client signatory - Page 2 onwards
-      pages[i].drawText(`(${formData.memberLegalName})`, {
+      pages[i].drawText(`(${agreementData.memberLegalName})`, {
         x: 89,
         y: 105,
         font: helveticaFont,
@@ -201,22 +205,22 @@ export default function Agreements() {
     // Page 2 Details
     if (secondPage) {
       // Agreement Details
-      secondPage.drawText(formData.serviceAgreementType, { x: 185, y: 394, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(`${formData.totalMonthlyPayment} /-`, { x: 275, y: 380, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(formData.endDate), { x: 350, y: 408, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(formData.startDate), { x: 175, y: 408, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formData.agreementNumber, { x: 160, y: 437, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(formData.agreementDate), { x: 145, y: 451, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.serviceAgreementType, { x: 185, y: 394, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(`${agreementData.totalMonthlyPayment} /-`, { x: 275, y: 380, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(agreementData.endDate), { x: 350, y: 408, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(agreementData.startDate), { x: 175, y: 408, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.agreementNumber, { x: 160, y: 437, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(agreementData.agreementDate), { x: 145, y: 451, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
 
       // Member Details
-      secondPage.drawText(formData.memberLegalName, { x: 170, y: 608, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formData.memberCIN, { x: 130, y: 594, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formData.memberGST, { x: 174, y: 579, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formData.memberPAN, { x: 133, y: 565, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formData.memberKYC, { x: 133, y: 551, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.memberLegalName, { x: 170, y: 608, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.memberCIN, { x: 130, y: 594, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.memberGST, { x: 174, y: 579, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.memberPAN, { x: 133, y: 565, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.memberKYC, { x: 133, y: 551, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
 
       // Address (with line wrapping)
-      const address = formData.memberAddress.replace(/\n/g, ' ');
+      const address = agreementData.memberAddress.replace(/\n/g, ' ');
       const addressLines = splitTextIntoLines(address, helveticaFont, 9.5, 300);
       let y = 536.5;
       for (const line of addressLines) {
@@ -225,12 +229,12 @@ export default function Agreements() {
       }
 
       // New fields
-      secondPage.drawText(formData.memberLegalName, { x: 150, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formData.title, { x: 150, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      // secondPage.drawText(formatDate(formData.agreementDate), { x: 150, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.memberLegalName, { x: 150, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.title, { x: 150, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      // secondPage.drawText(formatDate(agreementData.agreementDate), { x: 150, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
 
-      secondPage.drawText(formData.authorizorName, { x: 370, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formData.designation, { x: 370, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.authorizorName, { x: 370, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.designation, { x: 370, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       const currentDate = new Date();
       secondPage.drawText(formatDate(currentDate), { x: 415, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(formatDate(currentDate), { x: 150, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
@@ -314,7 +318,7 @@ export default function Agreements() {
               fontSize: '20px',
               fontWeight: 600 
             }}>
-              Agreement Details
+              {agreementGenerated ? 'Agreement Updated' : 'Agreement Details'}
             </h2>
             <p style={{ 
               margin: '4px 0 0 0', 
@@ -322,7 +326,7 @@ export default function Agreements() {
               fontSize: '14px',
               fontWeight: 400
             }}>
-              {selectedAgreement?.name}
+              {agreementGenerated ? 'The agreement has been saved.' : selectedAgreement?.name}
             </p>
           </div>
           <IconButton onClick={handleCloseModal} size="small">
@@ -331,239 +335,260 @@ export default function Agreements() {
         </DialogTitle>
         
         <DialogContent style={{ padding: '24px' }}>
-          <form onSubmit={handleSubmit}>
-            {/* Member Details Section */}
-            <div className={styles.section}>
-              <h3 className={styles.sectionTitle}>Member Details</h3>
-              <div className={styles.formGrid}>
-                <TextField
-                  label="Member Legal Name"
-                  name="memberLegalName"
-                  value={formData.memberLegalName}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                />
-                <TextField
-                  label="Title"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                />
-                <TextField
-                  label="Member CIN"
-                  name="memberCIN"
-                  value={formData.memberCIN}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                />
-                <TextField
-                  label="Member GST Number"
-                  name="memberGST"
-                  value={formData.memberGST}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                />
-                <TextField
-                  label="Member PAN"
-                  name="memberPAN"
-                  value={formData.memberPAN}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                />
-                <TextField
-                  label="Member KYC"
-                  name="memberKYC"
-                  value={formData.memberKYC}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                />
-                <TextField
-                  label="Member Address"
-                  name="memberAddress"
-                  value={formData.memberAddress}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  multiline
-                  rows={2}
-                  style={{ gridColumn: '1 / -1' }}
-                />
-              </div>
-            </div>
-
-            {/* Agreement Details Section */}
-            <div className={styles.section}>
-              <h3 className={styles.sectionTitle}>Agreement Information</h3>
-              <div className={styles.formGrid}>
-                <TextField
-                  label="Agreement Date"
-                  name="agreementDate"
-                  type="date"
-                  value={formData.agreementDate}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                  label="Agreement Number"
-                  name="agreementNumber"
-                  value={formData.agreementNumber}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                />
-                <TextField
-                  label="Start Date"
-                  name="startDate"
-                  type="date"
-                  value={formData.startDate}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                  label="Length of Agreement"
-                  name="agreementLength"
-                  value={formData.agreementLength}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  select
+          {agreementGenerated ? (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <p style={{ margin: '4px 0 24px 0', color: '#64748b', fontSize: '14px', fontWeight: 400 }}>
+                You can now download the agreement or send it via email.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+                <Button
+                  onClick={() => generateAgreementPdf(agreementGenerated)}
+                  variant="contained"
+                  style={{
+                    backgroundColor: '#2b7a8e',
+                    color: 'white',
+                    textTransform: 'none',
+                    padding: '8px 24px'
+                  }}
                 >
-                  {[...Array(11).keys()].map((i) => (
-                    <MenuItem key={i + 1} value={i + 1}>
-                      {i + 1} month(s)
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  label="End Date"
-                  name="endDate"
-                  type="date"
-                  value={formData.endDate}
-                  onChange={handleInputChange}
-                  fullWidth
+                  Download Agreement
+                </Button>
+                <Button
                   variant="outlined"
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                  disabled
-                />
-                <TextField
-                  label="Service Agreement Type"
-                  name="serviceAgreementType"
-                  value={formData.serviceAgreementType}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                />
-                <TextField
-                  label="Total Monthly Payment"
-                  name="totalMonthlyPayment"
-                  value={formData.totalMonthlyPayment}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  type="number"
-                />
-
+                  style={{
+                    color: '#64748b',
+                    borderColor: '#cbd5e1',
+                    textTransform: 'none',
+                    padding: '8px 24px'
+                  }}
+                >
+                  Send Email
+                </Button>
               </div>
             </div>
-
-            <div className={styles.section}>
-              <h3 className={styles.sectionTitle}>Authorization Details</h3>
-              <div className={styles.formGrid}>
-                <TextField
-                  label="Prepared By"
-                  name="preparedByNew"
-                  value={formData.preparedByNew}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                />
-                <TextField
-                  label="Authorizor Name"
-                  name="authorizorName"
-                  value={formData.authorizorName}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                />
-                <TextField
-                  label="Designation"
-                  name="designation"
-                  value={formData.designation}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                />
+          ) : (
+            <form onSubmit={handleSubmit}>
+              {/* Member Details Section */}
+              <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Member Details</h3>
+                <div className={styles.formGrid}>
+                  <TextField
+                    label="Member Legal Name"
+                    name="memberLegalName"
+                    value={formData.memberLegalName}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                  />
+                  <TextField
+                    label="Title"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                  />
+                  <TextField
+                    label="Member CIN"
+                    name="memberCIN"
+                    value={formData.memberCIN}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                  />
+                  <TextField
+                    label="Member GST Number"
+                    name="memberGST"
+                    value={formData.memberGST}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                  />
+                  <TextField
+                    label="Member PAN"
+                    name="memberPAN"
+                    value={formData.memberPAN}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                  />
+                  <TextField
+                    label="Member KYC"
+                    name="memberKYC"
+                    value={formData.memberKYC}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                  />
+                  <TextField
+                    label="Member Address"
+                    name="memberAddress"
+                    value={formData.memberAddress}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    multiline
+                    rows={2}
+                    style={{ gridColumn: '1 / -1' }}
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Action Buttons */}
-            <div className={styles.modalActions}>
-              <Button 
-                onClick={handleCloseModal} 
-                variant="outlined"
-                style={{
-                  color: '#64748b',
-                  borderColor: '#cbd5e1',
-                  textTransform: 'none',
-                  padding: '8px 24px'
-                }}
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleGenerateAgreement} 
-                variant="contained"
-                style={{
-                  backgroundColor: '#1a4d5c',
-                  color: 'white',
-                  textTransform: 'none',
-                  padding: '8px 24px'
-                }}
-              >
-                Generate Agreement
-              </Button>
-              <Button 
-                type="submit" 
-                variant="contained"
-                style={{
-                  backgroundColor: '#2b7a8e',
-                  color: 'white',
-                  textTransform: 'none',
-                  padding: '8px 24px'
-                }}
-              >
-                Save Agreement
-              </Button>
-            </div>
-          </form>
+              {/* Agreement Details Section */}
+              <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Agreement Information</h3>
+                <div className={styles.formGrid}>
+                  <TextField
+                    label="Agreement Date"
+                    name="agreementDate"
+                    type="date"
+                    value={formData.agreementDate}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    InputLabelProps={{ shrink: true }}
+                  />
+                  <TextField
+                    label="Agreement Number"
+                    name="agreementNumber"
+                    value={formData.agreementNumber}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                  />
+                  <TextField
+                    label="Start Date"
+                    name="startDate"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    InputLabelProps={{ shrink: true }}
+                  />
+                  <TextField
+                    label="Length of Agreement"
+                    name="agreementLength"
+                    value={formData.agreementLength}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    select
+                  >
+                    {[...Array(11).keys()].map((i) => (
+                      <MenuItem key={i + 1} value={i + 1}>
+                        {i + 1} month(s)
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    label="End Date"
+                    name="endDate"
+                    type="date"
+                    value={formData.endDate}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    InputLabelProps={{ shrink: true }}
+                    disabled
+                  />
+                  <TextField
+                    label="Service Agreement Type"
+                    name="serviceAgreementType"
+                    value={formData.serviceAgreementType}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                  />
+                  <TextField
+                    label="Total Monthly Payment"
+                    name="totalMonthlyPayment"
+                    value={formData.totalMonthlyPayment}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    type="number"
+                  />
+
+                </div>
+              </div>
+
+              <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Authorization Details</h3>
+                <div className={styles.formGrid}>
+                  <TextField
+                    label="Prepared By"
+                    name="preparedByNew"
+                    value={formData.preparedByNew}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                  />
+                  <TextField
+                    label="Authorizor Name"
+                    name="authorizorName"
+                    value={formData.authorizorName}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                  />
+                  <TextField
+                    label="Designation"
+                    name="designation"
+                    value={formData.designation}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className={styles.modalActions}>
+                <Button 
+                  onClick={handleCloseModal} 
+                  variant="outlined"
+                  style={{
+                    color: '#64748b',
+                    borderColor: '#cbd5e1',
+                    textTransform: 'none',
+                    padding: '8px 24px'
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  variant="contained"
+                  style={{
+                    backgroundColor: '#2b7a8e',
+                    color: 'white',
+                    textTransform: 'none',
+                    padding: '8px 24px'
+                  }}
+                >
+                  Update Agreement
+                </Button>
+              </div>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>
