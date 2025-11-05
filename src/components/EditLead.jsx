@@ -50,6 +50,7 @@ export default function EditLead() {
   }, [db, id]);
 
   const handleUpdateLead = async () => {
+    if (!originalLead) return; // Add this check
     try {
       const leadRef = doc(db, "leads", id);
 
@@ -64,6 +65,7 @@ export default function EditLead() {
           package: formData.purposeOfVisit,
           dob: formData.birthday,
           company: formData.companyName,
+          primary: true,
         };
         const membersCollection = collection(db, 'members');
         const memberDocRef = await addDoc(membersCollection, memberData);
@@ -444,8 +446,7 @@ export default function EditLead() {
                         {activity.type === 'note' && <AccountBox />}
                         {activity.type === 'email' && <EmailIcon />}
                       </div>
-                      {index < activities.length - 1 && <div className={styles.timelineLine} />}
-                    </div>
+                      {index < activities.length - 1 && <div className={styles.timelineLine} />}</div>
                     <div className={styles.timelineContent}>
                       <div className={styles.timelineHeader}>
                         <h4 className={styles.timelineTitle}>{activity.title}</h4>

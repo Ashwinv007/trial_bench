@@ -20,7 +20,7 @@ import {
 } from '@mui/icons-material';
 import styles from './AddLead.module.css'; // Reusing styles
 
-export default function MemberModal({ open, onClose, onSave, editMember = null }) {
+export default function MemberModal({ open, onClose, onSave, editMember = null, primaryMemberId = null }) {
   const [formData, setFormData] = useState({
     name: '',
     package: '',
@@ -138,6 +138,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null }
         ...formData,
         company: formData.company.trim() ? formData.company.trim() : 'NA',
         activities: activities,
+        primaryMemberId: primaryMemberId,
       };
       onSave(memberData);
       onClose();

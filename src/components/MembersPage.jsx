@@ -17,10 +17,12 @@ import {
   Chip,
   MenuItem,
   Select,
+  IconButton,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import AddIcon from '@mui/icons-material/Add';
+import UploadFile from '@mui/icons-material/UploadFile';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import MemberModal from './MemberModal';
 
@@ -28,9 +30,11 @@ export default function MembersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [packageFilter, setPackageFilter] = useState('All Packages');
   const [monthFilter, setMonthFilter] = useState('All Months');
+  const [primaryMemberFilter, setPrimaryMemberFilter] = useState('All Members');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
+  const [primaryMemberId, setPrimaryMemberId] = useState(null);
 
   const { db } = useContext(FirebaseContext);
   const [allMembers, setAllMembers] = useState([]);
@@ -56,9 +60,10 @@ export default function MembersPage() {
     return `${day}/${month}/${year}`;
   };
 
-  const handleOpenAddModal = () => {
+  const handleOpenAddModal = (primaryId = null) => {
     setEditingMember(null);
     setEditingIndex(null);
+    setPrimaryMemberId(primaryId);
     setModalOpen(true);
   };
 
@@ -66,6 +71,7 @@ export default function MembersPage() {
     const index = allMembers.findIndex(m => m.id === member.id);
     setEditingMember(member);
     setEditingIndex(index);
+    setPrimaryMemberId(member.primaryMemberId || null);
     setModalOpen(true);
   };
 
@@ -73,6 +79,7 @@ export default function MembersPage() {
     setModalOpen(false);
     setEditingMember(null);
     setEditingIndex(null);
+    setPrimaryMemberId(null);
   };
 
   const handleSaveMember = async (memberData) => {
@@ -128,6 +135,11 @@ export default function MembersPage() {
       });
     }
 
+    // Primary member filter
+    if (primaryMemberFilter === 'Primary Members') {
+      filtered = filtered.filter((member) => member.primary);
+    }
+
     // Sort by company
     filtered.sort((a, b) => {
       const companyA = a.company || '';
@@ -135,8 +147,8 @@ export default function MembersPage() {
       return companyA.localeCompare(companyB);
     });
 
-    return filtered;
-  }, [searchQuery, packageFilter, monthFilter, allMembers]);
+    return filtered.filter(member => !member.primaryMemberId);
+  }, [searchQuery, packageFilter, monthFilter, primaryMemberFilter, allMembers]);
 
   return (
     <Box
@@ -222,6 +234,7 @@ export default function MembersPage() {
               setSearchQuery('');
               setPackageFilter('All Packages');
               setMonthFilter('All Months');
+              setPrimaryMemberFilter('All Members');
             }}
             sx={{
               textTransform: 'none',
@@ -297,9 +310,31 @@ export default function MembersPage() {
             <MenuItem value="10">November</MenuItem>
             <MenuItem value="11">December</MenuItem>
           </Select>
+          <Select
+            value={primaryMemberFilter}
+            onChange={(e) => setPrimaryMemberFilter(e.target.value)}
+            size="small"
+            sx={{
+              minWidth: '150px',
+              bgcolor: '#ffffff',
+              fontSize: '14px',
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#e0e0e0',
+              },
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#2b7a8e',
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#2b7a8e',
+              },
+            }}
+          >
+            <MenuItem value="All Members">All Members</MenuItem>
+            <MenuItem value="Primary Members">Primary Members</MenuItem>
+          </Select>
           <Button
             variant="contained"
-            startIcon={<AddIcon />}
+            startIcon={<UploadFile />}
             sx={{
               textTransform: 'none',
               fontSize: '14px',
@@ -311,9 +346,11 @@ export default function MembersPage() {
                 boxShadow: 'none',
               },
             }}
-            onClick={handleOpenAddModal}
+            onClick={() => {
+              // a function to export data
+            }}
           >
-            Add Member
+            Export
           </Button>
         </Box>
 
@@ -390,6 +427,7 @@ export default function MembersPage() {
                 >
                   Email
                 </TableCell>
+                <TableCell />
               </TableRow>
             </TableHead>
             <TableBody>
@@ -467,12 +505,24 @@ export default function MembersPage() {
                     >
                       {member.email}
                     </TableCell>
+                    <TableCell>
+                      {member.primary && (
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenAddModal(member.id);
+                          }}
+                        >
+                          <AddIcon />
+                        </IconButton>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={7}
                     sx={{
                       textAlign: 'center',
                       py: 4,
@@ -506,6 +556,7 @@ export default function MembersPage() {
         onClose={handleCloseModal}
         editMember={editingMember}
         onSave={handleSaveMember}
+        primaryMemberId={primaryMemberId}
       />
     </Box>
   );
