@@ -18,6 +18,7 @@ import {
   MenuItem,
   Select,
   IconButton,
+  Collapse,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -25,6 +26,96 @@ import AddIcon from '@mui/icons-material/Add';
 import UploadFile from '@mui/icons-material/UploadFile';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import MemberModal from './MemberModal';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+
+function Row(props) {
+  const { member, handleOpenEditModal, allMembers, handleOpenAddModal } = props;
+  const [open, setOpen] = useState(false);
+
+  const subMembers = allMembers.filter(m => member.subMembers && member.subMembers.includes(m.id));
+
+  return (
+    <React.Fragment>
+      <TableRow
+        sx={{ '& > *': { borderBottom: 'unset' }, cursor: 'pointer' }}
+        onClick={() => handleOpenEditModal(member)}
+      >
+        <TableCell>
+          {member.primary && (
+            <IconButton
+              aria-label="expand row"
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(!open);
+              }}
+            >
+              {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+            </IconButton>
+          )}
+        </TableCell>
+        <TableCell component="th" scope="row">
+          {member.name}
+        </TableCell>
+        <TableCell>{member.package}</TableCell>
+        <TableCell>{member.company}</TableCell>
+        <TableCell>{member.dob}</TableCell>
+        <TableCell>{member.whatsapp}</TableCell>
+        <TableCell>{member.email}</TableCell>
+        <TableCell>
+          {member.primary && (
+            <IconButton
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenAddModal(member.id);
+              }}
+            >
+              <AddIcon />
+            </IconButton>
+          )}
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Box sx={{ margin: 1 }}>
+              <Typography variant="h6" gutterBottom component="div">
+                Sub Members
+              </Typography>
+              <Table size="small" aria-label="purchases">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Package</TableCell>
+                    <TableCell>Company</TableCell>
+                    <TableCell>DOB</TableCell>
+                    <TableCell>WhatsApp</TableCell>
+                    <TableCell>Email</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {subMembers.map((subMember) => (
+                    <TableRow key={subMember.id}>
+                      <TableCell component="th" scope="row">
+                        {subMember.name}
+                      </TableCell>
+                      <TableCell>{subMember.package}</TableCell>
+                      <TableCell>{subMember.company}</TableCell>
+                      <TableCell>{subMember.dob}</TableCell>
+                      <TableCell>{subMember.whatsapp}</TableCell>
+                      <TableCell>{subMember.email}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    </React.Fragment>
+  );
+}
 
 export default function MembersPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -153,6 +244,10 @@ export default function MembersPage() {
       const companyB = b.company || '';
       return companyA.localeCompare(companyB);
     });
+
+    if (primaryMemberFilter !== 'Primary Members') {
+      return filtered.filter(member => !member.primaryMemberId);
+    }
 
     return filtered;
   }, [searchQuery, packageFilter, monthFilter, primaryMemberFilter, allMembers]);
@@ -373,6 +468,7 @@ export default function MembersPage() {
           <Table>
             <TableHead>
               <TableRow sx={{ bgcolor: '#fafafa' }}>
+                <TableCell />
                 <TableCell
                   sx={{
                     fontSize: '13px',
@@ -440,96 +536,12 @@ export default function MembersPage() {
             <TableBody>
               {filteredMembers.length > 0 ? (
                 filteredMembers.map((member) => (
-                  <TableRow
-                    key={member.id}
-                    onClick={() => handleOpenEditModal(member)}
-                    sx={{
-                      cursor: 'pointer',
-                      '&:hover': {
-                        bgcolor: 'rgba(43, 122, 142, 0.08)',
-                      },
-                    }}
-                  >
-                    <TableCell
-                      sx={{
-                        fontSize: '14px',
-                        color: '#212121',
-                        borderBottom: '1px solid #e0e0e0',
-                        py: 2.5,
-                      }}
-                    >
-                      {member.name}
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        fontSize: '14px',
-                        borderBottom: '1px solid #e0e0e0',
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <FiberManualRecordIcon
-                          sx={{
-                            fontSize: '8px',
-                            color: '#2b7a8e',
-                          }}
-                        />
-                        <span style={{ color: '#424242' }}>{member.package}</span>
-                      </Box>
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        fontSize: '14px',
-                        color: '#424242',
-                        borderBottom: '1px solid #e0e0e0',
-                      }}
-                    >
-                      {member.company}
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        fontSize: '14px',
-                        color: '#424242',
-                        borderBottom: '1px solid #e0e0e0',
-                      }}
-                    >
-                      {formatDateForDisplay(member.dob)}
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        fontSize: '14px',
-                        color: '#424242',
-                        borderBottom: '1px solid #e0e0e0',
-                      }}
-                    >
-                      {member.whatsapp}
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        fontSize: '14px',
-                        color: '#424242',
-                        borderBottom: '1px solid #e0e0e0',
-                      }}
-                    >
-                      {member.email}
-                    </TableCell>
-                    <TableCell>
-                      {member.primary && (
-                        <IconButton
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenAddModal(member.id);
-                          }}
-                        >
-                          <AddIcon />
-                        </IconButton>
-                      )}
-                    </TableCell>
-                  </TableRow>
+                  <Row key={member.id} member={member} handleOpenEditModal={handleOpenEditModal} allMembers={allMembers} handleOpenAddModal={handleOpenAddModal} />
                 ))
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     sx={{
                       textAlign: 'center',
                       py: 4,
