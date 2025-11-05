@@ -5,6 +5,62 @@ import styles from './Invoices.module.css';
 import { FirebaseContext } from '../store/Context';
 import { collection, getDocs, addDoc, doc, updateDoc } from 'firebase/firestore';
 
+const formatDate = (dateString) => {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  // Adjust for timezone offset to get the correct date
+  const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+  const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+  return adjustedDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
+const updateCalculationsAndDescription = (currentFormData, allMembers) => {
+  const updated = { ...currentFormData };
+
+  // --- Price and Tax Calculations ---
+  const price = parseFloat(updated.price) || 0;
+  const quantity = parseInt(updated.quantity, 10) || 0;
+  const discount = parseFloat(updated.discountPercentage) || 0;
+  const cgst = parseFloat(updated.cgstPercentage) || 0;
+  const sgst = parseFloat(updated.sgstPercentage) || 0;
+
+  const subtotal = price * quantity;
+  const discountAmount = (subtotal * discount) / 100;
+  const priceAfterDiscount = subtotal - discountAmount;
+  
+  const cgstAmount = (priceAfterDiscount * cgst) / 100;
+  const sgstAmount = (priceAfterDiscount * sgst) / 100;
+  const totalTax = cgstAmount + sgstAmount;
+  
+  const totalPayable = priceAfterDiscount + totalTax;
+
+  updated.totalPrice = priceAfterDiscount.toFixed(2);
+  updated.taxAmount = totalTax.toFixed(2);
+updated.totalAmountPayable = totalPayable.toFixed(2);
+
+  // --- Description Generation Logic ---
+  const selectedMember = allMembers.find(m => m.id === updated.memberId);
+  const packageName = selectedMember ? selectedMember.package : '';
+  const invoiceMonth = updated.month;
+  const invoiceYear = updated.year;
+  const fromDate = updated.fromDate;
+  const toDate = updated.toDate;
+
+  let generatedDescription = packageName || '';
+  if (packageName && invoiceMonth && invoiceYear) {
+    let datePart = '';
+    if (fromDate && toDate) {
+      const formattedFromDate = formatDate(fromDate);
+      const formattedToDate = formatDate(toDate);
+      datePart = ` (From ${formattedFromDate} To ${formattedToDate})`;
+    }
+    generatedDescription = `${packageName}(${invoiceMonth} ${invoiceYear})${datePart}`;
+  }
+  updated.description = generatedDescription;
+
+  return updated;
+};
+
 export default function Invoices() {
   const { db } = useContext(FirebaseContext);
   const [invoices, setInvoices] = useState([]);
@@ -26,7 +82,7 @@ export default function Invoices() {
     fromDate: '',
     toDate: '',
     description: '',
-    sacCode: '',
+    sacCode: '997212',
     price: '',
     quantity: 1,
     totalPrice: '',
@@ -73,18 +129,18 @@ export default function Invoices() {
 
   const handleOpenModal = () => {
     setEditingInvoice(null);
-    setFormData({
+    const initialData = {
       memberId: null,
       legalName: '',
       address: '',
       invoiceNumber: '',
-      date: new Date().toISOString().split('T')[0], // Default to today
+      date: new Date().toISOString().split('T')[0],
       month: '',
       year: new Date().getFullYear().toString(),
       fromDate: '',
       toDate: '',
       description: '',
-      sacCode: '998599',
+      sacCode: '997212',
       price: '',
       quantity: 1,
       totalPrice: '',
@@ -93,7 +149,8 @@ export default function Invoices() {
       sgstPercentage: 9,
       taxAmount: '',
       totalAmountPayable: ''
-    });
+    };
+    setFormData(updateCalculationsAndDescription(initialData, members));
     setIsModalOpen(true);
   };
 
@@ -112,7 +169,7 @@ export default function Invoices() {
       fromDate: invoice.fromDate || '',
       toDate: invoice.toDate || '',
       description: invoice.description,
-      sacCode: invoice.sacCode,
+      sacCode: invoice.sacCode || '997212',
       price: invoice.price,
       quantity: invoice.quantity,
       totalPrice: invoice.totalPrice,
@@ -131,50 +188,27 @@ export default function Invoices() {
   };
 
   const handleMemberSelect = (event, member) => {
-    if (member) {
-      setFormData(prev => ({
-        ...prev,
-        memberId: member.id,
-        legalName: member.company && member.company !== 'NA' ? member.company : member.name,
-        address: 'Address field not in member data', // Placeholder
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        memberId: null,
-        legalName: '',
-        address: '',
-      }));
-    }
+    setFormData(prev => {
+      let updated = { ...prev };
+      if (member) {
+        updated.memberId = member.id;
+        updated.legalName = member.company && member.company !== 'NA' ? member.company : member.name;
+        updated.address = member.address || ''; // Assuming member has an address field
+        updated.sacCode = '997212';
+      } else {
+        updated.memberId = null;
+        updated.legalName = '';
+        updated.address = '';
+        updated.sacCode = '997212';
+        updated.description = '';
+      }
+      return updateCalculationsAndDescription(updated, members);
+    });
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => {
-      const updated = { ...prev, [name]: value };
-
-      const price = parseFloat(updated.price) || 0;
-      const quantity = parseInt(updated.quantity, 10) || 0;
-      const discount = parseFloat(updated.discountPercentage) || 0;
-      const cgst = parseFloat(updated.cgstPercentage) || 0;
-      const sgst = parseFloat(updated.sgstPercentage) || 0;
-
-      const subtotal = price * quantity;
-      const discountAmount = (subtotal * discount) / 100;
-      const priceAfterDiscount = subtotal - discountAmount;
-      
-      const cgstAmount = (priceAfterDiscount * cgst) / 100;
-      const sgstAmount = (priceAfterDiscount * sgst) / 100;
-      const totalTax = cgstAmount + sgstAmount;
-      
-      const totalPayable = priceAfterDiscount + totalTax;
-
-      updated.totalPrice = priceAfterDiscount.toFixed(2);
-      updated.taxAmount = totalTax.toFixed(2);
-      updated.totalAmountPayable = totalPayable.toFixed(2);
-
-      return updated;
-    });
+    setFormData((prev) => updateCalculationsAndDescription({ ...prev, [name]: value }, members));
   };
 
   const handleSubmit = async (e) => {
@@ -223,12 +257,6 @@ export default function Invoices() {
       setSelectedInvoiceForPayment(null);
       setPaymentDate('');
     }
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const filteredInvoices = invoicesWithMemberData.filter((invoice) => {
@@ -600,6 +628,9 @@ export default function Invoices() {
                   size="small"
                   required
                   style={{ gridColumn: '1 / -1' }}
+                  InputProps={{
+                    readOnly: true,
+                  }}
                 />
                 <TextField
                   label="SAC Code"
