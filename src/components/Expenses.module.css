@@ -371,3 +371,31 @@
   min-width: 60px;
   text-align: right;
 }
+
+/* Grouped Expense Rows */
+.groupHeader {
+  background-color: #e8f4f8 !important;
+}
+
+.groupHeader:hover {
+  background-color: #e8f4f8 !important;
+}
+
+.groupHeaderContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.groupLabel {
+  color: #1a4d5c;
+}
+
+.groupTotal {
+  color: #2b7a8e;
+}
+
+.groupedRow {
+  background-color: #fafafa;
+}

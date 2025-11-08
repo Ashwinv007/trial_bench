@@ -378,6 +378,91 @@ export default function Expenses() {
       .sort((a, b) => b.amount - a.amount);
   };
 
+  // Grouping Functions - Relative time grouping like transaction history
+  const getRelativeTimeGroup = (dateString) => {
+    const expenseDate = new Date(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const expenseDateOnly = new Date(expenseDate);
+    expenseDateOnly.setHours(0, 0, 0, 0);
+    
+    const diffTime = today - expenseDateOnly;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    // Today
+    if (diffDays === 0) {
+      return { key: 'today', label: 'Today', order: 0 };
+    }
+    
+    // Yesterday
+    if (diffDays === 1) {
+      return { key: 'yesterday', label: 'Yesterday', order: 1 };
+    }
+    
+    // This Week (within last 7 days, excluding today and yesterday)
+    if (diffDays > 1 && diffDays < 7) {
+      return { key: 'thisWeek', label: 'This Week', order: 2 };
+    }
+    
+    // Last Week (7-14 days ago)
+    if (diffDays >= 7 && diffDays < 14) {
+      return { key: 'lastWeek', label: 'Last Week', order: 3 };
+    }
+    
+    // This Month (within current month but older than 2 weeks)
+    const expenseMonth = expenseDate.getMonth();
+    const expenseYear = expenseDate.getFullYear();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    
+    if (expenseYear === currentYear && expenseMonth === currentMonth && diffDays >= 14) {
+      return { key: 'thisMonth', label: 'This Month', order: 4 };
+    }
+    
+    // Last Month
+    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const lastMonthYear = lastMonth.getFullYear();
+    const lastMonthMonth = lastMonth.getMonth();
+    
+    if (expenseYear === lastMonthYear && expenseMonth === lastMonthMonth) {
+      return { key: 'lastMonth', label: 'Last Month', order: 5 };
+    }
+    
+    // Earlier - group by month/year
+    const monthYear = `${expenseDate.toLocaleString('default', { month: 'long' })} ${expenseYear}`;
+    return { key: `earlier-${monthYear}`, label: monthYear, order: 6 };
+  };
+
+  const getGroupedExpensesByTime = () => {
+    const grouped = {};
+    const sorted = [...filteredExpenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    sorted.forEach(expense => {
+      const groupInfo = getRelativeTimeGroup(expense.date);
+      const groupKey = groupInfo.key;
+
+      if (!grouped[groupKey]) {
+        grouped[groupKey] = {
+          label: groupInfo.label,
+          order: groupInfo.order,
+          expenses: []
+        };
+      }
+      grouped[groupKey].expenses.push(expense);
+    });
+
+    // Sort groups by order
+    const sortedGroups = Object.entries(grouped).sort((a, b) => a[1].order - b[1].order);
+    
+    return sortedGroups;
+  };
+
+  const groupedExpensesByTime = getGroupedExpensesByTime();
+  const calculateGroupTotal = (expenseGroup) => {
+    return expenseGroup.reduce((sum, expense) => sum + parseFloat(expense.amount || 0), 0);
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -494,7 +579,62 @@ export default function Expenses() {
                     : 'No expenses match the selected filters.'}
                 </td>
               </tr>
+            ) : groupedExpensesByTime ? (
+              // Grouped view
+              groupedExpensesByTime.map(([groupKey, groupData]) => (
+                <>
+                  <tr key={`group-${groupKey}`} className={styles.groupHeader}>
+                    <td colSpan="6">
+                      <div className={styles.groupHeaderContent}>
+                        <span className={styles.groupLabel}>{groupData.label}</span>
+                        <span className={styles.groupTotal}>
+                          {groupData.expenses.length} expense{groupData.expenses.length > 1 ? 's' : ''} • {formatCurrency(calculateGroupTotal(groupData.expenses))}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                  {groupData.expenses.map((expense) => (
+                    <tr key={expense.id} className={styles.groupedRow}>
+                      <td>{formatDate(expense.date)}</td>
+                      <td>
+                        <span 
+                          className={styles.categoryBadge}
+                          style={{ 
+                            backgroundColor: getCategoryColor(expense.category) + '20',
+                            color: getCategoryColor(expense.category),
+                            borderLeft: `3px solid ${getCategoryColor(expense.category)}`
+                          }}
+                        >
+                          {expense.category}
+                        </span>
+                      </td>
+                      <td className={styles.amount}>{formatCurrency(expense.amount)}</td>
+                      <td>{expense.billNumber || '-'}</td>
+                      <td className={styles.notes}>{expense.notes || '-'}</td>
+                      <td>
+                        <div className={styles.actions}>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => handleEditExpense(expense)}
+                            className={styles.editButton}
+                          >
+                            <Edit fontSize="small" />
+                          </IconButton>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => handleDeleteExpense(expense.id)}
+                            className={styles.deleteButton}
+                          >
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </>
+              ))
             ) : (
+              // Ungrouped view
               filteredExpenses.sort((a, b) => new Date(b.date) - new Date(a.date)).map((expense) => (
                 <tr key={expense.id}>
                   <td>{formatDate(expense.date)}</td>
