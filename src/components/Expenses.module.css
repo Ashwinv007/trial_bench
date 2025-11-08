@@ -1,0 +1,373 @@
+.container {
+  flex: 1;
+  padding: 32px;
+  background-color: #f5f5f5;
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  margin: 0 0 8px 0;
+  color: #1a4d5c;
+}
+
+.subtitle {
+  margin: 0;
+  color: #666;
+}
+
+.totalAmount {
+  color: #2b7a8e;
+}
+
+.filterInfo {
+  color: #666;
+  font-size: 0.9em;
+}
+
+.headerButtons {
+  display: flex;
+  gap: 12px;
+}
+
+.exportButton {
+  background-color: white !important;
+  color: #1a4d5c !important;
+  border-color: #1a4d5c !important;
+  text-transform: none !important;
+}
+
+.exportButton:hover {
+  background-color: #f0f9fb !important;
+  border-color: #2b7a8e !important;
+}
+
+.categoryButton {
+  background-color: white !important;
+  color: #2b7a8e !important;
+  border-color: #2b7a8e !important;
+  text-transform: none !important;
+}
+
+.categoryButton:hover {
+  background-color: #f0f9fb !important;
+  border-color: #1a4d5c !important;
+}
+
+.addButton {
+  background-color: #2b7a8e !important;
+  color: white !important;
+  text-transform: none !important;
+}
+
+.addButton:hover {
+  background-color: #1a4d5c !important;
+}
+
+.tableContainer {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead {
+  background-color: #1a4d5c;
+  color: white;
+}
+
+.table th {
+  padding: 16px;
+  text-align: left;
+}
+
+.table td {
+  padding: 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.table tbody tr:hover {
+  background-color: #f9f9f9;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.categoryBadge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.amount {
+  color: #1a4d5c;
+}
+
+.notes {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emptyState {
+  text-align: center !important;
+  color: #999;
+  padding: 40px !important;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.editButton {
+  color: #2b7a8e !important;
+}
+
+.editButton:hover {
+  background-color: #e3f2f7 !important;
+}
+
+.deleteButton {
+  color: #d32f2f !important;
+}
+
+.deleteButton:hover {
+  background-color: #ffebee !important;
+}
+
+.closeButton {
+  position: absolute !important;
+  right: 8px;
+  top: 8px;
+  color: #666 !important;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 8px 0;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.saveButton {
+  background-color: #2b7a8e !important;
+  color: white !important;
+  text-transform: none !important;
+}
+
+.saveButton:hover {
+  background-color: #1a4d5c !important;
+}
+
+.categoryForm {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 8px 0;
+}
+
+.categoryInput {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.categoryInputActions {
+  display: flex;
+  gap: 8px;
+}
+
+.categoryList {
+  border-top: 1px solid #e0e0e0;
+  padding-top: 16px;
+}
+
+.categoryList h3 {
+  margin: 0 0 16px 0;
+  color: #1a4d5c;
+}
+
+.categoryItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.categoryItemActions {
+  display: flex;
+  gap: 4px;
+}
+
+/* Filters Section */
+.filtersContainer {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 24px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filterControl {
+  min-width: 200px;
+  flex: 1;
+}
+
+.resetButton {
+  background-color: white !important;
+  color: #666 !important;
+  border-color: #ccc !important;
+  text-transform: none !important;
+}
+
+.resetButton:hover {
+  background-color: #f5f5f5 !important;
+  border-color: #999 !important;
+}
+
+/* Category Usage Count */
+.categoryInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.usageCount {
+  font-size: 0.85em;
+  color: #666;
+}
+
+/* Reports Button */
+.reportsButton {
+  background-color: white !important;
+  color: #1a4d5c !important;
+  border-color: #1a4d5c !important;
+  text-transform: none !important;
+}
+
+.reportsButton:hover {
+  background-color: #f0f9fb !important;
+  border-color: #2b7a8e !important;
+}
+
+/* Reports Modal */
+.reportTabs {
+  margin-bottom: 24px !important;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.reportContent {
+  padding: 16px 0;
+}
+
+.reportSectionTitle {
+  margin: 0 0 24px 0;
+  color: #1a4d5c;
+}
+
+.emptyReportMessage {
+  text-align: center;
+  color: #999;
+  padding: 40px;
+}
+
+.reportCard {
+  margin-bottom: 24px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.reportCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.reportCardHeader h4 {
+  margin: 0;
+  color: #1a4d5c;
+}
+
+.reportTotal {
+  color: #2b7a8e;
+  font-size: 1.2em;
+}
+
+.chartContainer {
+  margin-bottom: 24px;
+}
+
+.categoryBreakdown {
+  margin-top: 24px;
+}
+
+.categoryBreakdown h5 {
+  margin: 0 0 16px 0;
+  color: #1a4d5c;
+}
+
+.categoryBreakdownItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.categoryLabelWithColor {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.categoryColorDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.categoryAmount {
+  color: #1a4d5c;
+  margin: 0 16px;
+}
+
+.categoryPercentage {
+  color: #666;
+  font-size: 0.9em;
+  min-width: 60px;
+  text-align: right;
+}
