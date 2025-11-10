@@ -1,13 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styles from './Settings.module.css';
 import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Checkbox, FormControlLabel } from '@mui/material';
 import { AddCircleOutline, Edit, Delete, Close } from '@mui/icons-material';
-
-const initialRoles = [
-  { id: 1, name: 'Admin', permissions: ['all'] },
-  { id: 2, name: 'Community Manager', permissions: ['view_leads', 'edit_leads', 'view_members'] },
-  { id: 3, name: 'Accounts', permissions: ['view_invoices', 'edit_invoices', 'view_expenses'] },
-];
+import { db } from '../firebase/config';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { toast } from 'sonner';
 
 const allPermissions = [
     'view_leads', 'edit_leads', 'delete_leads',
@@ -18,13 +15,23 @@ const allPermissions = [
     'view_reports', 'view_settings'
 ];
 
-
 export default function Settings() {
-  const [roles, setRoles] = useState(initialRoles);
+  const [roles, setRoles] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
   const [roleName, setRoleName] = useState('');
   const [selectedPermissions, setSelectedPermissions] = useState([]);
+
+  const fetchRoles = async () => {
+    const rolesCollection = collection(db, 'roles');
+    const rolesSnapshot = await getDocs(rolesCollection);
+    const rolesList = rolesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    setRoles(rolesList);
+  };
+
+  useEffect(() => {
+    fetchRoles();
+  }, []);
 
   const handleOpenModal = (role = null) => {
     if (role) {
@@ -43,13 +50,31 @@ export default function Settings() {
     setIsModalOpen(false);
   };
 
-  const handleSaveRole = () => {
-    // Logic to save role (add or update)
+  const handleSaveRole = async () => {
+    if (!roleName) {
+      toast.error('Role name cannot be empty');
+      return;
+    }
+
+    if (editingRole) {
+      const roleDoc = doc(db, 'roles', editingRole.id);
+      await updateDoc(roleDoc, { name: roleName, permissions: selectedPermissions });
+      toast.success('Role updated successfully');
+    } else {
+      await addDoc(collection(db, 'roles'), { name: roleName, permissions: selectedPermissions });
+      toast.success('Role added successfully');
+    }
+
+    fetchRoles();
     handleCloseModal();
   };
   
-  const handleDeleteRole = (id) => {
-    // Logic to delete role
+  const handleDeleteRole = async (id) => {
+    if (window.confirm('Are you sure you want to delete this role?')) {
+      await deleteDoc(doc(db, 'roles', id));
+      fetchRoles();
+      toast.success('Role deleted successfully');
+    }
   };
 
   const handlePermissionChange = (permission) => {
