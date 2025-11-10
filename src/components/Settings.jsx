@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import styles from './Settings.module.css';
-import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Checkbox, FormControlLabel } from '@mui/material';
+import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Checkbox, FormControlLabel, Chip, Tooltip } from '@mui/material';
 import { AddCircleOutline, Edit, Delete, Close } from '@mui/icons-material';
 import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 const allPermissions = [
+    'all',
     'view_leads', 'edit_leads', 'delete_leads',
     'view_members', 'edit_members', 'delete_members',
     'view_agreements', 'edit_agreements', 'delete_agreements',
@@ -14,6 +15,23 @@ const allPermissions = [
     'view_expenses', 'edit_expenses', 'delete_expenses',
     'view_reports', 'view_settings'
 ];
+
+const PermissionChips = ({ permissions }) => {
+    const visibleCount = 3;
+    const displayedPermissions = permissions.slice(0, visibleCount);
+    const hiddenCount = permissions.length - visibleCount;
+  
+    return (
+      <div className={styles.permissionChipsContainer}>
+        {displayedPermissions.map(p => <Chip key={p} label={p.replace(/_/g, ' ')} size="small" />)}
+        {hiddenCount > 0 && (
+          <Tooltip title={permissions.slice(visibleCount).join(', ')}>
+            <Chip label={`+${hiddenCount} more`} size="small" />
+          </Tooltip>
+        )}
+      </div>
+    );
+  };
 
 export default function Settings() {
   const [roles, setRoles] = useState([]);
@@ -78,11 +96,19 @@ export default function Settings() {
   };
 
   const handlePermissionChange = (permission) => {
-    setSelectedPermissions(prev => 
-      prev.includes(permission) 
-        ? prev.filter(p => p !== permission) 
-        : [...prev, permission]
-    );
+    if (permission === 'all') {
+        if (selectedPermissions.includes('all')) {
+            setSelectedPermissions([]);
+        } else {
+            setSelectedPermissions(allPermissions);
+        }
+    } else {
+        setSelectedPermissions(prev => 
+            prev.includes(permission) 
+              ? prev.filter(p => p !== permission && p !== 'all') 
+              : [...prev, permission]
+          );
+    }
   };
 
   return (
@@ -118,7 +144,7 @@ export default function Settings() {
                 {roles.map(role => (
                   <tr key={role.id}>
                     <td>{role.name}</td>
-                    <td>{role.permissions.join(', ')}</td>
+                    <td><PermissionChips permissions={role.permissions} /></td>
                     <td>
                       <IconButton className={styles.editButton} onClick={() => handleOpenModal(role)}>
                         <Edit />
@@ -162,7 +188,7 @@ export default function Settings() {
                 key={permission}
                 control={
                   <Checkbox
-                    checked={selectedPermissions.includes(permission) || selectedPermissions.includes('all')}
+                    checked={selectedPermissions.includes(permission)}
                     onChange={() => handlePermissionChange(permission)}
                     disabled={selectedPermissions.includes('all') && permission !== 'all'}
                   />

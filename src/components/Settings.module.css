@@ -130,3 +130,9 @@
   .addButton:hover {
     background-color: #1a4d5c !important;
   }
+  
+  .permissionChipsContainer {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
