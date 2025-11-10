@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Dialog, 
   DialogTitle, 
@@ -19,6 +19,8 @@ import { Close, AddCircleOutline, Edit, Delete, Settings, FileDownload, Assessme
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import styles from './Expenses.module.css';
+import { db } from '../firebase/config';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
 const initialCategories = [
   'Rent',
@@ -54,51 +56,8 @@ const getCategoryColor = (category) => {
   return `hsl(${hue}, 65%, 60%)`;
 };
 
-const expensesData = [
-  {
-    id: 1,
-    category: 'Rent',
-    amount: 50000,
-    date: '2025-11-01',
-    notes: 'Monthly rent for office space',
-    billNumber: 'RENT-NOV-2025'
-  },
-  {
-    id: 2,
-    category: 'Electricity & Utilities',
-    amount: 8500,
-    date: '2025-11-05',
-    notes: 'Electricity bill',
-    billNumber: 'EB-845621'
-  },
-  {
-    id: 3,
-    category: 'Internet',
-    amount: 2500,
-    date: '2025-10-28',
-    notes: 'Broadband connection',
-    billNumber: 'ISP-OCT-2025'
-  },
-  {
-    id: 4,
-    category: 'Salaries',
-    amount: 150000,
-    date: '2025-10-30',
-    notes: 'Staff salaries for October',
-    billNumber: 'SAL-OCT-2025'
-  },
-  {
-    id: 5,
-    category: 'Pantry',
-    amount: 3500,
-    date: '2025-11-03',
-    notes: 'Office supplies and refreshments',
-    billNumber: 'PANTRY-112025'
-  }
-];
-
 export default function Expenses() {
-  const [expenses, setExpenses] = useState(expensesData);
+  const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState(initialCategories);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -117,6 +76,17 @@ export default function Expenses() {
     notes: '',
     billNumber: ''
   });
+
+  const fetchExpenses = async () => {
+    const expensesCollection = collection(db, 'expenses');
+    const expensesSnapshot = await getDocs(expensesCollection);
+    const expensesList = expensesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    setExpenses(expensesList);
+  };
+
+  useEffect(() => {
+    fetchExpenses();
+  }, []);
 
   const handleOpenExpenseModal = () => {
     setIsExpenseModalOpen(true);
@@ -142,14 +112,15 @@ export default function Expenses() {
     setIsExpenseModalOpen(true);
   };
 
-  const handleDeleteExpense = (id) => {
+  const handleDeleteExpense = async (id) => {
     if (window.confirm('Are you sure you want to delete this expense?')) {
-      setExpenses(expenses.filter(expense => expense.id !== id));
+      await deleteDoc(doc(db, 'expenses', id));
+      fetchExpenses();
       toast.success('Expense deleted successfully');
     }
   };
 
-  const handleSaveExpense = () => {
+  const handleSaveExpense = async () => {
     // Validation
     if (!formData.category || !formData.amount || !formData.date) {
       toast.error('Please fill in all required fields (Category, Amount, Date)');
@@ -181,22 +152,15 @@ export default function Expenses() {
     }
 
     if (editingExpense) {
-      setExpenses(expenses.map(expense => 
-        expense.id === editingExpense.id 
-          ? { ...expense, ...formData, amount: amount }
-          : expense
-      ));
+      const expenseDoc = doc(db, 'expenses', editingExpense.id);
+      await updateDoc(expenseDoc, { ...formData, amount: amount });
       toast.success('Expense updated successfully');
     } else {
-      const newExpense = {
-        id: expenses.length > 0 ? Math.max(...expenses.map(e => e.id)) + 1 : 1,
-        ...formData,
-        amount: amount
-      };
-      setExpenses([...expenses, newExpense]);
+      await addDoc(collection(db, 'expenses'), { ...formData, amount: amount });
       toast.success('Expense added successfully');
     }
 
+    fetchExpenses();
     setIsExpenseModalOpen(false);
     setEditingExpense(null);
   };
