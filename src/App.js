@@ -12,6 +12,7 @@ import EditLeadPage from './pages/EditLeadPage';
 import AgreementsPage from './pages/AgreementsPage';
 import InvoicesPage from './pages/InvoicesPage';
 import ExpensesPage from './pages/ExpensesPage';
+import SettingsPage from './pages/SettingsPage';
 import { Toaster } from 'sonner';
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
         <Route path="/agreements" element={user ? <AgreementsPage/>: <Navigate to="/login"/>}/>
         <Route path="invoices" element={user? <InvoicesPage/>:<Navigate to ="/login"/>} />
         <Route path="expenses" element={user? <ExpensesPage/>:<Navigate to ="/login"/>} />
+        <Route path="settings" element={user? <SettingsPage/>:<Navigate to ="/login"/>} />
 
 
 
