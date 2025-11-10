@@ -12,6 +12,7 @@ import EditLeadPage from './pages/EditLeadPage';
 import AgreementsPage from './pages/AgreementsPage';
 import InvoicesPage from './pages/InvoicesPage';
 import ExpensesPage from './pages/ExpensesPage';
+import { Toaster } from 'sonner';
 
 function App() {
   const { user, setUser } = useContext(AuthContext);
@@ -26,6 +27,7 @@ function App() {
 
   return (
     <Router>
+      <Toaster position="top-center" richColors />
       <Routes>
         <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" />} />
         <Route path="/" element={user ? <HomePage /> : <Navigate to="/login" />} />
