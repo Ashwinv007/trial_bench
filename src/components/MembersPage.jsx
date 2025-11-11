@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useContext, useEffect } from 'react';
-import { FirebaseContext } from '../store/Context';
+import { FirebaseContext, AuthContext } from '../store/Context'; // Added AuthContext
 import { collection, getDocs, addDoc, doc, updateDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions'; // Added for Cloud Functions
 import {
   Box,
   Typography,
@@ -28,9 +29,10 @@ import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import MemberModal from './MemberModal';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import { toast } from 'sonner'; // Added for notifications
 
 function Row(props) {
-  const { member, handleOpenEditModal, allMembers, handleOpenAddModal, handleDelete } = props;
+  const { member, handleOpenEditModal, allMembers, handleOpenAddModal, handleDelete, roles, handleAssignRole } = props; // Added roles, handleAssignRole
   const [open, setOpen] = useState(false);
 
   const subMembers = allMembers.filter(m => member.subMembers && member.subMembers.includes(m.id));
@@ -63,6 +65,26 @@ function Row(props) {
         <TableCell onClick={() => handleOpenEditModal(member)}>{member.whatsapp}</TableCell>
         <TableCell onClick={() => handleOpenEditModal(member)}>{member.email}</TableCell>
         <TableCell>
+          {/* Role Assignment Dropdown */}
+          <Select
+            value={member.roleId || ''} // Assuming member object might have a roleId, otherwise default to empty
+            onChange={(e) => handleAssignRole(member.email, e.target.value)}
+            displayEmpty
+            inputProps={{ 'aria-label': 'Select role' }}
+            size="small"
+            sx={{ minWidth: 120 }}
+          >
+            <MenuItem value="">
+              <em>None</em>
+            </MenuItem>
+            {roles.map((role) => (
+              <MenuItem key={role.id} value={role.id}>
+                {role.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </TableCell>
+        <TableCell>
           {member.primary && (
             <IconButton
               onClick={(e) => {
@@ -79,7 +101,7 @@ function Row(props) {
         </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={9}> {/* Adjusted colSpan */}
           <Collapse in={open} timeout="auto" unmountOnExit>
             <Box sx={{ margin: 1 }}>
               <Typography variant="h6" gutterBottom component="div">
@@ -131,23 +153,39 @@ export default function MembersPage() {
   const [editingMember, setEditingMember] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
   const [primaryMemberId, setPrimaryMemberId] = useState(null);
+  const [roles, setRoles] = useState([]); // New state for roles
 
   const { db } = useContext(FirebaseContext);
+  const { userRole } = useContext(AuthContext); // Get userRole
   const [allMembers, setAllMembers] = useState([]);
 
+  // Initialize Firebase Functions
+  const functions = getFunctions();
+  const setUserRoleCallable = httpsCallable(functions, 'setUserRole');
+
+  // Fetch members and roles on component mount
   useEffect(() => {
-    const fetchMembers = async () => {
+    const fetchMembersAndRoles = async () => {
       try {
+        // Fetch Members
         const membersCollection = collection(db, 'members');
         const membersSnapshot = await getDocs(membersCollection);
         const membersList = membersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
         setAllMembers(membersList);
+
+        // Fetch Roles
+        const rolesCollection = collection(db, 'roles');
+        const rolesSnapshot = await getDocs(rolesCollection);
+        const rolesList = rolesSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        setRoles(rolesList);
+
       } catch (error) {
-        console.error("Error fetching members: ", error);
+        console.error("Error fetching data: ", error);
+        toast.error("Failed to fetch members or roles.");
       }
     };
 
-    fetchMembers();
+    fetchMembersAndRoles();
   }, [db]);
 
   const handleOpenAddModal = (primaryId = null) => {
@@ -181,8 +219,10 @@ export default function MembersPage() {
         const updatedMembers = [...allMembers];
         updatedMembers[editingIndex] = { ...memberData, id: editingMember.id };
         setAllMembers(updatedMembers);
+        toast.success("Member updated successfully!");
       } catch (error) {
         console.error("Error updating member: ", error);
+        toast.error("Failed to update member.");
       }
     } else {
       // Add new member
@@ -196,8 +236,10 @@ export default function MembersPage() {
           await updateDoc(primaryMemberDocRef, { subMembers: [...subMembers, docRef.id] });
         }
         setAllMembers([...allMembers, { ...memberData, id: docRef.id }]);
+        toast.success("Member added successfully!");
       } catch (error) {
         console.error("Error adding member: ", error);
+        toast.error("Failed to add member.");
       }
     }
   };
@@ -206,8 +248,23 @@ export default function MembersPage() {
     try {
       await deleteDoc(doc(db, "members", memberId));
       setAllMembers(allMembers.filter(member => member.id !== memberId));
+      toast.success("Member deleted successfully!");
     } catch (error) {
       console.error("Error deleting member: ", error);
+      toast.error("Failed to delete member.");
+    }
+  };
+
+  // Function to assign role to a member
+  const handleAssignRole = async (memberEmail, roleId) => {
+    try {
+      const result = await setUserRoleCallable({ email: memberEmail, roleId: roleId });
+      toast.success(result.data.message);
+      // Optionally, refresh the user's token to get updated claims immediately
+      // await auth.currentUser.getIdToken(true);
+    } catch (error) {
+      console.error("Error assigning role:", error);
+      toast.error(error.message || "Failed to assign role.");
     }
   };
 
@@ -251,6 +308,15 @@ export default function MembersPage() {
     return filtered;
   }, [searchQuery, packageFilter, primaryMemberFilter, allMembers]);
 
+  // Render "Access Denied" if not admin
+  if (userRole !== 'admin') {
+    return (
+      <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', bgcolor: '#fafafa' }}>
+        <Typography variant="h5" color="error">Access Denied: Only administrators can manage roles.</Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box
       sx={{
@@ -284,7 +350,7 @@ export default function MembersPage() {
             color: '#2b7a8e',
           }}
         >
-          Manage your coworking space members.
+          Manage your coworking space members and their roles.
         </Typography>
       </Box>
 
@@ -495,6 +561,16 @@ export default function MembersPage() {
                 >
                   Email
                 </TableCell>
+                <TableCell
+                  sx={{
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#424242',
+                    borderBottom: '1px solid #e0e0e0',
+                  }}
+                >
+                  Role
+                </TableCell> {/* New TableCell for Role */}
                 <TableCell />
                 <TableCell>Actions</TableCell>
               </TableRow>
@@ -502,12 +578,12 @@ export default function MembersPage() {
             <TableBody>
               {filteredMembers.length > 0 ? (
                 filteredMembers.map((member) => (
-                  <Row key={member.id} member={member} handleOpenEditModal={handleOpenEditModal} allMembers={allMembers} handleOpenAddModal={handleOpenAddModal} handleDelete={handleDelete} />
+                  <Row key={member.id} member={member} handleOpenEditModal={handleOpenEditModal} allMembers={allMembers} handleOpenAddModal={handleOpenAddModal} handleDelete={handleDelete} roles={roles} handleAssignRole={handleAssignRole} />
                 ))
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={9} // Adjusted colSpan
                     sx={{
                       textAlign: 'center',
                       py: 4,

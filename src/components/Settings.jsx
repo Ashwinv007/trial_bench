@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import styles from './Settings.module.css';
-import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Checkbox, FormControlLabel, Chip, Tooltip } from '@mui/material';
+import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Checkbox, FormControlLabel, Chip, Tooltip, Select, MenuItem, DialogContentText } from '@mui/material';
 import { AddCircleOutline, Edit, Delete, Close } from '@mui/icons-material';
 import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 
 const allPermissions = [
@@ -35,20 +36,49 @@ const PermissionChips = ({ permissions }) => {
 
 export default function Settings() {
   const [roles, setRoles] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [users, setUsers] = useState([]); // State for users
+  const [isModalOpen, setIsModalOpen] = useState(false); // For Role Modal
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false); // For Add User Modal
   const [editingRole, setEditingRole] = useState(null);
   const [roleName, setRoleName] = useState('');
   const [selectedPermissions, setSelectedPermissions] = useState([]);
+  const [newUserEmail, setNewUserEmail] = useState(''); // State for new user email
+  const [newUserPassword, setNewUserPassword] = useState(''); // State for new user password
 
-  const fetchRoles = async () => {
+  const functions = getFunctions();
+  const listUsers = httpsCallable(functions, 'listUsers');
+  const setUserRole = httpsCallable(functions, 'setUserRole');
+  const createUser = httpsCallable(functions, 'createUser'); // Initialize createUser callable
+
+  const fetchUsersAndRoles = async () => {
+    // Fetch Roles
     const rolesCollection = collection(db, 'roles');
     const rolesSnapshot = await getDocs(rolesCollection);
     const rolesList = rolesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     setRoles(rolesList);
+
+    // Fetch Users
+    try {
+      const result = await listUsers();
+      const userList = result.data.users.map(user => {
+        // Find the role that matches the user's custom claims
+        const assignedRole = rolesList.find(role => {
+          if (!user.customClaims) return false;
+          // Check if every permission in the role is a claim for the user
+          // This is a simplified check; a more robust one would compare all claims
+          return role.permissions.every(p => user.customClaims[p]);
+        });
+        return { ...user, roleId: assignedRole ? assignedRole.id : '' };
+      });
+      setUsers(userList);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      toast.error(error.message || "Failed to fetch users.");
+    }
   };
 
   useEffect(() => {
-    fetchRoles();
+    fetchUsersAndRoles();
   }, []);
 
   const handleOpenModal = (role = null) => {
@@ -83,14 +113,14 @@ export default function Settings() {
       toast.success('Role added successfully');
     }
 
-    fetchRoles();
+    fetchUsersAndRoles(); // Refetch both users and roles
     handleCloseModal();
   };
   
   const handleDeleteRole = async (id) => {
     if (window.confirm('Are you sure you want to delete this role?')) {
       await deleteDoc(doc(db, 'roles', id));
-      fetchRoles();
+      fetchUsersAndRoles(); // Refetch both users and roles
       toast.success('Role deleted successfully');
     }
   };
@@ -111,12 +141,49 @@ export default function Settings() {
     }
   };
 
+  const handleAssignRole = async (userEmail, roleId) => {
+    try {
+      const result = await setUserRole({ email: userEmail, roleId: roleId });
+      toast.success(result.data.message);
+      fetchUsersAndRoles(); // Refresh the user list to show the new role
+    } catch (error) {
+      console.error("Error assigning role:", error);
+      toast.error(error.message || "Failed to assign role.");
+    }
+  };
+
+  const handleOpenAddUserModal = () => {
+    setNewUserEmail('');
+    setNewUserPassword('');
+    setIsAddUserModalOpen(true);
+  };
+
+  const handleCloseAddUserModal = () => {
+    setIsAddUserModalOpen(false);
+  };
+
+  const handleCreateUser = async () => {
+    if (!newUserEmail || !newUserPassword) {
+      toast.error('Email and password cannot be empty');
+      return;
+    }
+    try {
+      const result = await createUser({ email: newUserEmail, password: newUserPassword });
+      toast.success(result.data.message);
+      fetchUsersAndRoles(); // Refresh user list
+      handleCloseAddUserModal();
+    } catch (error) {
+      console.error("Error creating user:", error);
+      toast.error(error.message || "Failed to create user.");
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <div>
             <h1>Settings</h1>
-            <p className={styles.subtitle}>Manage user roles and permissions.</p>
+            <p className={styles.subtitle}>Manage user roles, permissions, and assignments.</p>
         </div>
         <div className={styles.headerButtons}>
             <Button
@@ -124,13 +191,24 @@ export default function Settings() {
               className={styles.addButton}
               startIcon={<AddCircleOutline />}
               onClick={() => handleOpenModal()}
+              sx={{ mr: 1 }} // Add some margin
             >
               Add Role
+            </Button>
+            <Button
+              variant="contained"
+              className={styles.addButton}
+              startIcon={<AddCircleOutline />}
+              onClick={handleOpenAddUserModal}
+            >
+              Add User
             </Button>
         </div>
       </div>
       <div className={styles.content}>
+        {/* Role Management Section */}
         <div className={styles.rolesSection}>
+          <h2>Role Management</h2>
           <div className={styles.tableContainer}>
             <table className={styles.table}>
               <thead>
@@ -159,8 +237,47 @@ export default function Settings() {
             </table>
           </div>
         </div>
+
+        {/* User Management Section */}
+        <div className={styles.rolesSection} style={{ marginTop: '40px' }}>
+          <h2>User Management</h2>
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>User Email</th>
+                  <th>Assigned Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map(user => (
+                  <tr key={user.uid}>
+                    <td>{user.email}</td>
+                    <td>
+                      <Select
+                        value={user.roleId || ''}
+                        onChange={(e) => handleAssignRole(user.email, e.target.value)}
+                        displayEmpty
+                        size="small"
+                        sx={{ minWidth: 150 }}
+                      >
+                        <MenuItem value=""><em>None</em></MenuItem>
+                        {roles.map((role) => (
+                          <MenuItem key={role.id} value={role.id}>
+                            {role.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
+      {/* Role Management Dialog */}
       <Dialog open={isModalOpen} onClose={handleCloseModal} maxWidth="sm" fullWidth>
         <DialogTitle>
             {editingRole ? 'Edit Role' : 'Add New Role'}
@@ -202,6 +319,50 @@ export default function Settings() {
             <div className={styles.modalActions}>
                 <Button onClick={handleCloseModal}>Cancel</Button>
                 <Button onClick={handleSaveRole} className={styles.saveButton} variant="contained">Save</Button>
+            </div>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add User Dialog */}
+      <Dialog open={isAddUserModalOpen} onClose={handleCloseAddUserModal} maxWidth="sm" fullWidth>
+        <DialogTitle>
+            Add New User
+            <IconButton
+                onClick={handleCloseAddUserModal}
+                className={styles.closeButton}
+            >
+                <Close />
+            </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            Enter the email and a temporary password for the new user.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Email"
+            type="email"
+            fullWidth
+            variant="outlined"
+            value={newUserEmail}
+            onChange={(e) => setNewUserEmail(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="Password"
+            type="password"
+            fullWidth
+            variant="outlined"
+            value={newUserPassword}
+            onChange={(e) => setNewUserPassword(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+            <div className={styles.modalActions}>
+                <Button onClick={handleCloseAddUserModal}>Cancel</Button>
+                <Button onClick={handleCreateUser} className={styles.saveButton} variant="contained">Add User</Button>
             </div>
         </DialogActions>
       </Dialog>
