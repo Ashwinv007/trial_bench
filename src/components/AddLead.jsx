@@ -1,6 +1,6 @@
 import { useState, useContext } from 'react';
 import { FirebaseContext } from '../store/Context';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, deleteDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { 
   CheckCircle, 
@@ -57,7 +57,13 @@ export default function AddLead() {
   const handleSaveLead = async () => {
     try {
       if (formData.status === 'Converted') {
-        // 1. Create a new member
+        // 1. Create the lead document first to get its ID
+        const leadsCollection = collection(db, 'leads');
+        const newLeadData = { ...formData, activities: activities }; // Keep activities for the lead itself
+        const leadDocRef = await addDoc(leadsCollection, newLeadData);
+        const leadId = leadDocRef.id; // Get the ID of the newly created lead
+
+        // 2. Create a new member
         const memberData = {
           ...formData,
           email: formData.convertedEmail || formData.email,
@@ -65,13 +71,13 @@ export default function AddLead() {
           package: formData.purposeOfVisit,
           birthday: formData.birthday,
           company: formData.companyName,
-          activities: activities
+          primary: true, // Set primary to true for new members
         };
         const membersCollection = collection(db, 'members');
         const memberDocRef = await addDoc(membersCollection, memberData);
         const memberId = memberDocRef.id;
 
-        // 2. Create a new agreement
+        // 3. Create a new agreement
         const agreementData = {
           memberId: memberId,
           memberLegalName: '',
@@ -86,17 +92,16 @@ export default function AddLead() {
           endDate: '',
           serviceAgreementType: '',
           totalMonthlyPayment: '',
-          authorizorName: '',
-          designation: '',
-          preparedByNew: '',
-          title: '',
-          agreementLength: '',
+          preparedBy: '', // Changed from preparedByNew
         };
-
         const agreementsCollection = collection(db, 'agreements');
         await addDoc(agreementsCollection, agreementData);
 
-        // 3. Navigate to agreements page
+        // 4. Delete the lead document
+        const leadRefToDelete = doc(db, "leads", leadId);
+        await deleteDoc(leadRefToDelete);
+
+        // 5. Navigate to agreements page
         navigate('/agreements');
 
       } else {
