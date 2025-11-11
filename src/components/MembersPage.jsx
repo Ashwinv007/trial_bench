@@ -308,14 +308,7 @@ export default function MembersPage() {
     return filtered;
   }, [searchQuery, packageFilter, primaryMemberFilter, allMembers]);
 
-  // Render "Access Denied" if not admin
-  if (userRole !== 'admin') {
-    return (
-      <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', bgcolor: '#fafafa' }}>
-        <Typography variant="h5" color="error">Access Denied: Only administrators can manage roles.</Typography>
-      </Box>
-    );
-  }
+
 
   return (
     <Box

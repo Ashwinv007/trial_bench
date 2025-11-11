@@ -13,31 +13,29 @@ import InvoicesPage from './pages/InvoicesPage';
 import ExpensesPage from './pages/ExpensesPage';
 import SettingsPage from './pages/SettingsPage';
 import { Toaster } from 'sonner';
-import AdminRoute from './auth/AdminRoute'; // New import
-import ManagerRoute from './auth/ManagerRoute'; // New import
+import ProtectedRoute from './auth/ProtectedRoute'; // New import
 
 function App() {
-  const { user } = useContext(AuthContext); // Removed setUser, as it's handled by Context.js
-  const { auth } = useContext(FirebaseContext); // auth is still needed for FirebaseContext
+  const { user } = useContext(AuthContext);
+  const { auth } = useContext(FirebaseContext);
 
   return (
     <Router>
       <Toaster position="top-center" richColors />
       <Routes>
         <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" />} />
+        
         <Route path="/" element={user ? <HomePage /> : <Navigate to="/login" />} />
-
-        {/* Manager and Admin Routes */}
-        <Route path="/leads" element={<ManagerRoute><LeadsPage /></ManagerRoute>} />
-        <Route path="/add-lead" element={<ManagerRoute><AddLeadPage /></ManagerRoute>} />
-        <Route path="/lead/:id" element={<ManagerRoute><EditLeadPage /></ManagerRoute>} />
-
-        {/* Admin Only Routes */}
-        <Route path="/members" element={<AdminRoute><MembersPage /></AdminRoute>} />
-        <Route path="/agreements" element={<AdminRoute><AgreementsPage /></AdminRoute>} />
-        <Route path="/invoices" element={<AdminRoute><InvoicesPage /></AdminRoute>} />
-        <Route path="/expenses" element={<AdminRoute><ExpensesPage /></AdminRoute>} />
-        <Route path="/settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
+        
+        {/* Protected Routes */}
+        <Route path="/leads" element={<ProtectedRoute permission="view_leads"><LeadsPage /></ProtectedRoute>} />
+        <Route path="/add-lead" element={<ProtectedRoute permission="add_leads"><AddLeadPage /></ProtectedRoute>} />
+        <Route path="/lead/:id" element={<ProtectedRoute permission="edit_leads"><EditLeadPage /></ProtectedRoute>} />
+        <Route path="/members" element={<ProtectedRoute permission="view_members"><MembersPage /></ProtectedRoute>} />
+        <Route path="/agreements" element={<ProtectedRoute permission="view_agreements"><AgreementsPage /></ProtectedRoute>} />
+        <Route path="/invoices" element={<ProtectedRoute permission="view_invoices"><InvoicesPage /></ProtectedRoute>} />
+        <Route path="/expenses" element={<ProtectedRoute permission="view_expenses"><ExpensesPage /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute permission="manage_settings"><SettingsPage /></ProtectedRoute>} />
       </Routes>
     </Router>
   );

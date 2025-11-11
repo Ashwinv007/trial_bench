@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { 
   Dialog, 
   DialogTitle, 
@@ -21,6 +21,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import styles from './Expenses.module.css';
 import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { AuthContext } from '../store/Context';
 
 const initialCategories = [
   'Rent',
@@ -57,6 +58,7 @@ const getCategoryColor = (category) => {
 };
 
 export default function Expenses() {
+  const { hasPermission } = useContext(AuthContext);
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState(initialCategories);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -440,38 +442,46 @@ export default function Expenses() {
           </p>
         </div>
         <div className={styles.headerButtons}>
-          <Button
-            variant="outlined"
-            startIcon={<Assessment />}
-            onClick={() => setIsReportsModalOpen(true)}
-            className={styles.reportsButton}
-          >
-            Reports
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<FileDownload />}
-            onClick={handleExport}
-            className={styles.exportButton}
-          >
-            Export
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<Settings />}
-            onClick={handleOpenCategoryModal}
-            className={styles.categoryButton}
-          >
-            Manage Categories
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddCircleOutline />}
-            onClick={handleOpenExpenseModal}
-            className={styles.addButton}
-          >
-            Add Expense
-          </Button>
+          {hasPermission('view_expense_reports') && (
+            <Button
+              variant="outlined"
+              startIcon={<Assessment />}
+              onClick={() => setIsReportsModalOpen(true)}
+              className={styles.reportsButton}
+            >
+              Reports
+            </Button>
+          )}
+          {hasPermission('export_expenses') && (
+            <Button
+              variant="outlined"
+              startIcon={<FileDownload />}
+              onClick={handleExport}
+              className={styles.exportButton}
+            >
+              Export
+            </Button>
+          )}
+          {hasPermission('manage_settings') && (
+            <Button
+              variant="outlined"
+              startIcon={<Settings />}
+              onClick={handleOpenCategoryModal}
+              className={styles.categoryButton}
+            >
+              Manage Categories
+            </Button>
+          )}
+          {hasPermission('add_expenses') && (
+            <Button
+              variant="contained"
+              startIcon={<AddCircleOutline />}
+              onClick={handleOpenExpenseModal}
+              className={styles.addButton}
+            >
+              Add Expense
+            </Button>
+          )}
         </div>
       </div>
 
@@ -577,20 +587,24 @@ export default function Expenses() {
                       <td className={styles.notes}>{expense.notes || '-'}</td>
                       <td>
                         <div className={styles.actions}>
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleEditExpense(expense)}
-                            className={styles.editButton}
-                          >
-                            <Edit fontSize="small" />
-                          </IconButton>
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleDeleteExpense(expense.id)}
-                            className={styles.deleteButton}
-                          >
-                            <Delete fontSize="small" />
-                          </IconButton>
+                          {hasPermission('edit_expenses') && (
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handleEditExpense(expense)}
+                              className={styles.editButton}
+                            >
+                              <Edit fontSize="small" />
+                            </IconButton>
+                          )}
+                          {hasPermission('delete_expenses') && (
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handleDeleteExpense(expense.id)}
+                              className={styles.deleteButton}
+                            >
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -619,20 +633,24 @@ export default function Expenses() {
                   <td className={styles.notes}>{expense.notes || '-'}</td>
                   <td>
                     <div className={styles.actions}>
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleEditExpense(expense)}
-                        className={styles.editButton}
-                      >
-                        <Edit fontSize="small" />
-                      </IconButton>
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleDeleteExpense(expense.id)}
-                        className={styles.deleteButton}
-                      >
-                        <Delete fontSize="small" />
-                      </IconButton>
+                      {hasPermission('edit_expenses') && (
+                        <IconButton 
+                          size="small" 
+                          onClick={() => handleEditExpense(expense)}
+                          className={styles.editButton}
+                        >
+                          <Edit fontSize="small" />
+                        </IconButton>
+                      )}
+                      {hasPermission('delete_expenses') && (
+                        <IconButton 
+                          size="small" 
+                          onClick={() => handleDeleteExpense(expense.id)}
+                          className={styles.deleteButton}
+                        >
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -723,13 +741,15 @@ export default function Expenses() {
               >
                 Cancel
               </Button>
-              <Button 
-                onClick={handleSaveExpense}
-                variant="contained"
-                className={styles.saveButton}
-              >
-                {editingExpense ? 'Update' : 'Add'} Expense
-              </Button>
+              {((editingExpense && hasPermission('edit_expenses')) || (!editingExpense && hasPermission('add_expenses'))) && (
+                <Button 
+                  onClick={handleSaveExpense}
+                  variant="contained"
+                  className={styles.saveButton}
+                >
+                  {editingExpense ? 'Update' : 'Add'} Expense
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>

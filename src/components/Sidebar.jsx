@@ -17,17 +17,17 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
 
 const navItems = [
-    { label: 'Dashboard', icon: Dashboard, path: '/', roles: ['admin', 'manager', 'user'] }, // All logged-in users
-    { label: 'Leads', icon: ContactPage, path: '/leads', roles: ['admin', 'manager'] },
-    { label: 'Agreements', icon: Description, path: '/agreements', roles: ['admin'] },
-    { label: 'Invoices', icon: MonetizationOn, path: '/invoices', roles: ['admin'] },
-    { label: 'Members', icon: People, path: '/members', roles: ['admin'] },
-    { label: 'Expenses', icon: Receipt, path: '/expenses', roles: ['admin'] },
-    { label: 'Settings', icon: Settings, path: '/settings', roles: ['admin'] } // Moved settings into navItems
+    { label: 'Dashboard', icon: Dashboard, path: '/', permission: 'view_dashboard' },
+    { label: 'Leads', icon: ContactPage, path: '/leads', permission: 'view_leads' },
+    { label: 'Agreements', icon: Description, path: '/agreements', permission: 'view_agreements' },
+    { label: 'Invoices', icon: MonetizationOn, path: '/invoices', permission: 'view_invoices' },
+    { label: 'Members', icon: People, path: '/members', permission: 'view_members' },
+    { label: 'Expenses', icon: Receipt, path: '/expenses', permission: 'view_expenses' },
+    { label: 'Settings', icon: Settings, path: '/settings', permission: 'manage_settings' }
 ];
 
 export default function Sidebar() {
-  const { user, userRole } = useContext(AuthContext); // Get userRole
+  const { user, hasPermission } = useContext(AuthContext); // Get hasPermission
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -54,19 +54,22 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className={styles.nav}>
-        {navItems.map((item) => (
-          // Only render if the user's role is included in the item's allowed roles
-          userRole && item.roles.includes(userRole) && (
-            <NavLink
-              key={item.label}
-              to={item.path}
-              className={`${styles.navItem} ${location.pathname === item.path ? styles.active : ''}`}
-            >
-              <item.icon className={styles.navIcon} />
-              <span>{item.label}</span>
-            </NavLink>
-          )
-        ))}
+        {navItems.map((item) => {
+          // Always show Dashboard, for others check permission
+          const showItem = item.path === '/' ? true : hasPermission(item.permission);
+          return (
+            showItem && (
+              <NavLink
+                key={item.label}
+                to={item.path}
+                className={`${styles.navItem} ${location.pathname === item.path ? styles.active : ''}`}
+              >
+                <item.icon className={styles.navIcon} />
+                <span>{item.label}</span>
+              </NavLink>
+            )
+          );
+        })}
       </nav>
 
       {/* Logout Button */}

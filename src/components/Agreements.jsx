@@ -2,13 +2,14 @@ import { useState, useEffect, useContext } from 'react';
 import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, MenuItem } from '@mui/material';
 import { Close } from '@mui/icons-material';
 import styles from './Agreements.module.css';
-import { FirebaseContext } from '../store/Context';
+import { FirebaseContext, AuthContext } from '../store/Context';
 import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 
 export default function Agreements() {
   const { db } = useContext(FirebaseContext);
+  const { hasPermission } = useContext(AuthContext);
   const [agreements, setAgreements] = useState([]);
   const [selectedAgreement, setSelectedAgreement] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -75,6 +76,7 @@ export default function Agreements() {
   }, [formData.startDate, formData.agreementLength]);
 
   const handleRowClick = (agreement) => {
+    if (!hasPermission('edit_agreements')) return;
     setAgreementGenerated(null);
     setSelectedAgreement(agreement);
     setFormData({
@@ -273,7 +275,7 @@ export default function Agreements() {
                 <tr 
                   key={agreement.id} 
                   onClick={() => handleRowClick(agreement)}
-                  className={styles.clickableRow}
+                  className={hasPermission('edit_agreements') ? styles.clickableRow : ''}
                 >
                   <td>
                     <span className={styles.nameText}>{agreement.name}</span>
@@ -574,18 +576,20 @@ export default function Agreements() {
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="submit" 
-                  variant="contained"
-                  style={{
-                    backgroundColor: '#2b7a8e',
-                    color: 'white',
-                    textTransform: 'none',
-                    padding: '8px 24px'
-                  }}
-                >
-                  Update Agreement
-                </Button>
+                {hasPermission('edit_agreements') && (
+                  <Button 
+                    type="submit" 
+                    variant="contained"
+                    style={{
+                      backgroundColor: '#2b7a8e',
+                      color: 'white',
+                      textTransform: 'none',
+                      padding: '8px 24px'
+                    }}
+                  >
+                    Update Agreement
+                  </Button>
+                )}
               </div>
             </form>
           )}

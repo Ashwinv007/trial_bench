@@ -9,12 +9,12 @@ import { toast } from 'sonner';
 
 const allPermissions = [
     'all',
-    'view_leads', 'edit_leads', 'delete_leads',
-    'view_members', 'edit_members', 'delete_members',
-    'view_agreements', 'edit_agreements', 'delete_agreements',
-    'view_invoices', 'edit_invoices', 'delete_invoices',
-    'view_expenses', 'edit_expenses', 'delete_expenses',
-    'view_reports', 'view_settings'
+    'view_leads', 'add_leads', 'edit_leads', 'delete_leads',
+    'view_members', 'add_members', 'edit_members', 'delete_members', 'export_members',
+    'view_agreements', 'add_agreements', 'edit_agreements', 'delete_agreements',
+    'view_invoices', 'add_invoices', 'edit_invoices', 'delete_invoices',
+    'view_expenses', 'add_expenses', 'edit_expenses', 'delete_expenses', 'view_expense_reports', 'export_expenses',
+    'manage_settings'
 ];
 
 const PermissionChips = ({ permissions }) => {
@@ -145,7 +145,12 @@ export default function Settings() {
     try {
       const result = await setUserRole({ email: userEmail, roleId: roleId });
       toast.success(result.data.message);
-      fetchUsersAndRoles(); // Refresh the user list to show the new role
+      // Optimistically update the UI without a full refetch
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.email === userEmail ? { ...user, roleId: roleId } : user
+        )
+      );
     } catch (error) {
       console.error("Error assigning role:", error);
       toast.error(error.message || "Failed to assign role.");

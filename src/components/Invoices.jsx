@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, useMemo } from 'react';
 import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, Autocomplete, Select, MenuItem } from '@mui/material';
 import { Close, AddCircleOutline } from '@mui/icons-material';
 import styles from './Invoices.module.css';
-import { FirebaseContext } from '../store/Context';
+import { FirebaseContext, AuthContext } from '../store/Context';
 import { collection, getDocs, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
@@ -159,6 +159,7 @@ const generateInvoicePdf = async (invoiceData) => {
 
 export default function Invoices() {
   const { db } = useContext(FirebaseContext);
+  const { hasPermission } = useContext(AuthContext);
   const [invoices, setInvoices] = useState([]);
   const [members, setMembers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -253,6 +254,7 @@ export default function Invoices() {
   };
 
   const handleEditInvoice = (invoice, e) => {
+    if (!hasPermission('edit_invoices')) return;
     if (e.target.closest(`.${styles.statusBadge}`)) return;
 
     setEditingInvoice(invoice);
@@ -339,6 +341,8 @@ export default function Invoices() {
 
   const togglePaymentStatus = async (invoice, e) => {
     e.stopPropagation();
+    if (!hasPermission('edit_invoices')) return;
+
     if (invoice.paymentStatus === 'Paid') {
       const invoiceRef = doc(db, "invoices", invoice.id);
       await updateDoc(invoiceRef, { paymentStatus: 'Unpaid', dateOfPayment: null });
@@ -375,10 +379,12 @@ export default function Invoices() {
             <h1 className={styles.title}>Invoices</h1>
             <p className={styles.subtitle}>Manage and generate client invoices.</p>
           </div>
-          <button className={styles.addButton} onClick={handleOpenModal}>
-            <AddCircleOutline className={styles.addIcon} />
-            Generate Invoice
-          </button>
+          {hasPermission('add_invoices') && (
+            <button className={styles.addButton} onClick={handleOpenModal}>
+              <AddCircleOutline className={styles.addIcon} />
+              Generate Invoice
+            </button>
+          )}
         </div>
 
         {/* Filter Tabs */}
@@ -427,7 +433,7 @@ export default function Invoices() {
                 <tr 
                   key={invoice.id}
                   onClick={(e) => handleEditInvoice(invoice, e)}
-                  className={styles.clickableRow}
+                  className={hasPermission('edit_invoices') ? styles.clickableRow : ''}
                 >
                                     <td>
                                       <span
@@ -893,18 +899,20 @@ export default function Invoices() {
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                variant="contained"
-                style={{
-                  backgroundColor: '#2b7a8e',
-                  color: 'white',
-                  textTransform: 'none',
-                  padding: '8px 24px'
-                }}
-              >
-                {editingInvoice ? 'Update Invoice' : 'Generate Invoice'}
-              </Button>
+              {((editingInvoice && hasPermission('edit_invoices')) || (!editingInvoice && hasPermission('add_invoices'))) && (
+                <Button 
+                  type="submit" 
+                  variant="contained"
+                  style={{
+                    backgroundColor: '#2b7a8e',
+                    color: 'white',
+                    textTransform: 'none',
+                    padding: '8px 24px'
+                  }}
+                >
+                  {editingInvoice ? 'Update Invoice' : 'Generate Invoice'}
+                </Button>
+              )}
             </div>
           </form>
           )}
