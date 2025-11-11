@@ -11,6 +11,17 @@ import {
   Cake,
   AccountBox
 } from '@mui/icons-material';
+import { // Added Material-UI components
+  Box,
+  TextField,
+  MenuItem,
+  Select,
+  Typography,
+  IconButton,
+  FormControl, 
+  InputLabel,  
+  FormHelperText 
+} from '@mui/material';
 import styles from './AddLead.module.css'; // Reusing styles
 
 export default function EditLead() {
@@ -20,6 +31,12 @@ export default function EditLead() {
   const [note, setNote] = useState('');
   const [followUpDays, setFollowUpDays] = useState('');
   const [activities, setActivities] = useState([]);
+  const [errors, setErrors] = useState({}); // Added errors state
+
+  const monthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
 
   const { db } = useContext(FirebaseContext);
   const navigate = useNavigate();
@@ -31,7 +48,23 @@ export default function EditLead() {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const leadData = docSnap.data();
-        setFormData(leadData);
+        const [day, month] = leadData.birthday ? leadData.birthday.split('/') : ['', ''];
+        setFormData({
+          name: leadData.name || '',
+          status: leadData.status || '',
+          purposeOfVisit: leadData.purposeOfVisit || '',
+          phone: leadData.phone || '+91',
+          whatsapp: leadData.whatsapp || '+91',
+          email: leadData.email || '',
+          sourceType: leadData.sourceType || '',
+          sourceDetail: leadData.sourceDetail || '',
+          clientType: leadData.clientType || '',
+          companyName: leadData.companyName !== 'NA' ? leadData.companyName : '',
+          convertedEmail: leadData.convertedEmail || leadData.email || '',
+          convertedWhatsapp: leadData.convertedWhatsapp || leadData.whatsapp || '',
+          birthdayDay: day, // Populate day
+          birthdayMonth: month, // Populate month
+        });
         setOriginalLead(leadData);
         if (leadData.activities) {
           setActivities(leadData.activities);
@@ -63,7 +96,7 @@ export default function EditLead() {
           email: formData.convertedEmail || formData.email,
           whatsapp: formData.convertedWhatsapp || formData.whatsapp,
           package: formData.purposeOfVisit,
-          birthday: formData.birthday,
+          birthday: `${formData.birthdayDay}/${formData.birthdayMonth}`, // Reconstruct birthday
           company: formData.companyName,
           primary: true,
         };
@@ -121,6 +154,11 @@ export default function EditLead() {
         newState.whatsapp = value;
       }
 
+      // Handle birthday day/month changes and reconstruct birthday string
+      if (name === 'birthdayDay' || name === 'birthdayMonth') {
+        newState.birthday = `${newState.birthdayDay || ''}/${newState.birthdayMonth || ''}`;
+      }
+
       // When sourceType changes, reset sourceDetail if not applicable
       if (name === 'sourceType' && value !== 'Referral' && value !== 'Social Media') {
         newState.sourceDetail = '';
@@ -160,6 +198,30 @@ export default function EditLead() {
     setActivities([newActivity, ...activities]);
     setNote('');
     setFollowUpDays('');
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.name.trim()) newErrors.name = 'Name is required';
+    if (!formData.package) newErrors.package = 'Package is required';
+    if (!formData.whatsapp.trim()) newErrors.whatsapp = 'WhatsApp number is required';
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Invalid email format';
+    }
+
+    // Birthday validation: if day or month is provided, both are required and day must be valid
+    if (formData.birthdayDay || formData.birthdayMonth) {
+      if (!formData.birthdayDay) newErrors.birthdayDay = 'Day is required if month is selected';
+      if (!formData.birthdayMonth) newErrors.birthdayMonth = 'Month is required if day is selected';
+      if (formData.birthdayDay && (parseInt(formData.birthdayDay, 10) < 1 || parseInt(formData.birthdayDay, 10) > 31)) {
+        newErrors.birthdayDay = 'Day must be between 1 and 31';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   if (!formData) {
@@ -271,17 +333,36 @@ export default function EditLead() {
                     />
                   </div>
 
+                  {/* Birthday Input - Replaced with Day and Month Selectors */}
                   <div className={styles.formGroup}>
                     <label className={styles.label}>Birthday</label>
-                    <div className={styles.dateInputWrapper}>
-                      <input
-                        type="date"
-                        name="birthday"
-                        value={formData.birthday}
-                        onChange={handleInputChange}
-                        className={styles.dateInput}
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      <TextField
+                        label="Day"
+                        fullWidth
+                        type="number"
+                        value={formData.birthdayDay}
+                        onChange={(e) => handleInputChange({ target: { name: 'birthdayDay', value: e.target.value } })}
+                        inputProps={{ min: 1, max: 31 }}
+                        error={!!errors.birthdayDay}
+                        helperText={errors.birthdayDay}
                       />
-                    </div>
+                      <FormControl fullWidth variant="outlined" error={!!errors.birthdayMonth}>
+                        <InputLabel id="birthday-month-label">Month</InputLabel>
+                        <Select
+                          labelId="birthday-month-label"
+                          value={formData.birthdayMonth}
+                          onChange={(e) => handleInputChange({ target: { name: 'birthdayMonth', value: e.target.value } })}
+                          displayEmpty
+                        >
+                          <MenuItem value="" disabled>Select Month</MenuItem>
+                          {monthNames.map((monthName, index) => (
+                            <MenuItem key={index + 1} value={String(index + 1)}>{monthName}</MenuItem>
+                          ))}
+                        </Select>
+                        {errors.birthdayMonth && <FormHelperText>{errors.birthdayMonth}</FormHelperText>}
+                      </FormControl>
+                    </Box>
                   </div>
                 </div>
               )}

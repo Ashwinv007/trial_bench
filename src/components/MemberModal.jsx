@@ -11,6 +11,9 @@ import {
   Select,
   Typography,
   IconButton,
+  FormControl, // Added
+  InputLabel,  // Added
+  FormHelperText // Added
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { 
@@ -25,7 +28,8 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     name: '',
     package: '',
     company: '',
-    birthday: '',
+    birthdayDay: '', // Changed from birthday to separate day and month
+    birthdayMonth: '', // Changed from birthday to separate day and month
     whatsapp: '',
     email: '',
   });
@@ -37,11 +41,13 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
 
   useEffect(() => {
     if (editMember) {
+      const [day, month] = editMember.birthday ? editMember.birthday.split('/') : ['', ''];
       setFormData({
         name: editMember.name || '',
         package: editMember.package || '',
         company: editMember.company !== 'NA' ? editMember.company : '',
-        birthday: editMember.birthday || '',
+        birthdayDay: day, // Populate day
+        birthdayMonth: month, // Populate month
         whatsapp: editMember.whatsapp || '',
         email: editMember.email || '',
       });
@@ -51,7 +57,8 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         name: '',
         package: '',
         company: '',
-        birthday: '',
+        birthdayDay: '',
+        birthdayMonth: '',
         whatsapp: '',
         email: '',
       });
@@ -63,16 +70,38 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
   }, [editMember, open]);
 
   const handleChange = (field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-    if (errors[field]) {
-      setErrors((prev) => ({
-        ...prev,
-        [field]: '',
-      }));
-    }
+    setFormData((prev) => {
+      const newState = { ...prev };
+      
+      if (field === 'birthdayDay') {
+        const dayValue = value;
+        // Allow empty string
+        if (dayValue === '') {
+          newState.birthdayDay = dayValue;
+        } else {
+          const day = parseInt(dayValue, 10);
+          // Allow if it's a valid number between 1 and 31
+          if (!isNaN(day) && day >= 1 && day <= 31) {
+            newState.birthdayDay = dayValue;
+          }
+          // If it's not a valid number or out of range, newState.birthdayDay remains unchanged from the previous state.
+          // This means the input field will not visually update if the user types an invalid value.
+        }
+      } else {
+        // For other fields, update directly
+        newState[field] = value;
+      }
+
+      // Update the combined birthday string if day or month changes
+      if (field === 'birthdayDay' || field === 'birthdayMonth') {
+        newState.birthday = `${newState.birthdayDay || ''}/${newState.birthdayMonth || ''}`;
+      }
+      return newState;
+    });
+    
+    // Re-validate the form to update errors immediately
+    const currentErrors = validateForm();
+    setErrors(currentErrors);
   };
 
   const validateForm = () => {
@@ -85,6 +114,16 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format';
     }
+
+    // Birthday validation: if day or month is provided, both are required and day must be valid
+    if (formData.birthdayDay || formData.birthdayMonth) {
+      if (!formData.birthdayDay) newErrors.birthdayDay = 'Day is required if month is selected';
+      if (!formData.birthdayMonth) newErrors.birthdayMonth = 'Month is required if day is selected';
+      if (formData.birthdayDay && (parseInt(formData.birthdayDay, 10) < 1 || parseInt(formData.birthdayDay, 10) > 31)) {
+        newErrors.birthdayDay = 'Day must be between 1 and 31';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -137,6 +176,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
       const memberData = {
         ...formData,
         company: formData.company.trim() ? formData.company.trim() : 'NA',
+        birthday: `${formData.birthdayDay}/${formData.birthdayMonth}`, // Ensure birthday is saved in DD/MM format
         activities: activities,
         primaryMemberId: primaryMemberId,
       };
@@ -179,8 +219,31 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
             </Select>
             <TextField label="Company Name (optional)" fullWidth value={formData.company} onChange={(e) => handleChange('company', e.target.value)} />
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField label="Birthday Day" fullWidth type="number" value={formData.birthday.split('/')[0] || ''} onChange={(e) => handleChange('birthday', `${e.target.value}/${formData.birthday.split('/')[1] || ''}`)} />
-              <TextField label="Birthday Month" fullWidth type="number" value={formData.birthday.split('/')[1] || ''} onChange={(e) => handleChange('birthday', `${formData.birthday.split('/')[0] || ''}/${e.target.value}`)} />
+              <TextField
+                label="Birthday Day"
+                fullWidth
+                type="number"
+                value={formData.birthdayDay}
+                onChange={(e) => handleChange('birthdayDay', e.target.value)}
+                inputProps={{ min: 1, max: 31 }} // Restrict day to 1-31
+                error={!!errors.birthdayDay}
+                helperText={errors.birthdayDay}
+              />
+              <FormControl fullWidth variant="outlined" error={!!errors.birthdayMonth}>
+                <InputLabel id="birthday-month-label">Birthday Month</InputLabel>
+              <Select
+                labelId="birthday-month-label"
+                value={formData.birthdayMonth}
+                onChange={(e) => handleChange('birthdayMonth', e.target.value)}
+                displayEmpty
+              >
+                <MenuItem value="" disabled>Select Month</MenuItem>
+                {[...Array(12).keys()].map((monthNum) => (
+                  <MenuItem key={monthNum + 1} value={String(monthNum + 1)}>{monthNum + 1}</MenuItem>
+                ))}
+              </Select>
+                {errors.birthdayMonth && <FormHelperText>{errors.birthdayMonth}</FormHelperText>}
+              </FormControl>
             </Box>
             <TextField label="WhatsApp" fullWidth value={formData.whatsapp} onChange={(e) => handleChange('whatsapp', e.target.value)} error={!!errors.whatsapp} helperText={errors.whatsapp} />
             <TextField label="Email" fullWidth value={formData.email} onChange={(e) => handleChange('email', e.target.value)} error={!!errors.email} helperText={errors.email} />

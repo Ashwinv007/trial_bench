@@ -70,15 +70,13 @@ export default function Sidebar() {
             )
           );
         })}
-      </nav>
 
-      {/* Logout Button */}
-      <div className={styles.nav}>
+        {/* Logout Button */}
         <button className={styles.navItem} onClick={handleLogout}>
           <ExitToApp className={styles.navIcon} />
           <span>Logout</span>
         </button>
-      </div>
+      </nav>
     </div>
   );
 }

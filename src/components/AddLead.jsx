@@ -11,6 +11,17 @@ import {
   Cake,
   AccountBox
 } from '@mui/icons-material';
+import { // Added Material-UI components
+  Box,
+  TextField,
+  MenuItem,
+  Select,
+  Typography,
+  IconButton,
+  FormControl, 
+  InputLabel,  
+  FormHelperText 
+} from '@mui/material';
 import styles from './AddLead.module.css';
 
 export default function AddLead() {
@@ -27,7 +38,8 @@ export default function AddLead() {
     companyName: '',
     convertedEmail: '',
     convertedWhatsapp: '',
-    birthday: '',
+    birthdayDay: '', // Replaced birthday with separate day and month
+    birthdayMonth: '', // Replaced birthday with separate day and month
     package: ''
   });
 
@@ -51,6 +63,13 @@ export default function AddLead() {
     }
   ]);
 
+  const [errors, setErrors] = useState({});
+
+  const monthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+
   const { db } = useContext(FirebaseContext);
   const navigate = useNavigate();
 
@@ -69,7 +88,7 @@ export default function AddLead() {
           email: formData.convertedEmail || formData.email,
           whatsapp: formData.convertedWhatsapp || formData.whatsapp,
           package: formData.purposeOfVisit,
-          birthday: formData.birthday,
+          birthday: `${formData.birthdayDay}/${formData.birthdayMonth}`, // Reconstruct birthday
           company: formData.companyName,
           primary: true, // Set primary to true for new members
         };
@@ -126,6 +145,11 @@ export default function AddLead() {
         newState.whatsapp = value;
       }
 
+      // Handle birthday day/month changes and reconstruct birthday string
+      if (name === 'birthdayDay' || name === 'birthdayMonth') {
+        newState.birthday = `${newState.birthdayDay || ''}/${newState.birthdayMonth || ''}`;
+      }
+
       // When sourceType changes, reset sourceDetail if not applicable
       if (name === 'sourceType' && value !== 'Referral' && value !== 'Social Media') {
         newState.sourceDetail = '';
@@ -165,6 +189,30 @@ export default function AddLead() {
     setActivities([newActivity, ...activities]);
     setNote('');
     setFollowUpDays('');
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.name.trim()) newErrors.name = 'Name is required';
+    if (!formData.package) newErrors.package = 'Package is required';
+    if (!formData.whatsapp.trim()) newErrors.whatsapp = 'WhatsApp number is required';
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Invalid email format';
+    }
+
+    // Birthday validation: if day or month is provided, both are required and day must be valid
+    if (formData.birthdayDay || formData.birthdayMonth) {
+      if (!formData.birthdayDay) newErrors.birthdayDay = 'Day is required if month is selected';
+      if (!formData.birthdayMonth) newErrors.birthdayMonth = 'Month is required if day is selected';
+      if (formData.birthdayDay && (parseInt(formData.birthdayDay, 10) < 1 || parseInt(formData.birthdayDay, 10) > 31)) {
+        newErrors.birthdayDay = 'Day must be between 1 and 31';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   return (
@@ -273,17 +321,36 @@ export default function AddLead() {
                     />
                   </div>
 
+                  {/* Birthday Input - Replaced with Day and Month Selectors */}
                   <div className={styles.formGroup}>
                     <label className={styles.label}>Birthday</label>
-                    <div className={styles.dateInputWrapper}>
-                      <input
-                        type="date"
-                        name="birthday"
-                        value={formData.birthday}
-                        onChange={handleInputChange}
-                        className={styles.dateInput}
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      <TextField
+                        label="Day"
+                        fullWidth
+                        type="number"
+                        value={formData.birthdayDay}
+                        onChange={(e) => handleInputChange({ target: { name: 'birthdayDay', value: e.target.value } })}
+                        inputProps={{ min: 1, max: 31 }}
+                        error={!!errors.birthdayDay}
+                        helperText={errors.birthdayDay}
                       />
-                    </div>
+                      <FormControl fullWidth variant="outlined" error={!!errors.birthdayMonth}>
+                        <InputLabel id="birthday-month-label">Month</InputLabel>
+                        <Select
+                          labelId="birthday-month-label"
+                          value={formData.birthdayMonth}
+                          onChange={(e) => handleInputChange({ target: { name: 'birthdayMonth', value: e.target.value } })}
+                          displayEmpty
+                        >
+                          <MenuItem value="" disabled>Select Month</MenuItem>
+                          {monthNames.map((monthName, index) => (
+                            <MenuItem key={index + 1} value={String(index + 1)}>{monthName}</MenuItem>
+                          ))}
+                        </Select>
+                        {errors.birthdayMonth && <FormHelperText>{errors.birthdayMonth}</FormHelperText>}
+                      </FormControl>
+                    </Box>
                   </div>
                 </div>
               )}
