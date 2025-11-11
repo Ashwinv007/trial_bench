@@ -31,7 +31,7 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import { toast } from 'sonner'; // Added for notifications
 
 function Row(props) {
-  const { member, handleOpenEditModal, allMembers, handleOpenAddModal, handleDelete } = props; 
+  const { member, handleOpenEditModal, allMembers, handleOpenAddModal, handleDelete, primaryMemberFilter } = props; 
   const [open, setOpen] = useState(false);
 
   const subMembers = allMembers.filter(m => member.subMembers && member.subMembers.includes(m.id));
@@ -42,7 +42,7 @@ function Row(props) {
         sx={{ '& > *': { borderBottom: 'unset' }, cursor: 'pointer' }}
       >
         <TableCell>
-          {member.primary && (
+          {member.primary && primaryMemberFilter === 'Primary Members' && (
             <IconButton
               aria-label="expand row"
               size="small"
@@ -255,8 +255,11 @@ export default function MembersPage() {
       return companyA.localeCompare(companyB);
     });
 
-    if (primaryMemberFilter !== 'Primary Members') {
-      return filtered.filter(member => !member.primaryMemberId);
+    // If "All Members" is selected, we don't filter by primaryMemberId.
+    // If "Primary Members" is selected, the above filter already handled it.
+    // This ensures that when "All Members" is chosen, sub-members are also shown.
+    if (primaryMemberFilter === 'All Members') {
+      return filtered;
     }
 
     return filtered;
@@ -515,7 +518,7 @@ export default function MembersPage() {
             <TableBody>
               {filteredMembers.length > 0 ? (
                 filteredMembers.map((member) => (
-                  <Row key={member.id} member={member} handleOpenEditModal={handleOpenEditModal} allMembers={allMembers} handleOpenAddModal={handleOpenAddModal} handleDelete={handleDelete} />
+                  <Row key={member.id} member={member} handleOpenEditModal={handleOpenEditModal} allMembers={allMembers} handleOpenAddModal={handleOpenAddModal} handleDelete={handleDelete} primaryMemberFilter={primaryMemberFilter} />
                 ))
               ) : (
                 <TableRow>
