@@ -343,15 +343,15 @@ export default function Invoices() {
     e.stopPropagation();
     if (!hasPermission('edit_invoices')) return;
 
+    // If the invoice is already paid, do nothing when the badge is clicked.
     if (invoice.paymentStatus === 'Paid') {
-      const invoiceRef = doc(db, "invoices", invoice.id);
-      await updateDoc(invoiceRef, { paymentStatus: 'Unpaid', dateOfPayment: null });
-      setInvoices(prev => prev.map(inv => inv.id === invoice.id ? { ...inv, paymentStatus: 'Unpaid', dateOfPayment: null } : inv));
-    } else {
-      setSelectedInvoiceForPayment(invoice);
-      setPaymentDate('');
-      setIsPaymentDateModalOpen(true);
+      return; // Exit the function early
     }
+
+    // If the invoice is not paid, open the modal to set the payment date.
+    setSelectedInvoiceForPayment(invoice);
+    setPaymentDate('');
+    setIsPaymentDateModalOpen(true);
   };
 
   const handlePaymentDateSubmit = async () => {
