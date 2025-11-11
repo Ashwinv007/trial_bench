@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useContext, useEffect } from 'react';
-import { FirebaseContext, AuthContext } from '../store/Context'; // Added AuthContext
+import { FirebaseContext } from '../store/Context';
 import { collection, getDocs, addDoc, doc, updateDoc, getDoc, deleteDoc } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions'; // Added for Cloud Functions
 import {
   Box,
   Typography,
@@ -32,7 +31,7 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import { toast } from 'sonner'; // Added for notifications
 
 function Row(props) {
-  const { member, handleOpenEditModal, allMembers, handleOpenAddModal, handleDelete, roles, handleAssignRole } = props; // Added roles, handleAssignRole
+  const { member, handleOpenEditModal, allMembers, handleOpenAddModal, handleDelete } = props; 
   const [open, setOpen] = useState(false);
 
   const subMembers = allMembers.filter(m => member.subMembers && member.subMembers.includes(m.id));
@@ -65,26 +64,6 @@ function Row(props) {
         <TableCell onClick={() => handleOpenEditModal(member)}>{member.whatsapp}</TableCell>
         <TableCell onClick={() => handleOpenEditModal(member)}>{member.email}</TableCell>
         <TableCell>
-          {/* Role Assignment Dropdown */}
-          <Select
-            value={member.roleId || ''} // Assuming member object might have a roleId, otherwise default to empty
-            onChange={(e) => handleAssignRole(member.email, e.target.value)}
-            displayEmpty
-            inputProps={{ 'aria-label': 'Select role' }}
-            size="small"
-            sx={{ minWidth: 120 }}
-          >
-            <MenuItem value="">
-              <em>None</em>
-            </MenuItem>
-            {roles.map((role) => (
-              <MenuItem key={role.id} value={role.id}>
-                {role.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </TableCell>
-        <TableCell>
           {member.primary && (
             <IconButton
               onClick={(e) => {
@@ -101,7 +80,7 @@ function Row(props) {
         </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={9}> {/* Adjusted colSpan */}
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}> {/* Adjusted colSpan */}
           <Collapse in={open} timeout="auto" unmountOnExit>
             <Box sx={{ margin: 1 }}>
               <Typography variant="h6" gutterBottom component="div">
@@ -153,19 +132,13 @@ export default function MembersPage() {
   const [editingMember, setEditingMember] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
   const [primaryMemberId, setPrimaryMemberId] = useState(null);
-  const [roles, setRoles] = useState([]); // New state for roles
 
   const { db } = useContext(FirebaseContext);
-  const { userRole } = useContext(AuthContext); // Get userRole
   const [allMembers, setAllMembers] = useState([]);
 
-  // Initialize Firebase Functions
-  const functions = getFunctions();
-  const setUserRoleCallable = httpsCallable(functions, 'setUserRole');
-
-  // Fetch members and roles on component mount
+  // Fetch members on component mount
   useEffect(() => {
-    const fetchMembersAndRoles = async () => {
+    const fetchMembers = async () => {
       try {
         // Fetch Members
         const membersCollection = collection(db, 'members');
@@ -173,19 +146,13 @@ export default function MembersPage() {
         const membersList = membersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
         setAllMembers(membersList);
 
-        // Fetch Roles
-        const rolesCollection = collection(db, 'roles');
-        const rolesSnapshot = await getDocs(rolesCollection);
-        const rolesList = rolesSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-        setRoles(rolesList);
-
       } catch (error) {
         console.error("Error fetching data: ", error);
-        toast.error("Failed to fetch members or roles.");
+        toast.error("Failed to fetch members.");
       }
     };
 
-    fetchMembersAndRoles();
+    fetchMembers();
   }, [db]);
 
   const handleOpenAddModal = (primaryId = null) => {
@@ -252,19 +219,6 @@ export default function MembersPage() {
     } catch (error) {
       console.error("Error deleting member: ", error);
       toast.error("Failed to delete member.");
-    }
-  };
-
-  // Function to assign role to a member
-  const handleAssignRole = async (memberEmail, roleId) => {
-    try {
-      const result = await setUserRoleCallable({ email: memberEmail, roleId: roleId });
-      toast.success(result.data.message);
-      // Optionally, refresh the user's token to get updated claims immediately
-      // await auth.currentUser.getIdToken(true);
-    } catch (error) {
-      console.error("Error assigning role:", error);
-      toast.error(error.message || "Failed to assign role.");
     }
   };
 
@@ -554,16 +508,6 @@ export default function MembersPage() {
                 >
                   Email
                 </TableCell>
-                <TableCell
-                  sx={{
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    color: '#424242',
-                    borderBottom: '1px solid #e0e0e0',
-                  }}
-                >
-                  Role
-                </TableCell> {/* New TableCell for Role */}
                 <TableCell />
                 <TableCell>Actions</TableCell>
               </TableRow>
@@ -571,12 +515,12 @@ export default function MembersPage() {
             <TableBody>
               {filteredMembers.length > 0 ? (
                 filteredMembers.map((member) => (
-                  <Row key={member.id} member={member} handleOpenEditModal={handleOpenEditModal} allMembers={allMembers} handleOpenAddModal={handleOpenAddModal} handleDelete={handleDelete} roles={roles} handleAssignRole={handleAssignRole} />
+                  <Row key={member.id} member={member} handleOpenEditModal={handleOpenEditModal} allMembers={allMembers} handleOpenAddModal={handleOpenAddModal} handleDelete={handleDelete} />
                 ))
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={9} // Adjusted colSpan
+                    colSpan={8} // Adjusted colSpan
                     sx={{
                       textAlign: 'center',
                       py: 4,
