@@ -24,6 +24,34 @@ import { // Added Material-UI components
 } from '@mui/material';
 import styles from './AddLead.module.css'; // Reusing styles
 
+// Helper function to format birthday
+const formatBirthday = (day, month) => {
+  if (!day || !month) return '';
+
+  const monthNamesFull = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const dayNum = parseInt(day, 10);
+  const monthNum = parseInt(month, 10);
+
+  if (isNaN(dayNum) || isNaN(monthNum) || dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) {
+    return '';
+  }
+
+  let suffix = 'th';
+  if (dayNum === 1 || dayNum === 21 || dayNum === 31) {
+    suffix = 'st';
+  } else if (dayNum === 2 || dayNum === 22) {
+    suffix = 'nd';
+  } else if (dayNum === 3 || dayNum === 23) {
+    suffix = 'rd';
+  }
+
+  return `${dayNum}${suffix} ${monthNamesFull[monthNum - 1]}`;
+};
+
 export default function EditLead() {
   const [formData, setFormData] = useState(null);
   const [originalLead, setOriginalLead] = useState(null);
@@ -33,10 +61,7 @@ export default function EditLead() {
   const [activities, setActivities] = useState([]);
   const [errors, setErrors] = useState({}); // Added errors state
 
-  const monthNames = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-  ];
+
 
   const { db } = useContext(FirebaseContext);
   const navigate = useNavigate();
@@ -48,7 +73,6 @@ export default function EditLead() {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const leadData = docSnap.data();
-        const [day, month] = leadData.birthday ? leadData.birthday.split('/') : ['', ''];
         setFormData({
           name: leadData.name || '',
           status: leadData.status || '',
@@ -62,8 +86,8 @@ export default function EditLead() {
           companyName: leadData.companyName !== 'NA' ? leadData.companyName : '',
           convertedEmail: leadData.convertedEmail || leadData.email || '',
           convertedWhatsapp: leadData.convertedWhatsapp || leadData.whatsapp || '',
-          birthdayDay: day, // Populate day
-          birthdayMonth: month, // Populate month
+          birthdayDay: leadData.birthdayDay || '', // Populate day directly
+          birthdayMonth: leadData.birthdayMonth || '', // Populate month directly
         });
         setOriginalLead(leadData);
         if (leadData.activities) {
@@ -96,7 +120,7 @@ export default function EditLead() {
           email: formData.convertedEmail || formData.email,
           whatsapp: formData.convertedWhatsapp || formData.whatsapp,
           package: formData.purposeOfVisit,
-          birthday: `${formData.birthdayDay}/${formData.birthdayMonth}`, // Reconstruct birthday
+          birthday: formatBirthday(formData.birthdayDay, formData.birthdayMonth), // Use helper function
           company: formData.companyName,
           primary: true,
         };
@@ -152,11 +176,6 @@ export default function EditLead() {
       // Auto-copy phone to whatsapp
       if (name === 'phone') {
         newState.whatsapp = value;
-      }
-
-      // Handle birthday day/month changes and reconstruct birthday string
-      if (name === 'birthdayDay' || name === 'birthdayMonth') {
-        newState.birthday = `${newState.birthdayDay || ''}/${newState.birthdayMonth || ''}`;
       }
 
       // When sourceType changes, reset sourceDetail if not applicable
@@ -356,7 +375,7 @@ export default function EditLead() {
                           displayEmpty
                         >
                           <MenuItem value="" disabled>Select Month</MenuItem>
-                          {monthNames.map((monthName, index) => (
+                          {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((monthName, index) => (
                             <MenuItem key={index + 1} value={String(index + 1)}>{monthName}</MenuItem>
                           ))}
                         </Select>

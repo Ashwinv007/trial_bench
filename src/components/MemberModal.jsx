@@ -23,6 +23,34 @@ import {
 } from '@mui/icons-material';
 import styles from './AddLead.module.css'; // Reusing styles
 
+// Helper function to format birthday
+const formatBirthday = (day, month) => {
+  if (!day || !month) return '';
+
+  const monthNamesFull = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const dayNum = parseInt(day, 10);
+  const monthNum = parseInt(month, 10);
+
+  if (isNaN(dayNum) || isNaN(monthNum) || dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) {
+    return '';
+  }
+
+  let suffix = 'th';
+  if (dayNum === 1 || dayNum === 21 || dayNum === 31) {
+    suffix = 'st';
+  } else if (dayNum === 2 || dayNum === 22) {
+    suffix = 'nd';
+  } else if (dayNum === 3 || dayNum === 23) {
+    suffix = 'rd';
+  }
+
+  return `${dayNum}${suffix} ${monthNamesFull[monthNum - 1]}`;
+};
+
 export default function MemberModal({ open, onClose, onSave, editMember = null, primaryMemberId = null }) {
   const [formData, setFormData] = useState({
     name: '',
@@ -41,13 +69,12 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
 
   useEffect(() => {
     if (editMember) {
-      const [day, month] = editMember.birthday ? editMember.birthday.split('/') : ['', ''];
       setFormData({
         name: editMember.name || '',
         package: editMember.package || '',
         company: editMember.company !== 'NA' ? editMember.company : '',
-        birthdayDay: day, // Populate day
-        birthdayMonth: month, // Populate month
+        birthdayDay: editMember.birthdayDay || '', // Populate day directly
+        birthdayMonth: editMember.birthdayMonth || '', // Populate month directly
         whatsapp: editMember.whatsapp || '',
         email: editMember.email || '',
       });
@@ -92,10 +119,6 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         newState[field] = value;
       }
 
-      // Update the combined birthday string if day or month changes
-      if (field === 'birthdayDay' || field === 'birthdayMonth') {
-        newState.birthday = `${newState.birthdayDay || ''}/${newState.birthdayMonth || ''}`;
-      }
       return newState;
     });
     
@@ -176,7 +199,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
       const memberData = {
         ...formData,
         company: formData.company.trim() ? formData.company.trim() : 'NA',
-        birthday: `${formData.birthdayDay}/${formData.birthdayMonth}`, // Ensure birthday is saved in DD/MM format
+        birthday: formatBirthday(formData.birthdayDay, formData.birthdayMonth), // Use helper function
         activities: activities,
         primaryMemberId: primaryMemberId,
       };
@@ -238,8 +261,8 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
                 displayEmpty
               >
                 <MenuItem value="" disabled>Select Month</MenuItem>
-                {[...Array(12).keys()].map((monthNum) => (
-                  <MenuItem key={monthNum + 1} value={String(monthNum + 1)}>{monthNum + 1}</MenuItem>
+                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((monthName, index) => (
+                  <MenuItem key={index + 1} value={String(index + 1)}>{monthName}</MenuItem>
                 ))}
               </Select>
                 {errors.birthdayMonth && <FormHelperText>{errors.birthdayMonth}</FormHelperText>}

@@ -27,6 +27,12 @@ import MemberModal from './MemberModal';
 import { KeyboardArrowDown, KeyboardArrowRight } from '@mui/icons-material';
 import { toast } from 'sonner';
 
+// Helper function to format birthday for display
+const formatBirthdayDisplay = (birthday) => {
+  if (!birthday) return '-';
+  return birthday;
+};
+
 // The Row component is removed, and its logic is integrated into the main component.
 
 export default function MembersPage() {
@@ -186,7 +192,7 @@ export default function MembersPage() {
         </TableCell>
         <TableCell>{member.package}</TableCell>
         <TableCell>{member.company}</TableCell>
-        <TableCell>{member.birthday}</TableCell>
+        <TableCell>{formatBirthdayDisplay(member.birthday)}</TableCell>
         <TableCell>{member.whatsapp}</TableCell>
         <TableCell>{member.email}</TableCell>
         <TableCell colSpan={2}>
@@ -217,7 +223,7 @@ export default function MembersPage() {
             </TableCell>
             <TableCell onClick={() => handleOpenEditModal(member)}>{member.package}</TableCell>
             <TableCell onClick={() => handleOpenEditModal(member)}>{member.company}</TableCell>
-            <TableCell onClick={() => handleOpenEditModal(member)}>{member.birthday}</TableCell>
+            <TableCell onClick={() => handleOpenEditModal(member)}>{formatBirthdayDisplay(member.birthday)}</TableCell>
             <TableCell onClick={() => handleOpenEditModal(member)}>{member.whatsapp}</TableCell>
             <TableCell onClick={() => handleOpenEditModal(member)}>{member.email}</TableCell>
             <TableCell>

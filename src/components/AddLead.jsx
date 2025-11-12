@@ -24,6 +24,34 @@ import { // Added Material-UI components
 } from '@mui/material';
 import styles from './AddLead.module.css';
 
+// Helper function to format birthday
+const formatBirthday = (day, month) => {
+  if (!day || !month) return '';
+
+  const monthNamesFull = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const dayNum = parseInt(day, 10);
+  const monthNum = parseInt(month, 10);
+
+  if (isNaN(dayNum) || isNaN(monthNum) || dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) {
+    return '';
+  }
+
+  let suffix = 'th';
+  if (dayNum === 1 || dayNum === 21 || dayNum === 31) {
+    suffix = 'st';
+  } else if (dayNum === 2 || dayNum === 22) {
+    suffix = 'nd';
+  } else if (dayNum === 3 || dayNum === 23) {
+    suffix = 'rd';
+  }
+
+  return `${dayNum}${suffix} ${monthNamesFull[monthNum - 1]}`;
+};
+
 export default function AddLead() {
   const [formData, setFormData] = useState({
     name: '',
@@ -65,10 +93,7 @@ export default function AddLead() {
 
   const [errors, setErrors] = useState({});
 
-  const monthNames = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-  ];
+
 
   const { db } = useContext(FirebaseContext);
   const navigate = useNavigate();
@@ -88,7 +113,7 @@ export default function AddLead() {
           email: formData.convertedEmail || formData.email,
           whatsapp: formData.convertedWhatsapp || formData.whatsapp,
           package: formData.purposeOfVisit,
-          birthday: `${formData.birthdayDay}/${formData.birthdayMonth}`, // Reconstruct birthday
+          birthday: formatBirthday(formData.birthdayDay, formData.birthdayMonth), // Use helper function
           company: formData.companyName,
           primary: true, // Set primary to true for new members
         };
@@ -143,11 +168,6 @@ export default function AddLead() {
       // Auto-copy phone to whatsapp
       if (name === 'phone') {
         newState.whatsapp = value;
-      }
-
-      // Handle birthday day/month changes and reconstruct birthday string
-      if (name === 'birthdayDay' || name === 'birthdayMonth') {
-        newState.birthday = `${newState.birthdayDay || ''}/${newState.birthdayMonth || ''}`;
       }
 
       // When sourceType changes, reset sourceDetail if not applicable
@@ -344,7 +364,7 @@ export default function AddLead() {
                           displayEmpty
                         >
                           <MenuItem value="" disabled>Select Month</MenuItem>
-                          {monthNames.map((monthName, index) => (
+                          {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((monthName, index) => (
                             <MenuItem key={index + 1} value={String(index + 1)}>{monthName}</MenuItem>
                           ))}
                         </Select>

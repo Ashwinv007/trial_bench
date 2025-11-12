@@ -22,6 +22,12 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import UploadFile from '@mui/icons-material/UploadFile';
 import { toast } from 'sonner';
 
+// Helper function to format birthday for display
+const formatBirthdayDisplay = (birthday) => {
+  if (!birthday) return '-';
+  return birthday;
+};
+
 export default function PastMembersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [packageFilter, setPackageFilter] = useState('All Packages');
@@ -89,7 +95,7 @@ export default function PastMembersPage() {
         </TableCell>
         <TableCell>{member.package}</TableCell>
         <TableCell>{member.company}</TableCell>
-        <TableCell>{member.birthday}</TableCell>
+        <TableCell>{formatBirthdayDisplay(member.birthday)}</TableCell>
         <TableCell>{member.whatsapp}</TableCell>
         <TableCell>{member.email}</TableCell>
         <TableCell>{member.removedAt?.toDate().toLocaleDateString()}</TableCell>
