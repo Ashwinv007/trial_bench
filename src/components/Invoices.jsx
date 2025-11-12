@@ -1,6 +1,6 @@
-import { useState, useEffect, useContext, useMemo } from 'react';
+import { useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, Autocomplete, Select, MenuItem } from '@mui/material';
-import { Close, AddCircleOutline } from '@mui/icons-material';
+import { Close, AddCircleOutline, Description } from '@mui/icons-material';
 import styles from './Invoices.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
 import { collection, getDocs, addDoc, doc, updateDoc } from 'firebase/firestore';
@@ -460,6 +460,70 @@ export default function Invoices() {
     return invoice.paymentStatus === filterStatus;
   });
 
+  const handleGenerateInvoiceForMember = useCallback((memberId, e) => {
+    e.stopPropagation(); // Prevent row click event from firing
+    if (!hasPermission('add_invoices')) return;
+
+    const member = members.find(m => m.id === memberId);
+    if (member) {
+      setEditingInvoice(null); // Ensure it's treated as a new invoice
+      setInvoiceGenerated(null);
+      
+      // Simulate the handleMemberSelect logic to pre-fill the form
+      const initialData = {
+        memberId: member.id,
+        legalName: member.legalDetails?.legalName || (member.company && member.company !== 'NA' ? member.company : member.name) || '',
+        address: member.legalDetails?.address || member.address || '',
+        invoiceNumber: '', // Keep empty for new invoice
+        date: new Date().toISOString().split('T')[0],
+        month: '',
+        year: new Date().getFullYear().toString(),
+        fromDate: '',
+        toDate: '',
+        description: '',
+        sacCode: '997212',
+        price: '',
+        quantity: 1,
+        totalPrice: '',
+        discountPercentage: 0,
+        cgstPercentage: 9,
+        sgstPercentage: 9,
+        taxAmount: '',
+        totalAmountPayable: ''
+      };
+
+      // Apply last invoice details if available
+      if (member.lastInvoiceDetails) {
+        initialData.price = member.lastInvoiceDetails.price || '';
+        initialData.sacCode = member.lastInvoiceDetails.sacCode || '997212';
+        initialData.discountPercentage = member.lastInvoiceDetails.discountPercentage || 0;
+        initialData.cgstPercentage = member.lastInvoiceDetails.cgstPercentage !== undefined ? member.lastInvoiceDetails.cgstPercentage : 9;
+        initialData.sgstPercentage = member.lastInvoiceDetails.sgstPercentage !== undefined ? member.lastInvoiceDetails.sgstPercentage : 9;
+        
+        const lastToDate = member.lastInvoiceDetails.toDate;
+        if (lastToDate) {
+          const lastToDateObj = new Date(lastToDate);
+          const newFromDateObj = new Date(Date.UTC(lastToDateObj.getUTCFullYear(), lastToDateObj.getUTCMonth(), lastToDateObj.getUTCDate() + 1));
+          
+          const newMonthIndex = newFromDateObj.getUTCMonth();
+          const newYear = newFromDateObj.getUTCFullYear();
+          
+          const newToDateObj = new Date(Date.UTC(newYear, newMonthIndex + 1, 0));
+          
+          const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+          
+          initialData.month = monthNames[newMonthIndex];
+          initialData.year = newYear.toString();
+          initialData.fromDate = newFromDateObj.toISOString().split('T')[0];
+          initialData.toDate = newToDateObj.toISOString().split('T')[0];
+        }
+      }
+      
+      setFormData(updateCalculationsAndDescription(initialData, members));
+      setIsModalOpen(true);
+    }
+  }, [members, hasPermission, setEditingInvoice, setInvoiceGenerated, setFormData, setIsModalOpen]);
+
   return (
     <div className={styles.container}>
       <div className={styles.content}>
@@ -516,6 +580,7 @@ export default function Invoices() {
                 <th>Phone</th>
                 <th>Email</th>
                 <th>Date of Payment</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -539,6 +604,18 @@ export default function Invoices() {
                   <td>{invoice.email}</td>
                   <td>
                     {invoice.paymentStatus === 'Paid' ? formatDate(invoice.dateOfPayment) : '-'}
+                  </td>
+                  <td>
+                    {hasPermission('add_invoices') && (
+                      <IconButton
+                        onClick={(e) => handleGenerateInvoiceForMember(invoice.memberId, e)}
+                        size="small"
+                        color="primary"
+                        aria-label="generate invoice"
+                      >
+                        <Description />
+                      </IconButton>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -1000,3 +1077,5 @@ export default function Invoices() {
     </div>
   );
 }
+
+
