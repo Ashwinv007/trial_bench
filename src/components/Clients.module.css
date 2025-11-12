@@ -1,0 +1,253 @@
+.container {
+  flex: 1;
+  background-color: var(--color-gray-50);
+  overflow-y: auto;
+}
+
+.content {
+  padding: var(--spacing-2xl);
+  max-width: 1400px;
+}
+
+/* Header Styles */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-xl);
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.title {
+  color: var(--color-navy);
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--color-gray-600);
+  margin: 0;
+}
+
+.exportButton {
+  background-color: var(--color-teal);
+  color: var(--color-white);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  transition: background-color 0.2s ease;
+}
+
+.exportButton:hover {
+  background-color: #236672;
+}
+
+.exportIcon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Filter Tabs */
+.filterContainer {
+  display: flex;
+  gap: 12px;
+  margin-bottom: var(--spacing-xl);
+}
+
+.filterTab {
+  background-color: var(--color-white);
+  color: var(--color-gray-600);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-sm);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  transition: all 0.2s ease;
+}
+
+.filterTab:hover {
+  background-color: var(--color-gray-50);
+  border-color: var(--color-teal);
+}
+
+.activeFilter {
+  background-color: var(--color-teal);
+  color: var(--color-white);
+  border-color: var(--color-teal);
+}
+
+.activeFilter:hover {
+  background-color: #236672;
+  border-color: #236672;
+}
+
+.filterCount {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: inherit;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  min-width: 24px;
+  text-align: center;
+}
+
+.activeFilter .filterCount {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Table Styles */
+.tableCard {
+  background-color: var(--color-white);
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead {
+  background-color: var(--color-gray-100);
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.table th {
+  padding: 16px;
+  text-align: left;
+  color: var(--color-gray-700);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.table tbody tr {
+  border-bottom: 1px solid var(--color-gray-100);
+  transition: background-color 0.2s ease;
+}
+
+.primaryRow:hover {
+  background-color: var(--color-gray-50);
+}
+
+.nestedRow {
+  background-color: #f8fafc;
+}
+
+.nestedRow:hover {
+  background-color: #f1f5f9;
+}
+
+.table td {
+  padding: 16px;
+  color: var(--color-gray-700);
+  font-size: var(--font-size-base);
+}
+
+.nameCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nestedNameCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nestedIndicator {
+  color: var(--color-gray-400);
+  font-family: monospace;
+  font-size: 14px;
+  margin-left: 8px;
+}
+
+.nameText {
+  color: var(--color-navy);
+  font-weight: var(--font-weight-medium);
+}
+
+.primaryBadge {
+  background-color: #dbeafe;
+  color: #1e40af;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.packageBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #e0f2f1;
+  color: var(--color-teal);
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.packageDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-teal);
+}
+
+.expandButton {
+  color: var(--color-gray-600);
+  padding: 4px;
+}
+
+.expandButton:hover {
+  background-color: var(--color-gray-100);
+}
+
+.addMemberButton {
+  color: var(--color-teal);
+  padding: 4px;
+}
+
+.addMemberButton:hover {
+  background-color: #e0f2f1;
+}
+
+/* Empty State */
+.emptyState {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--color-gray-500);
+  font-size: var(--font-size-base);
+}
+
+/* Modal Styles */
+.formGrid {
+  display: flex;
+  flex-direction: column;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
