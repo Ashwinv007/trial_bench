@@ -1,4 +1,5 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onDocumentDeleted } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
@@ -24,7 +25,7 @@ exports.setUserRole = onCall(async (request) => {
 
     const roleData = roleDoc.data();
     const permissions = roleData.permissions || [];
-    const claims = {};
+    const claims = { role: roleId }; // Add roleId to claims
     permissions.forEach(permission => {
       claims[permission] = true;
     });
@@ -77,5 +78,39 @@ exports.createUser = onCall(async (request) => {
       throw new HttpsError('already-exists', 'The email address is already in use by another account.');
     }
     throw new HttpsError("internal", "An internal error occurred while creating the user.");
+  }
+});
+
+exports.onRoleDeleted = onDocumentDeleted("roles/{roleId}", async (event) => {
+  const deletedRoleId = event.params.roleId;
+  console.log(`Role ${deletedRoleId} deleted. Revoking permissions from users.`);
+
+  const usersToUpdate = [];
+  let nextPageToken;
+
+  do {
+    const listUsersResult = await admin.auth().listUsers(1000, nextPageToken);
+    listUsersResult.users.forEach(user => {
+      if (user.customClaims && user.customClaims.role === deletedRoleId) {
+        usersToUpdate.push(user.uid);
+      }
+    });
+    nextPageToken = listUsersResult.pageToken;
+  } while (nextPageToken);
+
+  const promises = usersToUpdate.map(uid => {
+    console.log(`Revoking claims for user ${uid}`);
+    return admin.auth().setCustomUserClaims(uid, {});
+  });
+
+  try {
+    await Promise.all(promises);
+    console.log(`Successfully revoked claims for ${usersToUpdate.length} users.`);
+    return { success: true, message: `Revoked claims for ${usersToUpdate.length} users.` };
+  } catch (error) {
+    console.error("Error revoking user claims:", error);
+    // A trigger function should not throw an HttpsError.
+    // It should return a promise that resolves or rejects.
+    return Promise.reject(new Error("An error occurred while revoking user claims."));
   }
 });

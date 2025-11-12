@@ -44,6 +44,7 @@ export default function Settings() {
   const [selectedPermissions, setSelectedPermissions] = useState([]);
   const [newUserEmail, setNewUserEmail] = useState(''); // State for new user email
   const [newUserPassword, setNewUserPassword] = useState(''); // State for new user password
+  const [loading, setLoading] = useState(true);
 
   const functions = getFunctions();
   const listUsers = httpsCallable(functions, 'listUsers');
@@ -51,29 +52,27 @@ export default function Settings() {
   const createUser = httpsCallable(functions, 'createUser'); // Initialize createUser callable
 
   const fetchUsersAndRoles = async () => {
-    // Fetch Roles
-    const rolesCollection = collection(db, 'roles');
-    const rolesSnapshot = await getDocs(rolesCollection);
-    const rolesList = rolesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    setRoles(rolesList);
-
-    // Fetch Users
+    setLoading(true);
     try {
-      const result = await listUsers();
+      const rolesCollection = collection(db, 'roles');
+      const rolesPromise = getDocs(rolesCollection);
+      const usersPromise = listUsers();
+
+      const [rolesSnapshot, result] = await Promise.all([rolesPromise, usersPromise]);
+
+      const rolesList = rolesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setRoles(rolesList);
+
       const userList = result.data.users.map(user => {
-        // Find the role that matches the user's custom claims
-        const assignedRole = rolesList.find(role => {
-          if (!user.customClaims) return false;
-          // Check if every permission in the role is a claim for the user
-          // This is a simplified check; a more robust one would compare all claims
-          return role.permissions.every(p => user.customClaims[p]);
-        });
-        return { ...user, roleId: assignedRole ? assignedRole.id : '' };
+        const roleId = user.customClaims && user.customClaims.role ? user.customClaims.role : '';
+        return { ...user, roleId: roleId };
       });
       setUsers(userList);
     } catch (error) {
-      console.error("Error fetching users:", error);
-      toast.error(error.message || "Failed to fetch users.");
+      console.error("Error fetching data:", error);
+      toast.error(error.message || "Failed to fetch data.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -224,7 +223,11 @@ export default function Settings() {
                 </tr>
               </thead>
               <tbody>
-                {roles.map(role => (
+                {loading ? (
+                  <tr>
+                    <td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>Loading...</td>
+                  </tr>
+                ) : roles.map(role => (
                   <tr key={role.id}>
                     <td>{role.name}</td>
                     <td><PermissionChips permissions={role.permissions} /></td>
@@ -255,7 +258,11 @@ export default function Settings() {
                 </tr>
               </thead>
               <tbody>
-                {users.map(user => (
+                {loading ? (
+                  <tr>
+                    <td colSpan="2" style={{ textAlign: 'center', padding: '20px' }}>Loading...</td>
+                  </tr>
+                ) : users.map(user => (
                   <tr key={user.uid}>
                     <td>{user.email}</td>
                     <td>
