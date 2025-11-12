@@ -1,19 +1,45 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2025, 11, 22);
+    function isAllowed(permission) {
+      return request.auth.token[permission] == true || request.auth.token.all == true;
+    }
+
+    match /leads/{leadId} {
+      allow read: if isAllowed('view_leads');
+      allow write: if isAllowed('add_leads') || isAllowed('edit_leads') || isAllowed('delete_leads');
+    }
+
+    match /members/{memberId} {
+      allow read: if isAllowed('view_members');
+      allow write: if isAllowed('add_members') || isAllowed('edit_members') || isAllowed('delete_members');
+    }
+
+    match /past_members/{memberId} {
+      allow read: if isAllowed('view_members');
+      allow create: if isAllowed('delete_members');
+      allow update: if false;
+      allow delete: if isAllowed('manage_settings');
+    }
+
+    match /agreements/{agreementId} {
+      allow read: if isAllowed('view_agreements');
+      allow write: if isAllowed('add_agreements') || isAllowed('edit_agreements') || isAllowed('delete_agreements');
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if isAllowed('view_invoices');
+      allow write: if isAllowed('add_invoices') || isAllowed('edit_invoices') || isAllowed('delete_invoices');
+    }
+
+    match /expenses/{expenseId} {
+      allow read: if isAllowed('view_expenses');
+      allow write: if isAllowed('add_expenses') || isAllowed('edit_expenses') || isAllowed('delete_expenses');
+    }
+
+    match /roles/{roleId} {
+      allow read, write: if isAllowed('manage_settings');
     }
   }
 }

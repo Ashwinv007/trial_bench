@@ -12,6 +12,7 @@ import AgreementsPage from './pages/AgreementsPage';
 import InvoicesPage from './pages/InvoicesPage';
 import ExpensesPage from './pages/ExpensesPage';
 import SettingsPage from './pages/SettingsPage';
+import PastMembersPage from './pages/PastMembersPage';
 import { Toaster } from 'sonner';
 import ProtectedRoute from './auth/ProtectedRoute'; // New import
 
@@ -32,6 +33,7 @@ function App() {
         <Route path="/add-lead" element={<ProtectedRoute permission="add_leads"><AddLeadPage /></ProtectedRoute>} />
         <Route path="/lead/:id" element={<ProtectedRoute permission="edit_leads"><EditLeadPage /></ProtectedRoute>} />
         <Route path="/members" element={<ProtectedRoute permission="view_members"><MembersPage /></ProtectedRoute>} />
+        <Route path="/past-members" element={<ProtectedRoute permission="view_members"><PastMembersPage /></ProtectedRoute>} />
         <Route path="/agreements" element={<ProtectedRoute permission="view_agreements"><AgreementsPage /></ProtectedRoute>} />
         <Route path="/invoices" element={<ProtectedRoute permission="view_invoices"><InvoicesPage /></ProtectedRoute>} />
         <Route path="/expenses" element={<ProtectedRoute permission="view_expenses"><ExpensesPage /></ProtectedRoute>} />

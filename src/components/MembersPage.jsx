@@ -105,23 +105,34 @@ export default function MembersPage() {
     }
   };
 
-  const handleDelete = async (memberId) => {
-    if (window.confirm('Are you sure you want to delete this member?')) {
+  const handleRemove = async (memberId) => {
+    if (window.confirm('Are you sure you want to remove this member? They will be moved to Past Members.')) {
       try {
-        const allDocs = await getDocs(collection(db, "members"));
-        for (const d of allDocs.docs) {
-          const data = d.data();
-          if (data.subMembers && data.subMembers.includes(memberId)) {
-            const updatedSubMembers = data.subMembers.filter(id => id !== memberId);
-            await updateDoc(d.ref, { subMembers: updatedSubMembers });
+        const memberDocRef = doc(db, "members", memberId);
+        const memberDoc = await getDoc(memberDocRef);
+
+        if (memberDoc.exists()) {
+          const memberData = memberDoc.data();
+          await addDoc(collection(db, "past_members"), { ...memberData, removedAt: new Date() });
+
+          const allDocs = await getDocs(collection(db, "members"));
+          for (const d of allDocs.docs) {
+            const data = d.data();
+            if (data.subMembers && data.subMembers.includes(memberId)) {
+              const updatedSubMembers = data.subMembers.filter(id => id !== memberId);
+              await updateDoc(d.ref, { subMembers: updatedSubMembers });
+            }
           }
+          
+          await deleteDoc(doc(db, "members", memberId));
+          setAllMembers(allMembers.filter(member => member.id !== memberId));
+          toast.success("Member moved to Past Members successfully!");
+        } else {
+          toast.error("Member not found.");
         }
-        await deleteDoc(doc(db, "members", memberId));
-        setAllMembers(allMembers.filter(member => member.id !== memberId));
-        toast.success("Member deleted successfully!");
       } catch (error) {
-        console.error("Error deleting member: ", error);
-        toast.error("Failed to delete member.");
+        console.error("Error removing member: ", error);
+        toast.error("Failed to remove member.");
       }
     }
   };
@@ -179,7 +190,7 @@ export default function MembersPage() {
         <TableCell>{member.whatsapp}</TableCell>
         <TableCell>{member.email}</TableCell>
         <TableCell colSpan={2}>
-          <Button size="small" onClick={(e) => { e.stopPropagation(); handleDelete(member.id); }}>Delete</Button>
+          <Button size="small" onClick={(e) => { e.stopPropagation(); handleRemove(member.id); }}>Remove</Button>
         </TableCell>
       </TableRow>
     ))
@@ -215,7 +226,7 @@ export default function MembersPage() {
               </IconButton>
             </TableCell>
             <TableCell>
-              <Button onClick={(e) => { e.stopPropagation(); handleDelete(member.id); }}>Delete</Button>
+              <Button onClick={(e) => { e.stopPropagation(); handleRemove(member.id); }}>Remove</Button>
             </TableCell>
           </TableRow>
           {isExpanded && subMembers.map((subMember) => (
@@ -233,7 +244,7 @@ export default function MembersPage() {
               <TableCell>{subMember.whatsapp}</TableCell>
               <TableCell>{subMember.email}</TableCell>
               <TableCell colSpan={2}>
-                <Button size="small" onClick={(e) => { e.stopPropagation(); handleDelete(subMember.id); }}>Delete</Button>
+                <Button size="small" onClick={(e) => { e.stopPropagation(); handleRemove(subMember.id); }}>Remove</Button>
               </TableCell>
             </TableRow>
           ))}

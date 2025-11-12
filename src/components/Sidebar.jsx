@@ -22,6 +22,7 @@ const navItems = [
     { label: 'Agreements', icon: Description, path: '/agreements', permission: 'view_agreements' },
     { label: 'Invoices', icon: MonetizationOn, path: '/invoices', permission: 'view_invoices' },
     { label: 'Members', icon: People, path: '/members', permission: 'view_members' },
+    { label: 'Past Members', icon: Assignment, path: '/past-members', permission: 'view_members' },
     { label: 'Expenses', icon: Receipt, path: '/expenses', permission: 'view_expenses' },
     { label: 'Settings', icon: Settings, path: '/settings', permission: 'manage_settings' }
 ];
