@@ -13,7 +13,7 @@ service cloud.firestore {
 
     match /members/{memberId} {
       allow read: if isAllowed('view_members');
-      allow write: if isAllowed('add_members') || isAllowed('edit_members') || isAllowed('delete_members');
+      allow write: if isAllowed('add_members') || isAllowed('edit_members') || isAllowed('delete_members') || isAllowed('edit_agreements') || isAllowed('add_invoices');
     }
 
     match /past_members/{memberId} {

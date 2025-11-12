@@ -291,17 +291,52 @@ export default function Invoices() {
   const handleMemberSelect = (event, member) => {
     setFormData(prev => {
       let updated = { ...prev };
+
       if (member) {
         updated.memberId = member.id;
-        updated.legalName = member.company && member.company !== 'NA' ? member.company : member.name;
-        updated.address = member.address || ''; // Assuming member has an address field
-        updated.sacCode = '997212';
+        // Auto-fill legal details from member.legalDetails
+        updated.legalName = member.legalDetails?.legalName || (member.company && member.company !== 'NA' ? member.company : member.name) || '';
+        updated.address = member.legalDetails?.address || member.address || ''; // Use member.address as fallback
+
+        // Auto-fill last invoice details
+        if (member.lastInvoiceDetails) {
+          updated.price = member.lastInvoiceDetails.price || '';
+          updated.sacCode = member.lastInvoiceDetails.sacCode || '997212';
+          updated.discountPercentage = member.lastInvoiceDetails.discountPercentage || 0;
+          updated.cgstPercentage = member.lastInvoiceDetails.cgstPercentage !== undefined ? member.lastInvoiceDetails.cgstPercentage : 9;
+          updated.sgstPercentage = member.lastInvoiceDetails.sgstPercentage !== undefined ? member.lastInvoiceDetails.sgstPercentage : 9;
+          updated.month = member.lastInvoiceDetails.month || '';
+          updated.fromDate = member.lastInvoiceDetails.fromDate || '';
+          updated.toDate = member.lastInvoiceDetails.toDate || '';
+        } else {
+          // Reset to default invoice details if no saved data for this member
+          updated.price = '';
+          updated.sacCode = '997212';
+          updated.discountPercentage = 0;
+          updated.cgstPercentage = 9;
+          updated.sgstPercentage = 9;
+          updated.month = '';
+          updated.fromDate = '';
+          updated.toDate = '';
+        }
       } else {
+        // Member deselected, reset relevant fields to initial defaults
         updated.memberId = null;
         updated.legalName = '';
         updated.address = '';
         updated.sacCode = '997212';
+        updated.price = '';
+        updated.quantity = 1;
+        updated.totalPrice = '';
+        updated.discountPercentage = 0;
+        updated.cgstPercentage = 9;
+        updated.sgstPercentage = 9;
+        updated.taxAmount = '';
+        updated.totalAmountPayable = '';
         updated.description = '';
+        updated.month = '';
+        updated.fromDate = '';
+        updated.toDate = '';
       }
       return updateCalculationsAndDescription(updated, members);
     });
@@ -333,6 +368,30 @@ export default function Invoices() {
         const newInvoice = { id: docRef.id, ...invoicePayload };
         setInvoices(prev => [...prev, newInvoice]);
         setInvoiceGenerated(newInvoice);
+
+        // Save last invoice details to member
+        const memberRef = doc(db, "members", formData.memberId);
+        const lastInvoiceDetails = {
+            sacCode: formData.sacCode,
+            price: formData.price,
+            discountPercentage: formData.discountPercentage,
+            cgstPercentage: formData.cgstPercentage,
+            sgstPercentage: formData.sgstPercentage,
+            month: formData.month,
+            fromDate: formData.fromDate,
+            toDate: formData.toDate,
+        };
+        await updateDoc(memberRef, { lastInvoiceDetails: lastInvoiceDetails });
+
+        // Update local members state to reflect the change
+        setMembers(prevMembers => 
+            prevMembers.map(m => 
+                m.id === formData.memberId 
+                    ? { ...m, lastInvoiceDetails: lastInvoiceDetails } 
+                    : m
+            )
+        );
+
       } catch (error) {
         console.error("Error adding document: ", error);
       }

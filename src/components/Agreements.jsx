@@ -133,6 +133,21 @@ export default function Agreements() {
       )
     );
 
+    // New logic: Update member's legal details
+    if (selectedAgreement.memberId) {
+        const memberRef = doc(db, 'members', selectedAgreement.memberId);
+        const legalDetailsToSave = {
+            legalName: formData.memberLegalName,
+            address: formData.memberAddress,
+            cin: formData.memberCIN,
+            gst: formData.memberGST,
+            pan: formData.memberPAN,
+            kyc: formData.memberKYC,
+            title: formData.title,
+        };
+        await updateDoc(memberRef, { legalDetails: legalDetailsToSave });
+    }
+
     setAgreementGenerated(updatedAgreement);
   };
 
