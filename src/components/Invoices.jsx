@@ -6,6 +6,10 @@ import { FirebaseContext, AuthContext } from '../store/Context';
 import { collection, getDocs, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 
 const formatDate = (dateString) => {
   if (!dateString) return '-';
@@ -305,9 +309,29 @@ export default function Invoices() {
           updated.discountPercentage = member.lastInvoiceDetails.discountPercentage || 0;
           updated.cgstPercentage = member.lastInvoiceDetails.cgstPercentage !== undefined ? member.lastInvoiceDetails.cgstPercentage : 9;
           updated.sgstPercentage = member.lastInvoiceDetails.sgstPercentage !== undefined ? member.lastInvoiceDetails.sgstPercentage : 9;
-          updated.month = member.lastInvoiceDetails.month || '';
-          updated.fromDate = member.lastInvoiceDetails.fromDate || '';
-          updated.toDate = member.lastInvoiceDetails.toDate || '';
+          
+          const lastToDate = member.lastInvoiceDetails.toDate;
+          if (lastToDate) {
+            const lastToDateObj = new Date(lastToDate);
+            const newFromDateObj = new Date(Date.UTC(lastToDateObj.getUTCFullYear(), lastToDateObj.getUTCMonth(), lastToDateObj.getUTCDate() + 1));
+            
+            const newMonthIndex = newFromDateObj.getUTCMonth();
+            const newYear = newFromDateObj.getUTCFullYear();
+            
+            const newToDateObj = new Date(Date.UTC(newYear, newMonthIndex + 1, 0));
+            
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            
+            updated.month = monthNames[newMonthIndex];
+            updated.year = newYear.toString();
+            updated.fromDate = newFromDateObj.toISOString().split('T')[0];
+            updated.toDate = newToDateObj.toISOString().split('T')[0];
+          } else {
+            updated.month = '';
+            updated.year = new Date().getFullYear().toString();
+            updated.fromDate = '';
+            updated.toDate = '';
+          }
         } else {
           // Reset to default invoice details if no saved data for this member
           updated.price = '';
@@ -316,6 +340,7 @@ export default function Invoices() {
           updated.cgstPercentage = 9;
           updated.sgstPercentage = 9;
           updated.month = '';
+          updated.year = new Date().getFullYear().toString();
           updated.fromDate = '';
           updated.toDate = '';
         }
@@ -335,6 +360,7 @@ export default function Invoices() {
         updated.totalAmountPayable = '';
         updated.description = '';
         updated.month = '';
+        updated.year = new Date().getFullYear().toString();
         updated.fromDate = '';
         updated.toDate = '';
       }
@@ -345,6 +371,11 @@ export default function Invoices() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => updateCalculationsAndDescription({ ...prev, [name]: value }, members));
+  };
+
+  const handleDateChange = (name, newValue) => {
+    const formattedDate = newValue ? dayjs(newValue).format('YYYY-MM-DD') : '';
+    setFormData((prev) => updateCalculationsAndDescription({ ...prev, [name]: formattedDate }, members));
   };
 
  const handleSubmit = async (e) => {
@@ -684,6 +715,7 @@ export default function Invoices() {
               </div>
             </div>
           ) : (
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
           <form onSubmit={handleSubmit}>
             {/* Client Details Section */}
             <div className={styles.section}>
@@ -746,17 +778,12 @@ export default function Invoices() {
                   size="small"
                   required
                 />
-                <TextField
+                <DatePicker
                   label="Date"
-                  name="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  required
-                  InputLabelProps={{ shrink: true }}
+                  value={formData.date ? dayjs(formData.date) : null}
+                  onChange={(newValue) => handleDateChange('date', newValue)}
+                  format="DD/MM/YYYY"
+                  slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small', required: true } }}
                 />
                 <Select
                   label="Month"
@@ -794,27 +821,19 @@ export default function Invoices() {
                   size="small"
                   placeholder="e.g., 2025"
                 />
-                <TextField
+                <DatePicker
                   label="From Date"
-                  name="fromDate"
-                  type="date"
-                  value={formData.fromDate}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
+                  value={formData.fromDate ? dayjs(formData.fromDate) : null}
+                  onChange={(newValue) => handleDateChange('fromDate', newValue)}
+                  format="DD/MM/YYYY"
+                  slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small', required: true } }}
                 />
-                <TextField
+                <DatePicker
                   label="To Date"
-                  name="toDate"
-                  type="date"
-                  value={formData.toDate}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
+                  value={formData.toDate ? dayjs(formData.toDate) : null}
+                  onChange={(newValue) => handleDateChange('toDate', newValue)}
+                  format="DD/MM/YYYY"
+                  slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small', required: true } }}
                 />
                 <TextField
                   label="Description"
@@ -974,6 +993,7 @@ export default function Invoices() {
               )}
             </div>
           </form>
+          </LocalizationProvider>
           )}
         </DialogContent>
       </Dialog>
