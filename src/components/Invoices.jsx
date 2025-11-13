@@ -67,6 +67,29 @@ updated.totalAmountPayable = totalPayable.toFixed(2);
   return updated;
 };
 
+const generateInvoiceNumber = (allInvoices) => {
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear().toString().slice(-2);
+  const currentMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
+
+  const prefix = `WCP${currentYear}${currentMonth}`;
+
+  const relevantInvoices = allInvoices.filter(i => i.invoiceNumber?.startsWith(prefix));
+  
+  let maxSeq = 0;
+  relevantInvoices.forEach(i => {
+    const seqStr = i.invoiceNumber.slice(prefix.length);
+    const seqNum = parseInt(seqStr, 10);
+    if (!isNaN(seqNum) && seqNum > maxSeq) {
+      maxSeq = seqNum;
+    }
+  });
+
+  const newSeq = String(maxSeq + 1).padStart(3, '0');
+
+  return `${prefix}${newSeq}`;
+};
+
 const generateInvoicePdf = async (invoiceData) => {
   const url = '/tb_invoice.pdf';
   const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
@@ -158,7 +181,7 @@ const generateInvoicePdf = async (invoiceData) => {
 
   const pdfBytes = await pdfDoc.save();
   const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-  saveAs(blob, `invoice-${invoiceNumber || 'new'}.pdf`);
+  saveAs(blob, `${invoiceNumber || 'invoice'}.pdf`);
 };
 
 export default function Invoices() {
@@ -232,11 +255,12 @@ export default function Invoices() {
   const handleOpenModal = () => {
     setEditingInvoice(null);
     setInvoiceGenerated(null);
+    const newInvoiceNumber = generateInvoiceNumber(invoices);
     const initialData = {
       memberId: null,
       legalName: '',
       address: '',
-      invoiceNumber: '',
+      invoiceNumber: newInvoiceNumber,
       date: new Date().toISOString().split('T')[0],
       month: '',
       year: new Date().getFullYear().toString(),
@@ -854,6 +878,7 @@ export default function Invoices() {
                   variant="outlined"
                   size="small"
                   required
+                  disabled
                 />
                 <DatePicker
                   label="Date"

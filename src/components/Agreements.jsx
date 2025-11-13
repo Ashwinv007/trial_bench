@@ -321,7 +321,7 @@ export default function Agreements() {
 
     const pdfBytes = await pdfDoc.save();
 
-    saveAs(new Blob([pdfBytes], { type: 'application/pdf' }), 'agreement.pdf');
+    saveAs(new Blob([pdfBytes], { type: 'application/pdf' }), `${agreementData.agreementNumber || 'agreement'}.pdf`);
   };
 
   return (
