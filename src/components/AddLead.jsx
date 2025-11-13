@@ -58,8 +58,6 @@ export default function AddLead() {
     status: '',
     purposeOfVisit: '',
     phone: '+91',
-    whatsapp: '+91',
-    email: '',
     sourceType: '',
     sourceDetail: '',
     clientType: '',
@@ -110,8 +108,8 @@ export default function AddLead() {
         // 2. Create a new member
         const memberData = {
           ...formData,
-          email: formData.convertedEmail || formData.email,
-          whatsapp: formData.convertedWhatsapp || formData.whatsapp,
+          email: formData.convertedEmail,
+          whatsapp: formData.convertedWhatsapp,
           package: formData.purposeOfVisit,
           birthday: formatBirthday(formData.birthdayDay, formData.birthdayMonth), // Use helper function
           company: formData.companyName,
@@ -165,9 +163,12 @@ export default function AddLead() {
     setFormData(prev => {
       const newState = {...prev, [name]: value};
       
-      // Auto-copy phone to whatsapp
-      if (name === 'phone') {
-        newState.whatsapp = value;
+      if (name === 'status' && value === 'Converted') {
+        newState.convertedWhatsapp = prev.phone;
+      }
+
+      if (name === 'phone' && showConvertedModal) {
+        newState.convertedWhatsapp = value;
       }
 
       // When sourceType changes, reset sourceDetail if not applicable
@@ -215,12 +216,6 @@ export default function AddLead() {
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = 'Name is required';
     if (!formData.package) newErrors.package = 'Package is required';
-    if (!formData.whatsapp.trim()) newErrors.whatsapp = 'WhatsApp number is required';
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Invalid email format';
-    }
 
     // Birthday validation: if day or month is provided, both are required and day must be valid
     if (formData.birthdayDay || formData.birthdayMonth) {
@@ -266,6 +261,91 @@ export default function AddLead() {
                   className={styles.input}
                 />
               </div>
+
+
+
+
+
+              {/* Purpose of Visit */}
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Purpose of Visit *</label>
+                <select
+                  name="purposeOfVisit"
+                  value={formData.purposeOfVisit}
+                  onChange={handleInputChange}
+                  className={styles.select}
+                >
+                  <option value="">Select purpose</option>
+                  <option value="Dedicated Desk">Dedicated Desk</option>
+                  <option value="Flexible Desk">Flexible Desk</option>
+                  <option value="Private Cabin">Private Cabin</option>
+                  <option value="Virtual Office">Virtual Office</option>
+                  <option value="Meeting Room">Meeting Room</option>
+                  <option value="Others">Others</option>
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Phone *</label>
+                <input
+                  type="text"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  placeholder="Enter phone number"
+                  className={styles.input}
+                />
+              </div>
+
+              {/* Source */}
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Source *</label>
+                <select
+                  name="sourceType"
+                  value={formData.sourceType}
+                  onChange={handleInputChange}
+                  className={styles.select}
+                >
+                  <option value="">Select source</option>
+                  <option value="Walk-in">Walk-in</option>
+                  <option value="Phone">Phone</option>
+                  <option value="Referral">Referral</option>
+                  <option value="Event">Event</option>
+                  <option value="Website">Website</option>
+                  <option value="Social Media">Social Media</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              {/* Referral Name */}
+              {formData.sourceType === 'Referral' && (
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Referral Person Name</label>
+                  <input
+                    type="text"
+                    name="sourceDetail"
+                    value={formData.sourceDetail}
+                    onChange={handleInputChange}
+                    placeholder="Enter referral person name"
+                    className={styles.input}
+                  />
+                </div>
+              )}
+
+              {/* Social Media Platform */}
+              {formData.sourceType === 'Social Media' && (
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Social Media Platform</label>
+                  <input
+                    type="text"
+                    name="sourceDetail"
+                    value={formData.sourceDetail}
+                    onChange={handleInputChange}
+                    placeholder="e.g., Instagram, LinkedIn, Facebook"
+                    className={styles.input}
+                  />
+                </div>
+              )}
 
               {/* Status */}
               <div className={styles.formGroup}>
@@ -322,7 +402,7 @@ export default function AddLead() {
                     <input
                       type="email"
                       name="convertedEmail"
-                      value={formData.convertedEmail || formData.email}
+                      value={formData.convertedEmail}
                       onChange={handleInputChange}
                       placeholder="Enter email address"
                       className={styles.input}
@@ -334,7 +414,7 @@ export default function AddLead() {
                     <input
                       type="text"
                       name="convertedWhatsapp"
-                      value={formData.convertedWhatsapp || formData.whatsapp}
+                      value={formData.convertedWhatsapp}
                       onChange={handleInputChange}
                       placeholder="Enter WhatsApp number"
                       className={styles.input}
@@ -372,115 +452,6 @@ export default function AddLead() {
                       </FormControl>
                     </Box>
                   </div>
-                </div>
-              )}
-
-              {/* Purpose of Visit */}
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Purpose of Visit *</label>
-                <select
-                  name="purposeOfVisit"
-                  value={formData.purposeOfVisit}
-                  onChange={handleInputChange}
-                  className={styles.select}
-                >
-                  <option value="">Select purpose</option>
-                  <option value="Dedicated Desk">Dedicated Desk</option>
-                  <option value="Flexible Desk">Flexible Desk</option>
-                  <option value="Private Cabin">Private Cabin</option>
-                  <option value="Virtual Office">Virtual Office</option>
-                  <option value="Meeting Room">Meeting Room</option>
-                  <option value="Others">Others</option>
-                </select>
-              </div>
-
-              {/* Phone and WhatsApp */}
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Phone *</label>
-                  <input
-                    type="text"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    placeholder="Enter phone number"
-                    className={styles.input}
-                  />
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>WhatsApp</label>
-                  <input
-                    type="text"
-                    name="whatsapp"
-                    value={formData.whatsapp}
-                    onChange={handleInputChange}
-                    placeholder="Enter WhatsApp number"
-                    className={styles.input}
-                  />
-                </div>
-              </div>
-
-              {/* Email */}
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="Enter email address"
-                  className={styles.input}
-                />
-              </div>
-
-              {/* Source */}
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Source *</label>
-                <select
-                  name="sourceType"
-                  value={formData.sourceType}
-                  onChange={handleInputChange}
-                  className={styles.select}
-                >
-                  <option value="">Select source</option>
-                  <option value="Walk-in">Walk-in</option>
-                  <option value="Phone">Phone</option>
-                  <option value="Referral">Referral</option>
-                  <option value="Event">Event</option>
-                  <option value="Website">Website</option>
-                  <option value="Social Media">Social Media</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              {/* Referral Name */}
-              {formData.sourceType === 'Referral' && (
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Referral Person Name</label>
-                  <input
-                    type="text"
-                    name="sourceDetail"
-                    value={formData.sourceDetail}
-                    onChange={handleInputChange}
-                    placeholder="Enter referral person name"
-                    className={styles.input}
-                  />
-                </div>
-              )}
-
-              {/* Social Media Platform */}
-              {formData.sourceType === 'Social Media' && (
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Social Media Platform</label>
-                  <input
-                    type="text"
-                    name="sourceDetail"
-                    value={formData.sourceDetail}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Instagram, LinkedIn, Facebook"
-                    className={styles.input}
-                  />
                 </div>
               )}
 
