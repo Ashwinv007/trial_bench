@@ -323,11 +323,11 @@ export default function Settings() {
 
   const renderAddUserActions = () => {
     if (!otpSent) {
-      return <Button onClick={handleSendOtp} variant="contained" disabled={otpSending}>{otpSending ? <CircularProgress size={24} /> : "Send OTP"}</Button>;
+      return <Button onClick={handleSendOtp} className={styles.saveButton} variant="contained" disabled={otpSending}>{otpSending ? <CircularProgress size={24} /> : "Send OTP"}</Button>;
     } else if (!otpVerified) {
-      return <Button onClick={handleVerifyOtp} variant="contained" disabled={verifyingOtp}>{verifyingOtp ? <CircularProgress size={24} /> : "Verify OTP"}</Button>;
+      return <Button onClick={handleVerifyOtp} className={styles.saveButton} variant="contained" disabled={verifyingOtp}>{verifyingOtp ? <CircularProgress size={24} /> : "Verify OTP"}</Button>;
     } else {
-      return <Button onClick={handleCreateUser} variant="contained" disabled={!newUsername || !newUserPassword}>Add User</Button>;
+      return <Button onClick={handleCreateUser} className={styles.saveButton} variant="contained" disabled={!newUsername || !newUserPassword}>Add User</Button>;
     }
   };
 
@@ -339,77 +339,80 @@ export default function Settings() {
             <p className={styles.subtitle}>Manage user roles, permissions, and assignments.</p>
         </div>
         <div className={styles.headerButtons}>
-            <Button variant="contained" startIcon={<AddCircleOutline />} onClick={() => handleOpenModal()} sx={{ mr: 1 }}>Add Role</Button>
-            <Button variant="contained" startIcon={<AddCircleOutline />} onClick={handleOpenAddUserModal}>Add User</Button>
+            <Button className={styles.addButton} variant="contained" startIcon={<AddCircleOutline />} onClick={() => handleOpenModal()} sx={{ mr: 1 }}>Add Role</Button>
+            <Button className={styles.addButton} variant="contained" startIcon={<AddCircleOutline />} onClick={handleOpenAddUserModal}>Add User</Button>
         </div>
       </div>
-      <div className={styles.content}>
-        {/* Role Management Section */}
-        <div className={styles.rolesSection}>
-          <h2>Role Management</h2>
-          <div className={styles.tableContainer}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Role Name</th>
-                  <th>Permissions</th>
-                  <th>Actions</th>
+      
+      <div className={styles.rolesSection}>
+        <h2>Role Management</h2>
+        <div className={styles.tableContainer}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Role Name</th>
+                <th>Permissions</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>Loading...</td></tr>
+              ) : roles.map(role => (
+                <tr key={role.id}>
+                  <td>{role.name}</td>
+                  <td><PermissionChips permissions={role.permissions} /></td>
+                  <td>
+                    <div className={styles.actions}>
+                      <IconButton className={styles.editButton} onClick={() => handleOpenModal(role)}><Edit /></IconButton>
+                      <IconButton className={styles.deleteButton} onClick={() => handleDeleteRole(role.id)}><Delete /></IconButton>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>Loading...</td></tr>
-                ) : roles.map(role => (
-                  <tr key={role.id}>
-                    <td>{role.name}</td>
-                    <td><PermissionChips permissions={role.permissions} /></td>
-                    <td>
-                      <IconButton onClick={() => handleOpenModal(role)}><Edit /></IconButton>
-                      <IconButton onClick={() => handleDeleteRole(role.id)}><Delete /></IconButton>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
+      </div>
 
-        {/* User Management Section */}
-        <div className={styles.rolesSection} style={{ marginTop: '40px' }}>
-          <h2>User Management</h2>
-          <div className={styles.tableContainer}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Username</th>
-                  <th>User Email</th>
-                  <th>Assigned Role</th>
-                  <th>Actions</th>
+      <div style={{ height: '24px' }} />
+
+      <div className={styles.rolesSection}>
+        <h2>User Management</h2>
+        <div className={styles.tableContainer}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>User Email</th>
+                <th>Assigned Role</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px' }}>Loading...</td></tr>
+              ) : users.map(user => (
+                <tr key={user.uid}>
+                  <td>{user.displayName || '-'}</td>
+                  <td>{user.email}</td>
+                  <td>
+                    <Select value={user.roleId || ''} onChange={(e) => handleAssignRole(user.email, e.target.value)} displayEmpty size="small" sx={{ minWidth: 150, backgroundColor: '#f9f9f9' }}>
+                      <MenuItem value=""><em>None</em></MenuItem>
+                      {roles.map((role) => <MenuItem key={role.id} value={role.id}>{role.name}</MenuItem>)}
+                    </Select>
+                  </td>
+                  <td>
+                    <div className={styles.actions}>
+                      <IconButton className={styles.editButton} onClick={() => handleOpenEditUserModal(user)}><Edit /></IconButton>
+                      <IconButton className={styles.editButton} onClick={() => handleOpenResetPasswordModal(user)}><LockReset /></IconButton>
+                      <IconButton className={styles.deleteButton} onClick={() => handleDeleteUser(user.uid)}><Delete /></IconButton>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px' }}>Loading...</td></tr>
-                ) : users.map(user => (
-                  <tr key={user.uid}>
-                    <td>{user.displayName || '-'}</td>
-                    <td>{user.email}</td>
-                    <td>
-                      <Select value={user.roleId || ''} onChange={(e) => handleAssignRole(user.email, e.target.value)} displayEmpty size="small" sx={{ minWidth: 150 }}>
-                        <MenuItem value=""><em>None</em></MenuItem>
-                        {roles.map((role) => <MenuItem key={role.id} value={role.id}>{role.name}</MenuItem>)}
-                      </Select>
-                    </td>
-                    <td>
-                      <IconButton onClick={() => handleOpenEditUserModal(user)}><Edit /></IconButton>
-                      <IconButton onClick={() => handleOpenResetPasswordModal(user)}><LockReset /></IconButton>
-                      <IconButton onClick={() => handleDeleteUser(user.uid)}><Delete /></IconButton>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -430,7 +433,7 @@ export default function Settings() {
         <DialogActions>
             <div className={styles.modalActions}>
                 <Button onClick={handleCloseModal}>Cancel</Button>
-                <Button onClick={handleSaveRole} variant="contained">Save</Button>
+                <Button onClick={handleSaveRole} className={styles.saveButton} variant="contained">Save</Button>
             </div>
         </DialogActions>
       </Dialog>
@@ -457,7 +460,7 @@ export default function Settings() {
           <DialogActions>
               <div className={styles.modalActions}>
                   <Button onClick={handleCloseEditUserModal}>Cancel</Button>
-                  <Button onClick={handleUpdateUser} variant="contained">Save</Button>
+                  <Button onClick={handleUpdateUser} className={styles.saveButton} variant="contained">Save</Button>
               </div>
           </DialogActions>
         </Dialog>
@@ -468,7 +471,7 @@ export default function Settings() {
         <Dialog open={isResetPasswordModalOpen} onClose={handleCloseResetPasswordModal} maxWidth="sm" fullWidth>
           <DialogTitle>Reset Password for {resettingUser.email}<IconButton onClick={handleCloseResetPasswordModal} className={styles.closeButton}><Close /></IconButton></DialogTitle>
           <DialogContent>
-            <DialogContentText>
+            <DialogContentText sx={{mb: 2}}>
               Enter a new temporary password for the user.
             </DialogContentText>
             <TextField autoFocus margin="dense" label="New Password" type="password" fullWidth variant="outlined" value={newPasswordForReset} onChange={(e) => setNewPasswordForReset(e.target.value)} />
@@ -476,7 +479,7 @@ export default function Settings() {
           <DialogActions>
               <div className={styles.modalActions}>
                   <Button onClick={handleCloseResetPasswordModal}>Cancel</Button>
-                  <Button onClick={handleAdminSetPassword} variant="contained" disabled={!newPasswordForReset}>Set Password</Button>
+                  <Button onClick={handleAdminSetPassword} className={styles.saveButton} variant="contained" disabled={!newPasswordForReset}>Set Password</Button>
               </div>
           </DialogActions>
         </Dialog>

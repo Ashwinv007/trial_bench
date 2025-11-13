@@ -1,138 +1,149 @@
 .container {
-    flex: 1;
-    padding: 32px;
-    background-color: #f5f5f5;
-    overflow-y: auto;
-  }
-  
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 24px;
-  }
-  
-  .header h1 {
-    margin: 0 0 8px 0;
-    color: #1a4d5c;
-  }
-  
-  .subtitle {
-    margin: 0;
-    color: #666;
-  }
-  
-  .content {
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    padding: 2rem;
-  }
-  
-  .sectionHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-  }
-  
-  .sectionHeader h2 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: #1a4d5c;
-  }
-  
-  .tableContainer {
-    overflow-x: auto;
-  }
-  
-  .table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  
-  .table thead {
-    background-color: #1a4d5c;
-    color: white;
-  }
-  
-  .table th {
-    padding: 16px;
-    text-align: left;
-  }
-  
-  .table td {
-    padding: 16px;
-    border-bottom: 1px solid #e0e0e0;
-  }
-  
-  .table tbody tr:hover {
-    background-color: #f9f9f9;
-  }
-  
-  .table tbody tr:last-child td {
-    border-bottom: none;
-  }
-  
-  .permissionsGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 0.5rem;
-    margin-top: 1rem;
-  }
-  
-  .closeButton {
-    position: absolute !important;
-    right: 8px;
-    top: 8px;
-    color: #666 !important;
-  }
-  
-  .modalActions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 8px;
-  }
-  
-  .saveButton {
-    background-color: #2b7a8e !important;
-    color: white !important;
-    text-transform: none !important;
-  }
-  
-  .saveButton:hover {
-    background-color: #1a4d5c !important;
-  }
-  
-  .editButton {
-    color: #2b7a8e !important;
-  }
-  
-  .editButton:hover {
-    background-color: #e3f2f7 !important;
-  }
-  
-  .deleteButton {
-    color: #d32f2f !important;
-  }
-  
-  .deleteButton:hover {
-    background-color: #ffebee !important;
-  }
-  
-  .addButton {
-    background-color: #2b7a8e !important;
-    color: white !important;
-    text-transform: none !important;
-  }
-  
-  .addButton:hover {
-    background-color: #1a4d5c !important;
-  }
-  
-  .permissionChipsContainer {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
+  flex: 1;
+  padding: 32px;
+  background-color: #f5f5f5;
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  margin: 0 0 8px 0;
+  color: #1a4d5c;
+}
+
+.subtitle {
+  margin: 0;
+  color: #666;
+}
+
+.headerButtons {
+  display: flex;
+  gap: 12px;
+}
+
+.addButton {
+  background-color: #2b7a8e !important;
+  color: white !important;
+  text-transform: none !important;
+}
+
+.addButton:hover {
+  background-color: #1a4d5c !important;
+}
+
+.rolesSection {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+}
+
+.rolesSection h2 {
+  margin: 0 0 16px 0;
+  color: #1a4d5c;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.tableContainer {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead {
+  background-color: #1a4d5c;
+  color: white;
+}
+
+.table th {
+  padding: 16px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.table td {
+  padding: 16px;
+  border-bottom: 1px solid #e0e0e0;
+  vertical-align: middle;
+}
+
+.table tbody tr:hover {
+  background-color: #f9f9f9;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.editButton {
+  color: #2b7a8e !important;
+}
+
+.editButton:hover {
+  background-color: #e3f2f7 !important;
+}
+
+.deleteButton {
+  color: #d32f2f !important;
+}
+
+.deleteButton:hover {
+  background-color: #ffebee !important;
+}
+
+.permissionChipsContainer {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  max-width: 400px;
+}
+
+.permissionsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem;
+  margin-top: 1rem;
+  background-color: #fdfdfd;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.closeButton {
+  position: absolute !important;
+  right: 16px;
+  top: 16px;
+  color: #666 !important;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.saveButton {
+  background-color: #2b7a8e !important;
+  color: white !important;
+  text-transform: none !important;
+}
+
+.saveButton:hover {
+  background-color: #1a4d5c !important;
+}
