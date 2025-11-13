@@ -4,6 +4,7 @@ import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, I
 import { AddCircleOutline, Edit, Delete, Close } from '@mui/icons-material';
 import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 
@@ -84,7 +85,22 @@ export default function Settings() {
   };
 
   useEffect(() => {
-    fetchUsersAndRoles();
+    const auth = getAuth();
+    const forceTokenRefresh = async () => {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        try {
+          await currentUser.getIdToken(true);
+          console.log("Token refreshed successfully.");
+        } catch (error) {
+          console.error("Error refreshing token:", error);
+        }
+      }
+    };
+
+    forceTokenRefresh().then(() => {
+      fetchUsersAndRoles();
+    });
   }, []);
 
   const handleOpenModal = (role = null) => {
@@ -151,6 +167,12 @@ export default function Settings() {
     try {
       const result = await setUserRole({ email: userEmail, roleId: roleId });
       toast.success(result.data.message);
+      
+      const auth = getAuth();
+      if (auth.currentUser && auth.currentUser.email === userEmail) {
+        await auth.currentUser.getIdToken(true);
+      }
+
       // Optimistically update the UI without a full refetch
       setUsers(prevUsers =>
         prevUsers.map(user =>

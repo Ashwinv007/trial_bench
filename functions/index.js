@@ -17,7 +17,11 @@ const transporter = nodemailer.createTransport({
 });
 
 exports.sendOtp = onCall(async (request) => {
+  console.log("--- sendOtp ---");
+  console.log("Auth token received:", JSON.stringify(request.auth.token, null, 2));
+
   if (!request.auth || request.auth.token.all !== true) {
+    console.error("Permission check failed in sendOtp. 'all' claim is not true. Token:", JSON.stringify(request.auth.token, null, 2));
     throw new HttpsError("permission-denied", "Only admins can send OTPs.");
   }
 
@@ -50,7 +54,11 @@ exports.sendOtp = onCall(async (request) => {
 });
 
 exports.verifyOtp = onCall(async (request) => {
+  console.log("--- verifyOtp ---");
+  console.log("Auth token received:", JSON.stringify(request.auth.token, null, 2));
+
   if (!request.auth || request.auth.token.all !== true) {
+    console.error("Permission check failed in verifyOtp. 'all' claim is not true. Token:", JSON.stringify(request.auth.token, null, 2));
     throw new HttpsError("permission-denied", "Only admins can verify OTPs.");
   }
 
@@ -87,7 +95,11 @@ exports.verifyOtp = onCall(async (request) => {
 });
 
 exports.setUserRole = onCall(async (request) => {
+  console.log("--- setUserRole ---");
+  console.log("Auth token received:", JSON.stringify(request.auth.token, null, 2));
+
   if (!request.auth || request.auth.token.all !== true) {
+    console.error("Permission check failed in setUserRole. 'all' claim is not true. Token:", JSON.stringify(request.auth.token, null, 2));
     throw new HttpsError("permission-denied", "This function can only be called by an admin.");
   }
 
@@ -112,7 +124,9 @@ exports.setUserRole = onCall(async (request) => {
       claims[permission] = true;
     });
 
+    console.log(`Setting claims for ${user.uid}:`, JSON.stringify(claims, null, 2));
     await admin.auth().setCustomUserClaims(user.uid, claims);
+
     return { message: `Success! User ${email} has been assigned the '${roleData.name}' role.` };
   } catch (error) {
     console.error("Error in setUserRole function:", error);
@@ -122,7 +136,11 @@ exports.setUserRole = onCall(async (request) => {
 });
 
 exports.listUsers = onCall(async (request) => {
+  console.log("--- listUsers ---");
+  console.log("Auth token received:", JSON.stringify(request.auth.token, null, 2));
+
   if (!request.auth || request.auth.token.all !== true) {
+    console.error("Permission check failed in listUsers. 'all' claim is not true. Token:", JSON.stringify(request.auth.token, null, 2));
     throw new HttpsError("permission-denied", "Only admins can list users.");
   }
 
@@ -141,7 +159,11 @@ exports.listUsers = onCall(async (request) => {
 });
 
 exports.createUser = onCall(async (request) => {
-  if (!request.auth || !request.auth.token.all !== true) {
+  console.log("--- createUser ---");
+  console.log("Auth token received:", JSON.stringify(request.auth.token, null, 2));
+
+  if (!request.auth || request.auth.token.all !== true) {
+    console.error("Permission check failed in createUser. 'all' claim is not true. Token:", JSON.stringify(request.auth.token, null, 2));
     throw new HttpsError("permission-denied", "Only admins can create new users.");
   }
 
