@@ -1,8 +1,90 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentDeleted } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
+const nodemailer = require("nodemailer");
 
 admin.initializeApp();
+
+// TODO: Configure the SMTP transporter with your email service credentials
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // true for 465, false for other ports
+  auth: {
+    user: "ashwinsm6@gmail.com", // your SMTP username
+    pass: "dhay utze lnyv tial", // your SMTP password
+  },
+});
+
+exports.sendOtp = onCall(async (request) => {
+  if (!request.auth || request.auth.token.all !== true) {
+    throw new HttpsError("permission-denied", "Only admins can send OTPs.");
+  }
+
+  const { email } = request.data;
+  if (!email) {
+    throw new HttpsError("invalid-argument", "The function must be called with an 'email' argument.");
+  }
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  try {
+    await admin.firestore().collection("otps").doc(email).set({ otp, expiresAt });
+
+    const mailOptions = {
+      from: '"Your App Name" <your-email@example.com>',
+      to: email,
+      subject: "Your OTP for User Creation",
+      text: `Your One-Time Password is: ${otp}`,
+      html: `<b>Your One-Time Password is: ${otp}</b>`,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    return { message: "OTP sent successfully." };
+  } catch (error) {
+    console.error("Error sending OTP:", error);
+    throw new HttpsError("internal", "An unexpected error occurred while sending the OTP.");
+  }
+});
+
+exports.verifyOtp = onCall(async (request) => {
+  if (!request.auth || request.auth.token.all !== true) {
+    throw new HttpsError("permission-denied", "Only admins can verify OTPs.");
+  }
+
+  const { email, otp } = request.data;
+  if (!email || !otp) {
+    throw new HttpsError("invalid-argument", "The function must be called with 'email' and 'otp'.");
+  }
+
+  try {
+    const otpDocRef = admin.firestore().collection("otps").doc(email);
+    const otpDoc = await otpDocRef.get();
+
+    if (!otpDoc.exists) {
+      throw new HttpsError("not-found", "OTP not found. Please request a new one.");
+    }
+
+    const { otp: storedOtp, expiresAt } = otpDoc.data();
+
+    if (expiresAt.toMillis() < Date.now()) {
+      await otpDocRef.delete();
+      throw new HttpsError("deadline-exceeded", "OTP has expired. Please request a new one.");
+    }
+
+    if (storedOtp !== otp) {
+      throw new HttpsError("invalid-argument", "Invalid OTP.");
+    }
+
+    return { message: "OTP verified successfully." };
+  } catch (error) {
+    console.error("Error verifying OTP:", error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError("internal", "An unexpected error occurred while verifying the OTP.");
+  }
+});
 
 exports.setUserRole = onCall(async (request) => {
   if (!request.auth || request.auth.token.all !== true) {
@@ -59,21 +141,42 @@ exports.listUsers = onCall(async (request) => {
 });
 
 exports.createUser = onCall(async (request) => {
-  if (!request.auth || request.auth.token.all !== true) {
+  if (!request.auth || !request.auth.token.all !== true) {
     throw new HttpsError("permission-denied", "Only admins can create new users.");
   }
 
-  const { email, password } = request.data;
+  const { email, password, otp } = request.data;
 
-  if (!email || !password) {
-    throw new HttpsError("invalid-argument", "The function must be called with 'email' and 'password'.");
+  if (!email || !password || !otp) {
+    throw new HttpsError("invalid-argument", "The function must be called with 'email', 'password', and 'otp'.");
   }
 
   try {
+    const otpDocRef = admin.firestore().collection("otps").doc(email);
+    const otpDoc = await otpDocRef.get();
+
+    if (!otpDoc.exists) {
+      throw new HttpsError("not-found", "OTP not found or already used. Please request a new one.");
+    }
+
+    const { otp: storedOtp, expiresAt } = otpDoc.data();
+
+    if (expiresAt.toMillis() < Date.now()) {
+      await otpDocRef.delete();
+      throw new HttpsError("deadline-exceeded", "OTP has expired. Please request a new one.");
+    }
+
+    if (storedOtp !== otp) {
+      throw new HttpsError("invalid-argument", "Invalid OTP.");
+    }
+
     const userRecord = await admin.auth().createUser({ email, password });
+    await otpDocRef.delete(); // Delete OTP after successful user creation
+
     return { message: `Success! New user created with UID: ${userRecord.uid}` };
   } catch (error) {
     console.error("Error creating new user:", error);
+    if (error instanceof HttpsError) throw error;
     if (error.code === 'auth/email-already-exists') {
       throw new HttpsError('already-exists', 'The email address is already in use by another account.');
     }

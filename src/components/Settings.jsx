@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './Settings.module.css';
-import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Checkbox, FormControlLabel, Chip, Tooltip, Select, MenuItem, DialogContentText } from '@mui/material';
+import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Checkbox, FormControlLabel, Chip, Tooltip, Select, MenuItem, DialogContentText, CircularProgress } from '@mui/material';
 import { AddCircleOutline, Edit, Delete, Close } from '@mui/icons-material';
 import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
@@ -44,12 +44,19 @@ export default function Settings() {
   const [selectedPermissions, setSelectedPermissions] = useState([]);
   const [newUserEmail, setNewUserEmail] = useState(''); // State for new user email
   const [newUserPassword, setNewUserPassword] = useState(''); // State for new user password
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const functions = getFunctions();
   const listUsers = httpsCallable(functions, 'listUsers');
   const setUserRole = httpsCallable(functions, 'setUserRole');
-  const createUser = httpsCallable(functions, 'createUser'); // Initialize createUser callable
+  const createUser = httpsCallable(functions, 'createUser');
+  const sendOtp = httpsCallable(functions, 'sendOtp');
+  const verifyOtp = httpsCallable(functions, 'verifyOtp');
 
   const fetchUsersAndRoles = async () => {
     setLoading(true);
@@ -159,26 +166,159 @@ export default function Settings() {
   const handleOpenAddUserModal = () => {
     setNewUserEmail('');
     setNewUserPassword('');
+    setOtp('');
+    setOtpSent(false);
+    setOtpSending(false);
+    setOtpVerified(false);
+    setVerifyingOtp(false);
     setIsAddUserModalOpen(true);
   };
 
   const handleCloseAddUserModal = () => {
     setIsAddUserModalOpen(false);
+    // Reset state after a short delay to allow the dialog to close gracefully
+    setTimeout(() => {
+      setNewUserEmail('');
+      setNewUserPassword('');
+      setOtp('');
+      setOtpSent(false);
+      setOtpSending(false);
+      setOtpVerified(false);
+      setVerifyingOtp(false);
+    }, 300);
+  };
+
+  const handleSendOtp = async () => {
+    if (!newUserEmail) {
+      toast.error('Email cannot be empty');
+      return;
+    }
+    setOtpSending(true);
+    try {
+      const result = await sendOtp({ email: newUserEmail });
+      toast.success(result.data.message);
+      setOtpSent(true);
+    } catch (error) {
+      console.error("Error sending OTP:", error);
+      toast.error(error.message || "Failed to send OTP.");
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp) {
+      toast.error('OTP cannot be empty');
+      return;
+    }
+    setVerifyingOtp(true);
+    try {
+      const result = await verifyOtp({ email: newUserEmail, otp });
+      toast.success(result.data.message);
+      setOtpVerified(true);
+    } catch (error) {
+      console.error("Error verifying OTP:", error);
+      toast.error(error.message || "Failed to verify OTP.");
+    } finally {
+      setVerifyingOtp(false);
+    }
   };
 
   const handleCreateUser = async () => {
-    if (!newUserEmail || !newUserPassword) {
-      toast.error('Email and password cannot be empty');
+    if (!newUserEmail || !newUserPassword || !otp) {
+      toast.error('Email, password, and OTP must be provided.');
       return;
     }
     try {
-      const result = await createUser({ email: newUserEmail, password: newUserPassword });
+      const result = await createUser({ email: newUserEmail, password: newUserPassword, otp: otp });
       toast.success(result.data.message);
       fetchUsersAndRoles(); // Refresh user list
       handleCloseAddUserModal();
     } catch (error) {
       console.error("Error creating user:", error);
       toast.error(error.message || "Failed to create user.");
+    }
+  };
+
+  const renderAddUserContent = () => {
+    if (!otpSent) {
+      return (
+        <>
+          <DialogContentText sx={{ mb: 2 }}>
+            Enter the email to send a verification OTP.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Email"
+            type="email"
+            fullWidth
+            variant="outlined"
+            value={newUserEmail}
+            onChange={(e) => setNewUserEmail(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+        </>
+      );
+    } else if (otpSent && !otpVerified) {
+      return (
+        <>
+          <DialogContentText sx={{ mb: 2 }}>
+            An OTP has been sent to {newUserEmail}. Please enter it below.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="OTP"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+        </>
+      );
+    } else if (otpVerified) {
+      return (
+        <>
+          <DialogContentText sx={{ mb: 2 }}>
+            OTP verified. Please set a temporary password for the new user.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Password"
+            type="password"
+            fullWidth
+            variant="outlined"
+            value={newUserPassword}
+            onChange={(e) => setNewUserPassword(e.target.value)}
+          />
+        </>
+      );
+    }
+  };
+
+  const renderAddUserActions = () => {
+    if (!otpSent) {
+      return (
+        <Button onClick={handleSendOtp} className={styles.saveButton} variant="contained" disabled={otpSending}>
+          {otpSending ? <CircularProgress size={24} /> : "Send OTP"}
+        </Button>
+      );
+    } else if (otpSent && !otpVerified) {
+      return (
+        <Button onClick={handleVerifyOtp} className={styles.saveButton} variant="contained" disabled={verifyingOtp}>
+          {verifyingOtp ? <CircularProgress size={24} /> : "Verify OTP"}
+        </Button>
+      );
+    } else if (otpVerified) {
+      return (
+        <Button onClick={handleCreateUser} className={styles.saveButton} variant="contained" disabled={!newUserPassword}>
+          Add User
+        </Button>
+      );
     }
   };
 
@@ -347,34 +487,12 @@ export default function Settings() {
             </IconButton>
         </DialogTitle>
         <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            Enter the email and a temporary password for the new user.
-          </DialogContentText>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Email"
-            type="email"
-            fullWidth
-            variant="outlined"
-            value={newUserEmail}
-            onChange={(e) => setNewUserEmail(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Password"
-            type="password"
-            fullWidth
-            variant="outlined"
-            value={newUserPassword}
-            onChange={(e) => setNewUserPassword(e.target.value)}
-          />
+          {renderAddUserContent()}
         </DialogContent>
         <DialogActions>
             <div className={styles.modalActions}>
                 <Button onClick={handleCloseAddUserModal}>Cancel</Button>
-                <Button onClick={handleCreateUser} className={styles.saveButton} variant="contained">Add User</Button>
+                {renderAddUserActions()}
             </div>
         </DialogActions>
       </Dialog>
