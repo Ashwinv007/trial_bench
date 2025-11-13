@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styles from './Settings.module.css';
 import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Checkbox, FormControlLabel, Chip, Tooltip, Select, MenuItem, DialogContentText, CircularProgress } from '@mui/material';
-import { AddCircleOutline, Edit, Delete, Close } from '@mui/icons-material';
+import { AddCircleOutline, Edit, Delete, Close, LockReset } from '@mui/icons-material';
 import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
@@ -37,27 +37,45 @@ const PermissionChips = ({ permissions }) => {
 
 export default function Settings() {
   const [roles, setRoles] = useState([]);
-  const [users, setUsers] = useState([]); // State for users
-  const [isModalOpen, setIsModalOpen] = useState(false); // For Role Modal
-  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false); // For Add User Modal
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Role Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
   const [roleName, setRoleName] = useState('');
   const [selectedPermissions, setSelectedPermissions] = useState([]);
-  const [newUserEmail, setNewUserEmail] = useState(''); // State for new user email
-  const [newUserPassword, setNewUserPassword] = useState(''); // State for new user password
+
+  // Add User Modal State
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUsername, setNewUsername] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
-  const [loading, setLoading] = useState(true);
 
+  // Edit User Modal State
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+
+  // Reset Password Modal State
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
+  const [resettingUser, setResettingUser] = useState(null);
+  const [newPasswordForReset, setNewPasswordForReset] = useState('');
+  
   const functions = getFunctions();
+  const auth = getAuth();
   const listUsers = httpsCallable(functions, 'listUsers');
   const setUserRole = httpsCallable(functions, 'setUserRole');
   const createUser = httpsCallable(functions, 'createUser');
   const sendOtp = httpsCallable(functions, 'sendOtp');
   const verifyOtp = httpsCallable(functions, 'verifyOtp');
+  const updateUser = httpsCallable(functions, 'updateUser');
+  const deleteUser = httpsCallable(functions, 'deleteUser');
+  const adminSetUserPassword = httpsCallable(functions, 'adminSetUserPassword');
 
   const fetchUsersAndRoles = async () => {
     setLoading(true);
@@ -71,10 +89,10 @@ export default function Settings() {
       const rolesList = rolesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setRoles(rolesList);
 
-      const userList = result.data.users.map(user => {
-        const roleId = user.customClaims && user.customClaims.role ? user.customClaims.role : '';
-        return { ...user, roleId: roleId };
-      });
+      const userList = result.data.users.map(user => ({
+        ...user,
+        roleId: user.customClaims?.role || '',
+      }));
       setUsers(userList);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -85,13 +103,11 @@ export default function Settings() {
   };
 
   useEffect(() => {
-    const auth = getAuth();
     const forceTokenRefresh = async () => {
       const currentUser = auth.currentUser;
       if (currentUser) {
         try {
           await currentUser.getIdToken(true);
-          console.log("Token refreshed successfully.");
         } catch (error) {
           console.error("Error refreshing token:", error);
         }
@@ -101,8 +117,9 @@ export default function Settings() {
     forceTokenRefresh().then(() => {
       fetchUsersAndRoles();
     });
-  }, []);
+  }, [auth]);
 
+  // Role Management Handlers
   const handleOpenModal = (role = null) => {
     if (role) {
       setEditingRole(role);
@@ -116,91 +133,73 @@ export default function Settings() {
     setIsModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-  };
+  const handleCloseModal = () => setIsModalOpen(false);
 
   const handleSaveRole = async () => {
-    if (!roleName) {
-      toast.error('Role name cannot be empty');
-      return;
+    if (!roleName) return toast.error('Role name cannot be empty');
+    const roleData = { name: roleName, permissions: selectedPermissions };
+    try {
+      if (editingRole) {
+        await updateDoc(doc(db, 'roles', editingRole.id), roleData);
+        toast.success('Role updated successfully');
+      } else {
+        await addDoc(collection(db, 'roles'), roleData);
+        toast.success('Role added successfully');
+      }
+      fetchUsersAndRoles();
+      handleCloseModal();
+    } catch (error) {
+      toast.error('Failed to save role.');
     }
-
-    if (editingRole) {
-      const roleDoc = doc(db, 'roles', editingRole.id);
-      await updateDoc(roleDoc, { name: roleName, permissions: selectedPermissions });
-      toast.success('Role updated successfully');
-    } else {
-      await addDoc(collection(db, 'roles'), { name: roleName, permissions: selectedPermissions });
-      toast.success('Role added successfully');
-    }
-
-    fetchUsersAndRoles(); // Refetch both users and roles
-    handleCloseModal();
   };
   
   const handleDeleteRole = async (id) => {
     if (window.confirm('Are you sure you want to delete this role?')) {
-      await deleteDoc(doc(db, 'roles', id));
-      fetchUsersAndRoles(); // Refetch both users and roles
-      toast.success('Role deleted successfully');
+      try {
+        await deleteDoc(doc(db, 'roles', id));
+        fetchUsersAndRoles();
+        toast.success('Role deleted successfully');
+      } catch (error) {
+        toast.error('Failed to delete role.');
+      }
     }
   };
 
   const handlePermissionChange = (permission) => {
     if (permission === 'all') {
-        if (selectedPermissions.includes('all')) {
-            setSelectedPermissions([]);
-        } else {
-            setSelectedPermissions(allPermissions);
-        }
+      setSelectedPermissions(prev => prev.includes('all') ? [] : allPermissions);
     } else {
-        setSelectedPermissions(prev => 
-            prev.includes(permission) 
-              ? prev.filter(p => p !== permission && p !== 'all') 
-              : [...prev, permission]
-          );
+      setSelectedPermissions(prev => 
+        prev.includes(permission) 
+          ? prev.filter(p => p !== permission && p !== 'all') 
+          : [...prev, permission]
+      );
     }
   };
 
+  // User Management Handlers
   const handleAssignRole = async (userEmail, roleId) => {
     try {
       const result = await setUserRole({ email: userEmail, roleId: roleId });
       toast.success(result.data.message);
-      
-      const auth = getAuth();
       if (auth.currentUser && auth.currentUser.email === userEmail) {
         await auth.currentUser.getIdToken(true);
       }
-
-      // Optimistically update the UI without a full refetch
-      setUsers(prevUsers =>
-        prevUsers.map(user =>
-          user.email === userEmail ? { ...user, roleId: roleId } : user
-        )
-      );
+      setUsers(prev => prev.map(u => u.email === userEmail ? { ...u, roleId } : u));
     } catch (error) {
-      console.error("Error assigning role:", error);
       toast.error(error.message || "Failed to assign role.");
     }
   };
 
   const handleOpenAddUserModal = () => {
-    setNewUserEmail('');
-    setNewUserPassword('');
-    setOtp('');
-    setOtpSent(false);
-    setOtpSending(false);
-    setOtpVerified(false);
-    setVerifyingOtp(false);
     setIsAddUserModalOpen(true);
   };
 
   const handleCloseAddUserModal = () => {
     setIsAddUserModalOpen(false);
-    // Reset state after a short delay to allow the dialog to close gracefully
     setTimeout(() => {
       setNewUserEmail('');
+      setNewUsername('');
       setNewUserPassword('');
       setOtp('');
       setOtpSent(false);
@@ -211,17 +210,13 @@ export default function Settings() {
   };
 
   const handleSendOtp = async () => {
-    if (!newUserEmail) {
-      toast.error('Email cannot be empty');
-      return;
-    }
+    if (!newUserEmail) return toast.error('Email cannot be empty');
     setOtpSending(true);
     try {
       const result = await sendOtp({ email: newUserEmail });
       toast.success(result.data.message);
       setOtpSent(true);
     } catch (error) {
-      console.error("Error sending OTP:", error);
       toast.error(error.message || "Failed to send OTP.");
     } finally {
       setOtpSending(false);
@@ -229,17 +224,13 @@ export default function Settings() {
   };
 
   const handleVerifyOtp = async () => {
-    if (!otp) {
-      toast.error('OTP cannot be empty');
-      return;
-    }
+    if (!otp) return toast.error('OTP cannot be empty');
     setVerifyingOtp(true);
     try {
       const result = await verifyOtp({ email: newUserEmail, otp });
       toast.success(result.data.message);
       setOtpVerified(true);
     } catch (error) {
-      console.error("Error verifying OTP:", error);
       toast.error(error.message || "Failed to verify OTP.");
     } finally {
       setVerifyingOtp(false);
@@ -247,76 +238,84 @@ export default function Settings() {
   };
 
   const handleCreateUser = async () => {
-    if (!newUserEmail || !newUserPassword || !otp) {
-      toast.error('Email, password, and OTP must be provided.');
-      return;
-    }
+    if (!newUsername || !newUserPassword) return toast.error('Username and password must be provided.');
     try {
-      const result = await createUser({ email: newUserEmail, password: newUserPassword, otp: otp });
-      toast.success(result.data.message);
-      fetchUsersAndRoles(); // Refresh user list
+      await createUser({ email: newUserEmail, password: newUserPassword, otp, username: newUsername });
+      toast.success("User created successfully.");
+      fetchUsersAndRoles();
       handleCloseAddUserModal();
     } catch (error) {
-      console.error("Error creating user:", error);
       toast.error(error.message || "Failed to create user.");
     }
   };
 
+  const handleOpenEditUserModal = (user) => {
+    setEditingUser({ ...user, newUsername: user.displayName });
+    setIsEditUserModalOpen(true);
+  };
+
+  const handleCloseEditUserModal = () => {
+    setIsEditUserModalOpen(false);
+    setEditingUser(null);
+  };
+
+  const handleUpdateUser = async () => {
+    if (!editingUser || !editingUser.newUsername) return toast.error("Username cannot be empty.");
+    try {
+      await updateUser({ uid: editingUser.uid, username: editingUser.newUsername });
+      toast.success("User updated successfully.");
+      fetchUsersAndRoles();
+      handleCloseEditUserModal();
+    } catch (error) {
+      toast.error(error.message || "Failed to update user.");
+    }
+  };
+
+  const handleOpenResetPasswordModal = (user) => {
+    setResettingUser(user);
+    setIsResetPasswordModalOpen(true);
+  };
+
+  const handleCloseResetPasswordModal = () => {
+    setIsResetPasswordModalOpen(false);
+    setNewPasswordForReset('');
+    setResettingUser(null);
+  };
+
+  const handleAdminSetPassword = async () => {
+    if (!resettingUser || !newPasswordForReset) return toast.error("Password cannot be empty.");
+    try {
+      await adminSetUserPassword({ uid: resettingUser.uid, newPassword: newPasswordForReset });
+      toast.success(`Password for ${resettingUser.email} has been reset.`);
+      handleCloseResetPasswordModal();
+    } catch (error) {
+      toast.error(error.message || "Failed to reset password.");
+    }
+  };
+
+  const handleDeleteUser = async (uid) => {
+    if (window.confirm('Are you sure you want to permanently delete this user? This action cannot be undone.')) {
+      try {
+        await deleteUser({ uid });
+        toast.success("User deleted successfully.");
+        fetchUsersAndRoles();
+      } catch (error) {
+        toast.error(error.message || "Failed to delete user.");
+      }
+    }
+  };
+
+  // Render methods for Add User dialog
   const renderAddUserContent = () => {
     if (!otpSent) {
+      return <TextField autoFocus margin="dense" label="Email" type="email" fullWidth variant="outlined" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} />;
+    } else if (!otpVerified) {
+      return <TextField autoFocus margin="dense" label="OTP" type="text" fullWidth variant="outlined" value={otp} onChange={(e) => setOtp(e.target.value)} />;
+    } else {
       return (
         <>
-          <DialogContentText sx={{ mb: 2 }}>
-            Enter the email to send a verification OTP.
-          </DialogContentText>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Email"
-            type="email"
-            fullWidth
-            variant="outlined"
-            value={newUserEmail}
-            onChange={(e) => setNewUserEmail(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-        </>
-      );
-    } else if (otpSent && !otpVerified) {
-      return (
-        <>
-          <DialogContentText sx={{ mb: 2 }}>
-            An OTP has been sent to {newUserEmail}. Please enter it below.
-          </DialogContentText>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="OTP"
-            type="text"
-            fullWidth
-            variant="outlined"
-            value={otp}
-            onChange={(e) => setOtp(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-        </>
-      );
-    } else if (otpVerified) {
-      return (
-        <>
-          <DialogContentText sx={{ mb: 2 }}>
-            OTP verified. Please set a temporary password for the new user.
-          </DialogContentText>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Password"
-            type="password"
-            fullWidth
-            variant="outlined"
-            value={newUserPassword}
-            onChange={(e) => setNewUserPassword(e.target.value)}
-          />
+          <TextField autoFocus margin="dense" label="Username" type="text" fullWidth variant="outlined" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} sx={{ mb: 2 }} />
+          <TextField margin="dense" label="Password" type="password" fullWidth variant="outlined" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} />
         </>
       );
     }
@@ -324,23 +323,11 @@ export default function Settings() {
 
   const renderAddUserActions = () => {
     if (!otpSent) {
-      return (
-        <Button onClick={handleSendOtp} className={styles.saveButton} variant="contained" disabled={otpSending}>
-          {otpSending ? <CircularProgress size={24} /> : "Send OTP"}
-        </Button>
-      );
-    } else if (otpSent && !otpVerified) {
-      return (
-        <Button onClick={handleVerifyOtp} className={styles.saveButton} variant="contained" disabled={verifyingOtp}>
-          {verifyingOtp ? <CircularProgress size={24} /> : "Verify OTP"}
-        </Button>
-      );
-    } else if (otpVerified) {
-      return (
-        <Button onClick={handleCreateUser} className={styles.saveButton} variant="contained" disabled={!newUserPassword}>
-          Add User
-        </Button>
-      );
+      return <Button onClick={handleSendOtp} variant="contained" disabled={otpSending}>{otpSending ? <CircularProgress size={24} /> : "Send OTP"}</Button>;
+    } else if (!otpVerified) {
+      return <Button onClick={handleVerifyOtp} variant="contained" disabled={verifyingOtp}>{verifyingOtp ? <CircularProgress size={24} /> : "Verify OTP"}</Button>;
+    } else {
+      return <Button onClick={handleCreateUser} variant="contained" disabled={!newUsername || !newUserPassword}>Add User</Button>;
     }
   };
 
@@ -352,23 +339,8 @@ export default function Settings() {
             <p className={styles.subtitle}>Manage user roles, permissions, and assignments.</p>
         </div>
         <div className={styles.headerButtons}>
-            <Button
-              variant="contained"
-              className={styles.addButton}
-              startIcon={<AddCircleOutline />}
-              onClick={() => handleOpenModal()}
-              sx={{ mr: 1 }} // Add some margin
-            >
-              Add Role
-            </Button>
-            <Button
-              variant="contained"
-              className={styles.addButton}
-              startIcon={<AddCircleOutline />}
-              onClick={handleOpenAddUserModal}
-            >
-              Add User
-            </Button>
+            <Button variant="contained" startIcon={<AddCircleOutline />} onClick={() => handleOpenModal()} sx={{ mr: 1 }}>Add Role</Button>
+            <Button variant="contained" startIcon={<AddCircleOutline />} onClick={handleOpenAddUserModal}>Add User</Button>
         </div>
       </div>
       <div className={styles.content}>
@@ -386,20 +358,14 @@ export default function Settings() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr>
-                    <td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>Loading...</td>
-                  </tr>
+                  <tr><td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>Loading...</td></tr>
                 ) : roles.map(role => (
                   <tr key={role.id}>
                     <td>{role.name}</td>
                     <td><PermissionChips permissions={role.permissions} /></td>
                     <td>
-                      <IconButton className={styles.editButton} onClick={() => handleOpenModal(role)}>
-                        <Edit />
-                      </IconButton>
-                      <IconButton className={styles.deleteButton} onClick={() => handleDeleteRole(role.id)}>
-                        <Delete />
-                      </IconButton>
+                      <IconButton onClick={() => handleOpenModal(role)}><Edit /></IconButton>
+                      <IconButton onClick={() => handleDeleteRole(role.id)}><Delete /></IconButton>
                     </td>
                   </tr>
                 ))}
@@ -415,33 +381,29 @@ export default function Settings() {
             <table className={styles.table}>
               <thead>
                 <tr>
+                  <th>Username</th>
                   <th>User Email</th>
                   <th>Assigned Role</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr>
-                    <td colSpan="2" style={{ textAlign: 'center', padding: '20px' }}>Loading...</td>
-                  </tr>
+                  <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px' }}>Loading...</td></tr>
                 ) : users.map(user => (
                   <tr key={user.uid}>
+                    <td>{user.displayName || '-'}</td>
                     <td>{user.email}</td>
                     <td>
-                      <Select
-                        value={user.roleId || ''}
-                        onChange={(e) => handleAssignRole(user.email, e.target.value)}
-                        displayEmpty
-                        size="small"
-                        sx={{ minWidth: 150 }}
-                      >
+                      <Select value={user.roleId || ''} onChange={(e) => handleAssignRole(user.email, e.target.value)} displayEmpty size="small" sx={{ minWidth: 150 }}>
                         <MenuItem value=""><em>None</em></MenuItem>
-                        {roles.map((role) => (
-                          <MenuItem key={role.id} value={role.id}>
-                            {role.name}
-                          </MenuItem>
-                        ))}
+                        {roles.map((role) => <MenuItem key={role.id} value={role.id}>{role.name}</MenuItem>)}
                       </Select>
+                    </td>
+                    <td>
+                      <IconButton onClick={() => handleOpenEditUserModal(user)}><Edit /></IconButton>
+                      <IconButton onClick={() => handleOpenResetPasswordModal(user)}><LockReset /></IconButton>
+                      <IconButton onClick={() => handleDeleteUser(user.uid)}><Delete /></IconButton>
                     </td>
                   </tr>
                 ))}
@@ -455,62 +417,28 @@ export default function Settings() {
       <Dialog open={isModalOpen} onClose={handleCloseModal} maxWidth="sm" fullWidth>
         <DialogTitle>
             {editingRole ? 'Edit Role' : 'Add New Role'}
-            <IconButton
-                onClick={handleCloseModal}
-                className={styles.closeButton}
-            >
-                <Close />
-            </IconButton>
+            <IconButton onClick={handleCloseModal} className={styles.closeButton}><Close /></IconButton>
         </DialogTitle>
         <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Role Name"
-            type="text"
-            fullWidth
-            variant="outlined"
-            value={roleName}
-            onChange={(e) => setRoleName(e.target.value)}
-          />
+          <TextField autoFocus margin="dense" label="Role Name" type="text" fullWidth variant="outlined" value={roleName} onChange={(e) => setRoleName(e.target.value)} />
           <div className={styles.permissionsGrid}>
             {allPermissions.map(permission => (
-              <FormControlLabel
-                key={permission}
-                control={
-                  <Checkbox
-                    checked={selectedPermissions.includes(permission)}
-                    onChange={() => handlePermissionChange(permission)}
-                    disabled={selectedPermissions.includes('all') && permission !== 'all'}
-                  />
-                }
-                label={permission.replace(/_/g, ' ')}
-              />
+              <FormControlLabel key={permission} control={<Checkbox checked={selectedPermissions.includes(permission)} onChange={() => handlePermissionChange(permission)} disabled={selectedPermissions.includes('all') && permission !== 'all'} />} label={permission.replace(/_/g, ' ')} />
             ))}
           </div>
         </DialogContent>
         <DialogActions>
             <div className={styles.modalActions}>
                 <Button onClick={handleCloseModal}>Cancel</Button>
-                <Button onClick={handleSaveRole} className={styles.saveButton} variant="contained">Save</Button>
+                <Button onClick={handleSaveRole} variant="contained">Save</Button>
             </div>
         </DialogActions>
       </Dialog>
 
       {/* Add User Dialog */}
       <Dialog open={isAddUserModalOpen} onClose={handleCloseAddUserModal} maxWidth="sm" fullWidth>
-        <DialogTitle>
-            Add New User
-            <IconButton
-                onClick={handleCloseAddUserModal}
-                className={styles.closeButton}
-            >
-                <Close />
-            </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          {renderAddUserContent()}
-        </DialogContent>
+        <DialogTitle>Add New User<IconButton onClick={handleCloseAddUserModal} className={styles.closeButton}><Close /></IconButton></DialogTitle>
+        <DialogContent>{renderAddUserContent()}</DialogContent>
         <DialogActions>
             <div className={styles.modalActions}>
                 <Button onClick={handleCloseAddUserModal}>Cancel</Button>
@@ -518,6 +446,41 @@ export default function Settings() {
             </div>
         </DialogActions>
       </Dialog>
+
+      {/* Edit User Dialog */}
+      {editingUser && (
+        <Dialog open={isEditUserModalOpen} onClose={handleCloseEditUserModal} maxWidth="sm" fullWidth>
+          <DialogTitle>Edit User<IconButton onClick={handleCloseEditUserModal} className={styles.closeButton}><Close /></IconButton></DialogTitle>
+          <DialogContent>
+            <TextField autoFocus margin="dense" label="Username" type="text" fullWidth variant="outlined" value={editingUser.newUsername} onChange={(e) => setEditingUser(prev => ({ ...prev, newUsername: e.target.value }))} />
+          </DialogContent>
+          <DialogActions>
+              <div className={styles.modalActions}>
+                  <Button onClick={handleCloseEditUserModal}>Cancel</Button>
+                  <Button onClick={handleUpdateUser} variant="contained">Save</Button>
+              </div>
+          </DialogActions>
+        </Dialog>
+      )}
+
+      {/* Reset Password Dialog */}
+      {resettingUser && (
+        <Dialog open={isResetPasswordModalOpen} onClose={handleCloseResetPasswordModal} maxWidth="sm" fullWidth>
+          <DialogTitle>Reset Password for {resettingUser.email}<IconButton onClick={handleCloseResetPasswordModal} className={styles.closeButton}><Close /></IconButton></DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Enter a new temporary password for the user.
+            </DialogContentText>
+            <TextField autoFocus margin="dense" label="New Password" type="password" fullWidth variant="outlined" value={newPasswordForReset} onChange={(e) => setNewPasswordForReset(e.target.value)} />
+          </DialogContent>
+          <DialogActions>
+              <div className={styles.modalActions}>
+                  <Button onClick={handleCloseResetPasswordModal}>Cancel</Button>
+                  <Button onClick={handleAdminSetPassword} variant="contained" disabled={!newPasswordForReset}>Set Password</Button>
+              </div>
+          </DialogActions>
+        </Dialog>
+      )}
     </div>
   );
 }
