@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { FirebaseContext } from '../store/Context';
+import { doc, getDoc } from 'firebase/firestore';
 import {
   Dialog,
   DialogTitle,
@@ -52,6 +54,7 @@ const formatBirthday = (day, month) => {
 };
 
 export default function MemberModal({ open, onClose, onSave, editMember = null, primaryMemberId = null }) {
+  const { db } = useContext(FirebaseContext);
   const [formData, setFormData] = useState({
     name: '',
     package: '',
@@ -64,10 +67,23 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
 
   const [errors, setErrors] = useState({});
   const [note, setNote] = useState('');
-  const [followUpDays, setFollowUpDays] = useState('');
   const [activities, setActivities] = useState([]);
 
   useEffect(() => {
+    const fetchPrimaryMemberCompany = async () => {
+      if (!editMember && primaryMemberId && db) {
+        const primaryMemberDocRef = doc(db, "members", primaryMemberId);
+        const primaryMemberDocSnap = await getDoc(primaryMemberDocRef);
+        if (primaryMemberDocSnap.exists()) {
+          const primaryMemberData = primaryMemberDocSnap.data();
+          setFormData(prev => ({
+            ...prev,
+            company: primaryMemberData.company !== 'NA' ? primaryMemberData.company : ''
+          }));
+        }
+      }
+    };
+
     if (editMember) {
       setFormData({
         name: editMember.name || '',
@@ -90,11 +106,11 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         email: '',
       });
       setActivities([]);
+      fetchPrimaryMemberCompany(); // Call fetch function when adding new member
     }
     setErrors({});
     setNote('');
-    setFollowUpDays('');
-  }, [editMember, open]);
+  }, [editMember, open, primaryMemberId, db]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => {
@@ -156,18 +172,15 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     const newActivity = {
       id: activities.length + 1,
       type: 'note',
-      title: followUpDays ? `Note Added - Follow up in ${followUpDays} days` : 'Note Added',
+      title: 'Note Added',
       description: note,
       timestamp: new Date().toLocaleString('en-US', { 
         month: 'short', day: 'numeric', year: 'numeric',
         hour: 'numeric', minute: '2-digit', hour12: true 
       }),
-      hasFollowUp: !!followUpDays,
-      followUpDays: followUpDays
     };
     setActivities([newActivity, ...activities]);
     setNote('');
-    setFollowUpDays('');
   };
 
   const handleSendWelcomeEmail = () => {
@@ -276,16 +289,16 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
           <div className={styles.rightPanel} style={{paddingLeft: '10px'}}>
             <div className={styles.timelineCard}>
               <h2 className={styles.sectionTitle}>Timeline Activity Log</h2>
-              <button className={styles.welcomeButton} onClick={handleSendWelcomeEmail} style={{marginBottom: '15px'}}>
-                  <EmailIcon className={styles.buttonIcon} />
-                  Send Welcome Email
-              </button>
+              {primaryMemberId === null && (
+                <button className={styles.welcomeButton} onClick={handleSendWelcomeEmail} style={{marginBottom: '15px'}}>
+                    <EmailIcon className={styles.buttonIcon} />
+                    Send Welcome Email
+                </button>
+              )}
               <div className={styles.addNoteSection}>
                 <h3 className={styles.addNoteTitle}>Add Note</h3>
                 <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Enter activity note..." className={styles.textarea} rows="3" />
-                <div className={styles.followUpSection}>
-                  <input type="number" value={followUpDays} onChange={(e) => setFollowUpDays(e.target.value)} placeholder="Follow up in (days)" className={styles.followUpInput} min="1" />
-                </div>
+
                 <button className={styles.addToTimelineButton} onClick={handleAddNote}>
                   <CheckCircle className={styles.buttonIcon} />
                   Add to Timeline
