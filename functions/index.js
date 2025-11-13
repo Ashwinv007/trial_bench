@@ -149,7 +149,6 @@ exports.listUsers = onCall(async (request) => {
     const users = userRecords.users.map((user) => ({
       uid: user.uid,
       email: user.email,
-      displayName: user.displayName || '',
       customClaims: user.customClaims || {},
     }));
     return { users };
@@ -168,10 +167,10 @@ exports.createUser = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Only admins can create new users.");
   }
 
-  const { email, password, otp, username } = request.data;
+  const { email, password, otp } = request.data;
 
-  if (!email || !password || !otp || !username) {
-    throw new HttpsError("invalid-argument", "The function must be called with 'email', 'password', 'otp', and 'username'.");
+  if (!email || !password || !otp) {
+    throw new HttpsError("invalid-argument", "The function must be called with 'email', 'password', and 'otp'.");
   }
 
   try {
@@ -193,11 +192,7 @@ exports.createUser = onCall(async (request) => {
       throw new HttpsError("invalid-argument", "Invalid OTP.");
     }
 
-    const userRecord = await admin.auth().createUser({
-      email,
-      password,
-      displayName: username,
-    });
+    const userRecord = await admin.auth().createUser({ email, password });
     await otpDocRef.delete(); // Delete OTP after successful user creation
 
     return { message: `Success! New user created with UID: ${userRecord.uid}` };
@@ -210,83 +205,6 @@ exports.createUser = onCall(async (request) => {
     throw new HttpsError("internal", "An internal error occurred while creating the user.");
   }
 });
-
-exports.updateUser = onCall(async (request) => {
-  console.log("--- updateUser ---");
-  console.log("Auth token received:", JSON.stringify(request.auth.token, null, 2));
-
-  if (!request.auth || request.auth.token.all !== true) {
-    console.error("Permission check failed in updateUser. 'all' claim is not true. Token:", JSON.stringify(request.auth.token, null, 2));
-    throw new HttpsError("permission-denied", "Only admins can update users.");
-  }
-
-  const { uid, username } = request.data;
-
-  if (!uid || !username) {
-    throw new HttpsError("invalid-argument", "The function must be called with 'uid' and 'username'.");
-  }
-
-  try {
-    await admin.auth().updateUser(uid, { displayName: username });
-    return { message: "User updated successfully." };
-  } catch (error) {
-    console.error("Error updating user:", error);
-    throw new HttpsError("internal", "An unexpected error occurred while updating the user.");
-  }
-});
-
-exports.deleteUser = onCall(async (request) => {
-  console.log("--- deleteUser ---");
-  console.log("Auth token received:", JSON.stringify(request.auth.token, null, 2));
-
-  if (!request.auth || request.auth.token.all !== true) {
-    console.error("Permission check failed in deleteUser. 'all' claim is not true. Token:", JSON.stringify(request.auth.token, null, 2));
-    throw new HttpsError("permission-denied", "Only admins can delete users.");
-  }
-
-  const { uid } = request.data;
-
-  if (!uid) {
-    throw new HttpsError("invalid-argument", "The function must be called with a 'uid'.");
-  }
-
-  try {
-    await admin.auth().deleteUser(uid);
-    return { message: "User deleted successfully." };
-  } catch (error) {
-    console.error("Error deleting user:", error);
-    throw new HttpsError("internal", "An unexpected error occurred while deleting the user.");
-  }
-});
-
-exports.adminSetUserPassword = onCall(async (request) => {
-  console.log("--- adminSetUserPassword ---");
-  console.log("Auth token received:", JSON.stringify(request.auth.token, null, 2));
-
-  if (!request.auth || request.auth.token.all !== true) {
-    console.error("Permission check failed in adminSetUserPassword. 'all' claim is not true. Token:", JSON.stringify(request.auth.token, null, 2));
-    throw new HttpsError("permission-denied", "Only admins can set user passwords.");
-  }
-
-  const { uid, newPassword } = request.data;
-
-  if (!uid || !newPassword) {
-    throw new HttpsError("invalid-argument", "The function must be called with 'uid' and 'newPassword'.");
-  }
-
-  if (newPassword.length < 6) {
-    throw new HttpsError("invalid-argument", "Password must be at least 6 characters long.");
-  }
-
-  try {
-    await admin.auth().updateUser(uid, { password: newPassword });
-    return { message: "Password updated successfully for user." };
-  } catch (error) {
-    console.error("Error setting user password:", error);
-    throw new HttpsError("internal", "An unexpected error occurred while setting the password.");
-  }
-});
-
 
 exports.onRoleDeleted = onDocumentDeleted("roles/{roleId}", async (event) => {
   const deletedRoleId = event.params.roleId;

@@ -3,9 +3,42 @@ import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, Menu
 import { Close } from '@mui/icons-material';
 import styles from './Agreements.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
-import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
+
+const generateAgreementNumber = (memberPackageName, allAgreements) => {
+  if (!memberPackageName) {
+    return '';
+  }
+
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear().toString().slice(-2);
+  const month = currentDate.getMonth();
+  
+  const monthChar = String.fromCharCode(65 + month); // A=Jan, B=Feb, ...
+
+  const packageChar = memberPackageName.charAt(0).toUpperCase();
+
+  const filteringPrefix = `TB${currentYear}${monthChar}`; // New variable for filtering
+
+  const relevantAgreements = allAgreements.filter(a => a.agreementNumber?.startsWith(filteringPrefix));
+  
+  let maxSeq = 0;
+  relevantAgreements.forEach(a => {
+    const seqStr = a.agreementNumber.slice(-4); // Get the last 4 characters
+    const seqNum = parseInt(seqStr, 10);
+    if (!isNaN(seqNum) && seqNum > maxSeq) {
+      maxSeq = seqNum;
+    }
+  });
+
+  const newSeq = String(maxSeq + 1).padStart(4, '0');
+
+  // Construct the final agreement number with packageChar included
+  return `TB${currentYear}${monthChar}${packageChar}${newSeq}`;
+};
+
 
 export default function Agreements() {
   const { db } = useContext(FirebaseContext);
@@ -74,6 +107,18 @@ export default function Agreements() {
       }
     }
   }, [formData.startDate, formData.agreementLength]);
+
+  // Auto-generate agreement number
+  useEffect(() => {
+    // Only generate if it's a new agreement (no selectedAgreement) or if the existing one is being edited and has no number
+    if (isModalOpen && (!selectedAgreement?.agreementNumber)) {
+      const newAgreementNumber = generateAgreementNumber(selectedAgreement?.purposeOfVisit, agreements);
+      if (newAgreementNumber) {
+        setFormData(prev => ({ ...prev, agreementNumber: newAgreementNumber }));
+      }
+    }
+  }, [selectedAgreement?.purposeOfVisit, isModalOpen, selectedAgreement, agreements]);
+
 
   const handleRowClick = (agreement) => {
     if (!hasPermission('edit_agreements')) return;
@@ -149,6 +194,23 @@ export default function Agreements() {
     }
 
     setAgreementGenerated(updatedAgreement);
+  };
+
+  const handleDeleteClick = async () => {
+    if (!selectedAgreement || !hasPermission('edit_agreements')) return;
+
+    if (window.confirm(`Are you sure you want to delete the agreement for ${selectedAgreement.name}? This action cannot be undone.`)) {
+      try {
+        const agreementRef = doc(db, 'agreements', selectedAgreement.id);
+        await deleteDoc(agreementRef);
+
+        setAgreements(prev => prev.filter(a => a.id !== selectedAgreement.id));
+        handleCloseModal();
+      } catch (error) {
+        console.error("Error deleting agreement:", error);
+        // Optionally, show an error message to the user
+      }
+    }
   };
 
   const formatDate = (dateString) => {
@@ -481,6 +543,7 @@ export default function Agreements() {
                     fullWidth
                     variant="outlined"
                     size="small"
+                    disabled
                   />
                   <TextField
                     label="Start Date"
@@ -579,6 +642,21 @@ export default function Agreements() {
 
               {/* Action Buttons */}
               <div className={styles.modalActions}>
+                {hasPermission('edit_agreements') && (
+                  <Button
+                    onClick={handleDeleteClick}
+                    variant="outlined"
+                    style={{
+                      color: '#f44336',
+                      borderColor: '#f44336',
+                      textTransform: 'none',
+                      padding: '8px 24px',
+                      marginRight: 'auto'
+                    }}
+                  >
+                    Delete
+                  </Button>
+                )}
                 <Button 
                   onClick={handleCloseModal} 
                   variant="outlined"
