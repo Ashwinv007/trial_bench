@@ -90,13 +90,13 @@ export default function AddLead() {
   ]);
 
   const [errors, setErrors] = useState({});
-
-
+  const [isSubmitted, setIsSubmitted] = useState(false); // New state for tracking submission
 
   const { db } = useContext(FirebaseContext);
   const navigate = useNavigate();
 
   const handleSaveLead = async () => {
+    setIsSubmitted(true); // Set to true on first submission attempt
     const newErrors = validateForm(formData); // Get errors
     setErrors(newErrors); // Set errors state
     if (Object.keys(newErrors).length > 0) {
@@ -181,9 +181,11 @@ export default function AddLead() {
         newState.sourceDetail = '';
       }
 
-      // Validate immediately after setting the new state
-      const updatedErrors = validateForm(newState);
-      setErrors(updatedErrors); // Update errors state
+      // Validate immediately after setting the new state, ONLY IF form has been submitted once
+      if (isSubmitted) {
+        const updatedErrors = validateForm(newState);
+        setErrors(updatedErrors); // Update errors state
+      }
 
       return newState;
     });
@@ -234,14 +236,17 @@ export default function AddLead() {
     if (data.status === 'Converted') {
       if (!data.clientType) newErrors.clientType = 'Client Type is required';
       if (data.clientType === 'Company' && !data.companyName.trim()) newErrors.companyName = 'Company Name is required';
-      if (!data.convertedEmail.trim()) newErrors.convertedEmail = 'Email is required';
+      if (!data.convertedEmail.trim()) {
+        newErrors.convertedEmail = 'Email is required';
+      } else if (!/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(data.convertedEmail)) {
+        newErrors.convertedEmail = 'Invalid email format';
+      }
       if (!data.convertedWhatsapp.trim()) newErrors.convertedWhatsapp = 'WhatsApp is required';
     }
 
-    // Birthday validation: if day or month is provided, both are required and day must be valid
-    if (data.birthdayDay || data.birthdayMonth) {
-      if (!data.birthdayDay) newErrors.birthdayDay = 'Day is required if month is selected';
-      if (!data.birthdayMonth) newErrors.birthdayMonth = 'Month is required if day is selected';
+    if (data.status === 'Converted') {
+      if (!data.birthdayDay) newErrors.birthdayDay = 'Day is required';
+      if (!data.birthdayMonth) newErrors.birthdayMonth = 'Month is required';
       if (data.birthdayDay && (parseInt(data.birthdayDay, 10) < 1 || parseInt(data.birthdayDay, 10) > 31)) {
         newErrors.birthdayDay = 'Day must be between 1 and 31';
       }

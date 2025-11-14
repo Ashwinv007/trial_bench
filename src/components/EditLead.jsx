@@ -60,8 +60,7 @@ export default function EditLead() {
   const [followUpDays, setFollowUpDays] = useState('');
   const [activities, setActivities] = useState([]);
   const [errors, setErrors] = useState({}); // Added errors state
-
-
+  const [isSubmitted, setIsSubmitted] = useState(false); // New state for tracking submission
 
   const { db } = useContext(FirebaseContext);
   const navigate = useNavigate();
@@ -104,7 +103,43 @@ export default function EditLead() {
     }
   }, [db, id]);
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => {
+      const newState = {...prev, [name]: value};
+
+      if (name === 'status' && value === 'Converted') {
+        newState.convertedWhatsapp = prev.phone;
+      }
+
+      if (name === 'phone' && showConvertedModal) {
+        newState.convertedWhatsapp = value;
+      }
+
+      // When sourceType changes, reset sourceDetail if not applicable
+      if (name === 'sourceType' && value !== 'Referral' && value !== 'Social Media') {
+        newState.sourceDetail = '';
+      }
+
+      // Validate immediately after setting the new state, ONLY IF form has been submitted once
+      if (isSubmitted) {
+        const updatedErrors = validateForm(newState);
+        setErrors(updatedErrors); // Update errors state
+      }
+
+      return newState;
+    });
+
+    // Show converted modal when status is Converted
+    if (name === 'status' && value === 'Converted') {
+      setShowConvertedModal(true);
+    } else if (name === 'status' && value !== 'Converted') {
+      setShowConvertedModal(false);
+    }
+  };
+
   const handleUpdateLead = async () => {
+    setIsSubmitted(true); // Set to true on first submission attempt
     const newErrors = validateForm(formData); // Get errors
     setErrors(newErrors); // Set errors state
     if (Object.keys(newErrors).length > 0) {
@@ -171,39 +206,6 @@ export default function EditLead() {
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => {
-      const newState = {...prev, [name]: value};
-      
-      if (name === 'status' && value === 'Converted') {
-        newState.convertedWhatsapp = prev.phone;
-      }
-
-      if (name === 'phone' && showConvertedModal) {
-        newState.convertedWhatsapp = value;
-      }
-
-      // When sourceType changes, reset sourceDetail if not applicable
-      if (name === 'sourceType' && value !== 'Referral' && value !== 'Social Media') {
-        newState.sourceDetail = '';
-      }
-
-      // Validate immediately after setting the new state
-      const updatedErrors = validateForm(newState);
-      setErrors(updatedErrors); // Update errors state
-
-      return newState;
-    });
-
-    // Show converted modal when status is Converted
-    if (name === 'status' && value === 'Converted') {
-      setShowConvertedModal(true);
-    } else if (name === 'status' && value !== 'Converted') {
-      setShowConvertedModal(false);
-    }
-  };
-
   const handleAddNote = () => {
     if (!note.trim()) return;
 
@@ -242,19 +244,18 @@ export default function EditLead() {
     if (data.status === 'Converted') {
       if (!data.clientType) newErrors.clientType = 'Client Type is required';
       if (data.clientType === 'Company' && !data.companyName.trim()) newErrors.companyName = 'Company Name is required';
-      if (!data.convertedEmail.trim()) newErrors.convertedEmail = 'Email is required';
+      if (!data.convertedEmail.trim()) {
+        newErrors.convertedEmail = 'Email is required';
+      } else if (!/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(data.convertedEmail)) {
+        newErrors.convertedEmail = 'Invalid email format';
+      }
       if (!data.convertedWhatsapp.trim()) newErrors.convertedWhatsapp = 'WhatsApp is required';
-    }
-
-    // Birthday validation: if day or month is provided, both are required and day must be valid
-    if (data.birthdayDay || data.birthdayMonth) {
-      if (!data.birthdayDay) newErrors.birthdayDay = 'Day is required if month is selected';
-      if (!data.birthdayMonth) newErrors.birthdayMonth = 'Month is required if day is selected';
+      if (!data.birthdayDay) newErrors.birthdayDay = 'Day is required';
+      if (!data.birthdayMonth) newErrors.birthdayMonth = 'Month is required';
       if (data.birthdayDay && (parseInt(data.birthdayDay, 10) < 1 || parseInt(data.birthdayDay, 10) > 31)) {
         newErrors.birthdayDay = 'Day must be between 1 and 31';
       }
-    }
-    return newErrors; // Return the errors object
+    }    return newErrors; // Return the errors object
   };
 
   if (!formData) {
@@ -558,7 +559,8 @@ export default function EditLead() {
                         {activity.type === 'note' && <AccountBox />}
                         {activity.type === 'email' && <EmailIcon />}
                       </div>
-                      {index < activities.length - 1 && <div className={styles.timelineLine} />}</div>
+                      {index < activities.length - 1 && <div className={styles.timelineLine} />}
+                    </div>
                     <div className={styles.timelineContent}>
                       <div className={styles.timelineHeader}>
                         <h4 className={styles.timelineTitle}>{activity.title}</h4>

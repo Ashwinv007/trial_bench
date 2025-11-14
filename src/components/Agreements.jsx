@@ -47,6 +47,11 @@ export default function Agreements() {
   const [selectedAgreement, setSelectedAgreement] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [agreementGenerated, setAgreementGenerated] = useState(null);
+  const [latestAuthDetails, setLatestAuthDetails] = useState({ // New state for latest auth details
+    authorizorName: '',
+    designation: '',
+    preparedByNew: '',
+  });
   const [formData, setFormData] = useState({
     memberLegalName: '',
     memberCIN: '',
@@ -89,6 +94,16 @@ export default function Agreements() {
         });
 
         setAgreements(combinedData);
+
+        // Find the latest agreement by taking the last one in the array
+        if (combinedData.length > 0) {
+          const latest = combinedData[combinedData.length - 1]; // Get the last agreement
+          setLatestAuthDetails({
+            authorizorName: latest.authorizorName || '',
+            designation: latest.designation || '',
+            preparedByNew: latest.preparedByNew || '',
+          });
+        }
       };
       fetchAgreements();
     }
@@ -125,7 +140,7 @@ export default function Agreements() {
     setAgreementGenerated(null);
     setSelectedAgreement(agreement);
     setFormData({
-      memberLegalName: agreement.memberLegalName || '',
+      memberLegalName: agreement.memberLegalName || agreement.name || '', // Auto-fill from member name
       memberCIN: agreement.memberCIN || '',
       memberGST: agreement.memberGST || '',
       memberPAN: agreement.memberPAN || '',
@@ -137,9 +152,9 @@ export default function Agreements() {
       endDate: agreement.endDate || '',
       serviceAgreementType: agreement.serviceAgreementType || '',
       totalMonthlyPayment: agreement.totalMonthlyPayment || '',
-      authorizorName: agreement.authorizorName || '',
-      designation: agreement.designation || '',
-      preparedByNew: agreement.preparedByNew || '',
+      authorizorName: agreement.authorizorName || latestAuthDetails.authorizorName || '',
+      designation: agreement.designation || latestAuthDetails.designation || '',
+      preparedByNew: agreement.preparedByNew || latestAuthDetails.preparedByNew || '',
       title: agreement.title || '',
       agreementLength: agreement.agreementLength || '',
     });
