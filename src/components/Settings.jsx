@@ -3,7 +3,7 @@ import styles from './Settings.module.css';
 import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Checkbox, FormControlLabel, Chip, Tooltip, Select, MenuItem, DialogContentText, CircularProgress } from '@mui/material';
 import { AddCircleOutline, Edit, Delete, Close, LockReset } from '@mui/icons-material';
 import { db } from '../firebase/config';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
@@ -16,6 +16,14 @@ const allPermissions = [
     'view_invoices', 'add_invoices', 'edit_invoices', 'delete_invoices',
     'view_expenses', 'add_expenses', 'edit_expenses', 'delete_expenses', 'view_expense_reports', 'export_expenses',
     'manage_settings'
+];
+
+const emailTemplateTypes = [
+    { id: 'welcome_email', name: 'Welcome Email', defaultSubject: 'Welcome to Our Platform!', defaultBody: 'Hi {{username}},\n\nWelcome! We are excited to have you on board.' },
+    { id: 'invoice_email', name: 'Invoice Email', defaultSubject: 'Your Invoice [{{invoice_number}}] is ready', defaultBody: 'Hi {{customerName}},\n\nPlease find your invoice attached. You can view it online here: {{invoice_link}}' },
+    { id: 'agreement_email', name: 'Agreement Email', defaultSubject: 'Your Agreement [{{agreement_name}}] is ready', defaultBody: 'Hi {{clientName}},\n\nPlease find your agreement attached. You can view it online here: {{agreement_link}}' },
+    { id: 'otp_email', name: 'OTP Email', defaultSubject: 'Your One-Time Password', defaultBody: 'Your OTP is: {{otp}}' },
+    { id: 'password_reset_email', name: 'Password Reset Email', defaultSubject: 'Reset Your Password', defaultBody: 'Please use the following link to reset your password: {{reset_link}}' },
 ];
 
 const PermissionChips = ({ permissions }) => {
@@ -38,6 +46,7 @@ const PermissionChips = ({ permissions }) => {
 export default function Settings() {
   const [roles, setRoles] = useState([]);
   const [users, setUsers] = useState([]);
+  const [emailTemplates, setEmailTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Role Modal State
@@ -77,14 +86,18 @@ export default function Settings() {
   const deleteUser = httpsCallable(functions, 'deleteUser');
   const adminSetUserPassword = httpsCallable(functions, 'adminSetUserPassword');
 
-  const fetchUsersAndRoles = async () => {
+  const fetchSettingsData = async () => {
     setLoading(true);
     try {
       const rolesCollection = collection(db, 'roles');
       const rolesPromise = getDocs(rolesCollection);
+      
       const usersPromise = listUsers();
 
-      const [rolesSnapshot, result] = await Promise.all([rolesPromise, usersPromise]);
+      const templatesCollection = collection(db, 'email_templates');
+      const templatesPromise = getDocs(templatesCollection);
+
+      const [rolesSnapshot, result, templatesSnapshot] = await Promise.all([rolesPromise, usersPromise, templatesPromise]);
 
       const rolesList = rolesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setRoles(rolesList);
@@ -94,6 +107,20 @@ export default function Settings() {
         roleId: user.customClaims?.role || '',
       }));
       setUsers(userList);
+
+      const existingTemplates = templatesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const allTemplates = emailTemplateTypes.map(type => {
+          const existing = existingTemplates.find(t => t.id === type.id);
+          return existing || {
+              id: type.id,
+              name: type.name,
+              subject: type.defaultSubject,
+              body: type.defaultBody,
+              isNew: true
+          };
+      });
+      setEmailTemplates(allTemplates);
+
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error(error.message || "Failed to fetch data.");
@@ -115,7 +142,7 @@ export default function Settings() {
     };
 
     forceTokenRefresh().then(() => {
-      fetchUsersAndRoles();
+      fetchSettingsData();
     });
   }, [auth]);
 
@@ -146,7 +173,7 @@ export default function Settings() {
         await addDoc(collection(db, 'roles'), roleData);
         toast.success('Role added successfully');
       }
-      fetchUsersAndRoles();
+      fetchSettingsData();
       handleCloseModal();
     } catch (error) {
       toast.error('Failed to save role.');
@@ -157,7 +184,7 @@ export default function Settings() {
     if (window.confirm('Are you sure you want to delete this role?')) {
       try {
         await deleteDoc(doc(db, 'roles', id));
-        fetchUsersAndRoles();
+        fetchSettingsData();
         toast.success('Role deleted successfully');
       } catch (error) {
         toast.error('Failed to delete role.');
@@ -242,7 +269,7 @@ export default function Settings() {
     try {
       await createUser({ email: newUserEmail, password: newUserPassword, otp, username: newUsername });
       toast.success("User created successfully.");
-      fetchUsersAndRoles();
+      fetchSettingsData();
       handleCloseAddUserModal();
     } catch (error) {
       toast.error(error.message || "Failed to create user.");
@@ -264,7 +291,7 @@ export default function Settings() {
     try {
       await updateUser({ uid: editingUser.uid, username: editingUser.newUsername });
       toast.success("User updated successfully.");
-      fetchUsersAndRoles();
+      fetchSettingsData();
       handleCloseEditUserModal();
     } catch (error) {
       toast.error(error.message || "Failed to update user.");
@@ -298,11 +325,32 @@ export default function Settings() {
       try {
         await deleteUser({ uid });
         toast.success("User deleted successfully.");
-        fetchUsersAndRoles();
+        fetchSettingsData();
       } catch (error) {
         toast.error(error.message || "Failed to delete user.");
       }
     }
+  };
+
+  // Email Template Handlers
+  const handleTemplateChange = (index, field, value) => {
+    const newTemplates = [...emailTemplates];
+    newTemplates[index][field] = value;
+    setEmailTemplates(newTemplates);
+  };
+
+  const handleSaveTemplate = async (index) => {
+      const template = emailTemplates[index];
+      try {
+          const templateRef = doc(db, 'email_templates', template.id);
+          await setDoc(templateRef, { name: template.name, subject: template.subject, body: template.body }, { merge: true });
+          toast.success(`${template.name} template saved successfully.`);
+          const newTemplates = [...emailTemplates];
+          delete newTemplates[index].isNew;
+          setEmailTemplates(newTemplates);
+      } catch (error) {
+          toast.error(`Failed to save ${template.name} template.`);
+      }
   };
 
   // Render methods for Add User dialog
@@ -415,6 +463,37 @@ export default function Settings() {
           </table>
         </div>
       </div>
+
+      <div style={{ height: '24px' }} />
+
+      <div className={styles.rolesSection}>
+        <h2>Email Templates</h2>
+        {loading ? <p>Loading templates...</p> : emailTemplates.map((template, index) => (
+            <div key={template.id} className={styles.templateEditor}>
+            <h3>{template.name}</h3>
+            <TextField
+                label="Subject"
+                fullWidth
+                variant="outlined"
+                value={template.subject}
+                onChange={(e) => handleTemplateChange(index, 'subject', e.target.value)}
+                sx={{ mb: 2 }}
+            />
+            <TextField
+                label="Body"
+                fullWidth
+                multiline
+                rows={4}
+                variant="outlined"
+                value={template.body}
+                onChange={(e) => handleTemplateChange(index, 'body', e.target.value)}
+                sx={{ mb: 2 }}
+            />
+            <Button onClick={() => handleSaveTemplate(index)} variant="contained" className={styles.saveButton}>Save Template</Button>
+            </div>
+        ))}
+      </div>
+
 
       {/* Role Management Dialog */}
       <Dialog open={isModalOpen} onClose={handleCloseModal} maxWidth="sm" fullWidth>

@@ -36,12 +36,29 @@ exports.sendOtp = onCall(async (request) => {
   try {
     await admin.firestore().collection("otps").doc(email).set({ otp, expiresAt });
 
+    // Fetch email template from Firestore
+    const templateRef = admin.firestore().collection("email_templates").doc("otp_email");
+    const templateDoc = await templateRef.get();
+
+    let subject = "Your OTP for User Creation";
+    let text = `Your One-Time Password is: ${otp}`;
+    let html = `<b>Your One-Time Password is: ${otp}</b>`;
+
+    if (templateDoc.exists) {
+      const template = templateDoc.data();
+      subject = template.subject || subject;
+      const body = template.body || text;
+      // Simple placeholder replacement
+      text = body.replace(/{{otp}}/g, otp);
+      html = text.replace(/\n/g, '<br>');
+    }
+
     const mailOptions = {
       from: '"Your App Name" <your-email@example.com>',
       to: email,
-      subject: "Your OTP for User Creation",
-      text: `Your One-Time Password is: ${otp}`,
-      html: `<b>Your One-Time Password is: ${otp}</b>`,
+      subject: subject,
+      text: text,
+      html: html,
     };
 
     await transporter.sendMail(mailOptions);
