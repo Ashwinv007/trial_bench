@@ -4,12 +4,14 @@ import { Close, AddCircleOutline, Description, Search as SearchIcon, FilterList 
 import styles from './Invoices.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
 import { collection, getDocs, addDoc, doc, updateDoc, query, where, documentId } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
+import { toast } from 'sonner';
 
 const formatDate = (dateString) => {
   if (!dateString) return '-';
@@ -98,7 +100,7 @@ const generateInvoiceNumber = (allInvoices) => {
   return `${prefix}${newSeq}`;
 };
 
-const generateInvoicePdf = async (invoiceData) => {
+const getInvoicePdfBase64 = async (invoiceData) => {
   const url = '/tb_invoice.pdf';
   const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
 
@@ -199,8 +201,7 @@ const generateInvoicePdf = async (invoiceData) => {
   firstPage.drawText(totalAmountPayable, { x: 490, y: 117, size: 13, font, color: rgb(0, 0, 0), maxWidth: 150 });
 
   const pdfBytes = await pdfDoc.save();
-  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-  saveAs(blob, `${invoiceNumber || 'invoice'}.pdf`);
+  return Buffer.from(pdfBytes).toString('base64');
 };
 
 export default function Invoices() {
@@ -239,6 +240,9 @@ export default function Invoices() {
     taxAmount: '',
     totalAmountPayable: ''
   });
+
+  const functions = getFunctions();
+  const sendInvoiceEmailCallable = httpsCallable(functions, 'sendInvoiceEmail');
 
   useEffect(() => {
     if (!db) return;
@@ -666,6 +670,28 @@ export default function Invoices() {
     }
   }, [members, hasPermission, setEditingInvoice, setInvoiceGenerated, setFormData, setIsModalOpen]);
 
+  const handleSendInvoiceEmail = async () => {
+    if (!invoiceGenerated || !invoiceGenerated.email || !invoiceGenerated.name || !invoiceGenerated.invoiceNumber) {
+      toast.error("Missing invoice details to send email.");
+      return;
+    }
+
+    try {
+      const pdfBase64 = await getInvoicePdfBase64(invoiceGenerated);
+      await sendInvoiceEmailCallable({
+        toEmail: invoiceGenerated.email,
+        customerName: invoiceGenerated.name,
+        invoiceNumber: invoiceGenerated.invoiceNumber,
+        pdfBase64: pdfBase64,
+        // ccEmail: invoiceGenerated.ccEmail // Add if ccEmail is available in invoiceGenerated
+      });
+      toast.success("Invoice email sent successfully!");
+    } catch (error) {
+      console.error("Error sending invoice email:", error);
+      toast.error(error.message || "Failed to send invoice email.");
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.content}>
@@ -981,7 +1007,17 @@ export default function Invoices() {
               </p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
                 <Button
-                  onClick={() => generateInvoicePdf(invoiceGenerated)}
+                  onClick={async () => {
+                    try {
+                      const pdfBase64 = await getInvoicePdfBase64(invoiceGenerated);
+                      const blob = new Blob([Buffer.from(pdfBase64, 'base64')], { type: 'application/pdf' });
+                      saveAs(blob, `${invoiceGenerated.invoiceNumber || 'invoice'}.pdf`);
+                      toast.success("Invoice downloaded successfully!");
+                    } catch (error) {
+                      console.error("Error downloading invoice:", error);
+                      toast.error("Failed to download invoice.");
+                    }
+                  }}
                   variant="contained"
                   style={{
                     backgroundColor: '#2b7a8e',
@@ -993,6 +1029,7 @@ export default function Invoices() {
                   Download Invoice
                 </Button>
                 <Button
+                  onClick={handleSendInvoiceEmail}
                   variant="outlined"
                   style={{
                     color: '#64748b',

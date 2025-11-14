@@ -4,8 +4,10 @@ import { Close } from '@mui/icons-material';
 import styles from './Agreements.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
 import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
+import { toast } from 'sonner';
 
 const generateAgreementNumber = (memberPackageName, allAgreements) => {
   if (!memberPackageName) {
@@ -71,6 +73,9 @@ export default function Agreements() {
     title: '',
     agreementLength: '',
   });
+
+  const functions = getFunctions();
+  const sendAgreementEmailCallable = httpsCallable(functions, 'sendAgreementEmail');
 
   useEffect(() => {
     if (db) {
@@ -257,17 +262,17 @@ export default function Agreements() {
     return lines.slice(0, 3);
   };
 
-  const generateAgreementPdf = async (agreementData) => {
+  const getAgreementPdfBase64 = async (agreementData) => {
     const url = '/tb_agreement.pdf';
     const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
-
+  
     const pdfDoc = await PDFDocument.load(existingPdfBytes);
     const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-
+  
     const pages = pdfDoc.getPages();
     const firstPage = pages[0];
     const secondPage = pages[1];
-
+  
     // Prepared By - Page 1
     firstPage.drawText(agreementData.preparedByNew, {
       x: 60,
@@ -276,7 +281,7 @@ export default function Agreements() {
       size: 15,
       color: rgb(0.466, 0.466, 0.466),
     });
-
+  
     // Top Agreement Number - All pages from 2 onwards
     for (let i = 1; i < pages.length; i++) {
       pages[i].drawText(agreementData.agreementNumber, {
@@ -295,7 +300,7 @@ export default function Agreements() {
         color: rgb(0, 0, 0),
       });
     }
-
+  
     // Page 2 Details
     if (secondPage) {
       // Agreement Details
@@ -305,14 +310,14 @@ export default function Agreements() {
       secondPage.drawText(formatDate(agreementData.startDate), { x: 175, y: 408, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(agreementData.agreementNumber, { x: 160, y: 437, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(formatDate(agreementData.agreementDate), { x: 145, y: 451, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-
+  
       // Member Details
       secondPage.drawText(agreementData.memberLegalName, { x: 170, y: 608, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(agreementData.memberCIN, { x: 130, y: 594, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(agreementData.memberGST, { x: 174, y: 579, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(agreementData.memberPAN, { x: 133, y: 565, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(agreementData.memberKYC, { x: 133, y: 551, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-
+  
       // Address (with line wrapping)
       const address = agreementData.memberAddress.replace(/\n/g, ' ');
       const addressLines = splitTextIntoLines(address, helveticaFont, 9.5, 300);
@@ -321,22 +326,42 @@ export default function Agreements() {
         secondPage.drawText(line, { x: 150, y, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
         y -= 12; // Adjust for next line
       }
-
+  
       // New fields
       secondPage.drawText(agreementData.memberLegalName, { x: 150, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(agreementData.title, { x: 150, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       // secondPage.drawText(formatDate(agreementData.agreementDate), { x: 150, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-
+  
       secondPage.drawText(agreementData.authorizorName, { x: 370, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(agreementData.designation, { x: 370, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       const currentDate = new Date();
       secondPage.drawText(formatDate(currentDate), { x: 415, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(formatDate(currentDate), { x: 150, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
     }
-
+  
     const pdfBytes = await pdfDoc.save();
+    return Buffer.from(pdfBytes).toString('base64');
+  };
+  const handleSendAgreementEmail = async () => {
+    if (!agreementGenerated || !agreementGenerated.email || !agreementGenerated.name || !agreementGenerated.agreementNumber) {
+      toast.error("Missing agreement details to send email.");
+      return;
+    }
 
-    saveAs(new Blob([pdfBytes], { type: 'application/pdf' }), `${agreementData.agreementNumber || 'agreement'}.pdf`);
+    try {
+      const pdfBase64 = await getAgreementPdfBase64(agreementGenerated);
+      await sendAgreementEmailCallable({
+        toEmail: agreementGenerated.email,
+        clientName: agreementGenerated.name,
+        agreementName: agreementGenerated.agreementNumber,
+        pdfBase64: pdfBase64,
+        // ccEmail: agreementGenerated.ccEmail // Add if ccEmail is available in agreementGenerated
+      });
+      toast.success("Agreement email sent successfully!");
+    } catch (error) {
+      console.error("Error sending agreement email:", error);
+      toast.error(error.message || "Failed to send agreement email.");
+    }
   };
 
   return (
@@ -436,7 +461,17 @@ export default function Agreements() {
               </p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
                 <Button
-                  onClick={() => generateAgreementPdf(agreementGenerated)}
+                  onClick={async () => {
+                    try {
+                      const pdfBase64 = await getAgreementPdfBase64(agreementGenerated);
+                      const blob = new Blob([Buffer.from(pdfBase64, 'base64')], { type: 'application/pdf' });
+                      saveAs(blob, `${agreementGenerated.agreementNumber || 'agreement'}.pdf`);
+                      toast.success("Agreement downloaded successfully!");
+                    } catch (error) {
+                      console.error("Error downloading agreement:", error);
+                      toast.error("Failed to download agreement.");
+                    }
+                  }}
                   variant="contained"
                   style={{
                     backgroundColor: '#2b7a8e',
@@ -448,6 +483,7 @@ export default function Agreements() {
                   Download Agreement
                 </Button>
                 <Button
+                  onClick={handleSendAgreementEmail}
                   variant="outlined"
                   style={{
                     color: '#64748b',

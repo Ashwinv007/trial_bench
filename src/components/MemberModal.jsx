@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { FirebaseContext } from '../store/Context';
 import { doc, getDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogTitle,
@@ -70,6 +72,9 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
   const [note, setNote] = useState('');
   const [activities, setActivities] = useState([]);
 
+  const functions = getFunctions();
+  const sendWelcomeEmailCallable = httpsCallable(functions, 'sendWelcomeEmail');
+
   useEffect(() => {
     const fetchPrimaryMemberCompany = async () => {
       if (!editMember && primaryMemberId && db) {
@@ -127,7 +132,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         } else {
           const day = parseInt(dayValue, 10);
           // Allow if it's a valid number between 1 and 31
-          if (!isNaN(day) && day >= 1 && day <= 31) {
+          if (!isNaN(day) && day >= 1 && day >= 1 && day <= 31) {
             newState.birthdayDay = dayValue;
           }
           // If it's not a valid number or out of range, newState.birthdayDay remains unchanged from the previous state.
@@ -189,28 +194,45 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     setNote('');
   };
 
-  const handleSendWelcomeEmail = () => {
-    const emailSent = activities.some(activity => activity.type === 'email' && activity.title === 'Welcome Email Sent');
-    if (emailSent) {
-      alert('Welcome email has already been sent to this member.');
+  const handleSendWelcomeEmail = async () => {
+    if (!formData.email.trim()) {
+      toast.error('Member email is required to send a welcome email.');
       return;
     }
 
-    const newActivity = {
-      id: activities.length + 1,
-      type: 'email',
-      title: 'Welcome Email Sent',
-      description: `Welcome email sent to ${formData.email}`,
-      timestamp: new Date().toLocaleString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true 
-      })
-    };
-    setActivities([newActivity, ...activities]);
+    const emailSent = activities.some(activity => activity.type === 'email' && activity.title === 'Welcome Email Sent');
+    if (emailSent) {
+      toast.info('Welcome email has already been sent to this member.');
+      return;
+    }
+
+    try {
+      const result = await sendWelcomeEmailCallable({
+        toEmail: formData.email,
+        username: formData.name,
+        ccEmail: formData.ccEmail.trim() ? formData.ccEmail.trim() : null,
+      });
+      toast.success(result.data.message);
+
+      const newActivity = {
+        id: activities.length + 1,
+        type: 'email',
+        title: 'Welcome Email Sent',
+        description: `Welcome email sent to ${formData.email}`,
+        timestamp: new Date().toLocaleString('en-US', { 
+          month: 'short', 
+          day: 'numeric', 
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true 
+        })
+      };
+      setActivities([newActivity, ...activities]);
+    } catch (error) {
+      console.error("Error sending welcome email:", error);
+      toast.error(error.message || "Failed to send welcome email.");
+    }
   };
 
   const handleSubmit = () => {

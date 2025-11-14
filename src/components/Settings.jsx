@@ -23,7 +23,6 @@ const emailTemplateTypes = [
     { id: 'invoice_email', name: 'Invoice Email', defaultSubject: 'Your Invoice [{{invoice_number}}] is ready', defaultBody: 'Hi {{customerName}},\n\nPlease find your invoice attached. You can view it online here: {{invoice_link}}' },
     { id: 'agreement_email', name: 'Agreement Email', defaultSubject: 'Your Agreement [{{agreement_name}}] is ready', defaultBody: 'Hi {{clientName}},\n\nPlease find your agreement attached. You can view it online here: {{agreement_link}}' },
     { id: 'otp_email', name: 'OTP Email', defaultSubject: 'Your One-Time Password', defaultBody: 'Your OTP is: {{otp}}' },
-    { id: 'password_reset_email', name: 'Password Reset Email', defaultSubject: 'Reset Your Password', defaultBody: 'Please use the following link to reset your password: {{reset_link}}' },
 ];
 
 const PermissionChips = ({ permissions }) => {

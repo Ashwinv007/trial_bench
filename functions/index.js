@@ -256,3 +256,186 @@ exports.onRoleDeleted = onDocumentDeleted("roles/{roleId}", async (event) => {
     return Promise.reject(new Error("An error occurred while revoking user claims."));
   }
 });
+
+exports.sendWelcomeEmail = onCall(async (request) => {
+  console.log("--- sendWelcomeEmail ---");
+  console.log("Auth token received:", JSON.stringify(request.auth.token, null, 2));
+
+  if (!request.auth || request.auth.token.all !== true) {
+    console.error("Permission check failed in sendWelcomeEmail. 'all' claim is not true. Token:", JSON.stringify(request.auth.token, null, 2));
+    throw new HttpsError("permission-denied", "Only admins can send welcome emails.");
+  }
+
+  const { toEmail, username, ccEmail } = request.data;
+  if (!toEmail || !username) {
+    throw new HttpsError("invalid-argument", "The function must be called with 'toEmail' and 'username'.");
+  }
+
+  try {
+    // Fetch email template from Firestore
+    const templateRef = admin.firestore().collection("email_templates").doc("welcome_email");
+    const templateDoc = await templateRef.get();
+
+    let subject = "Welcome to Our Platform!";
+    let bodyContent = `Hi ${username},\n\nWelcome! We are excited to have you on board.`;
+
+    if (templateDoc.exists) {
+      const template = templateDoc.data();
+      subject = template.subject || subject;
+      bodyContent = template.body || bodyContent;
+    }
+
+    // Replace placeholders
+    const personalizedSubject = subject.replace(/{{username}}/g, username);
+    const personalizedBody = bodyContent.replace(/{{username}}/g, username);
+
+    const mailOptions = {
+      from: '"Your App Name" <your-email@example.com>',
+      to: toEmail,
+      subject: personalizedSubject,
+      text: personalizedBody,
+      html: personalizedBody.replace(/\n/g, '<br>'),
+    };
+
+    if (ccEmail) {
+      mailOptions.cc = ccEmail;
+    }
+
+    await transporter.sendMail(mailOptions);
+
+    return { message: "Welcome email sent successfully." };
+  } catch (error) {
+    console.error("Error sending welcome email:", error);
+    throw new HttpsError("internal", "An unexpected error occurred while sending the welcome email.");
+  }
+});
+
+exports.sendInvoiceEmail = onCall(async (request) => {
+  console.log("--- sendInvoiceEmail ---");
+  console.log("Auth token received:", JSON.stringify(request.auth.token, null, 2));
+
+  if (!request.auth || request.auth.token.all !== true) {
+    console.error("Permission check failed in sendInvoiceEmail. 'all' claim is not true. Token:", JSON.stringify(request.auth.token, null, 2));
+    throw new HttpsError("permission-denied", "Only admins can send invoice emails.");
+  }
+
+  const { toEmail, customerName, invoiceNumber, pdfBase64, ccEmail } = request.data;
+  if (!toEmail || !customerName || !invoiceNumber || !pdfBase64) {
+    throw new HttpsError("invalid-argument", "The function must be called with 'toEmail', 'customerName', 'invoiceNumber', and 'pdfBase64'.");
+  }
+
+  try {
+    // Fetch email template from Firestore
+    const templateRef = admin.firestore().collection("email_templates").doc("invoice_email");
+    const templateDoc = await templateRef.get();
+
+    let subject = `Your Invoice [${invoiceNumber}] is ready`;
+    let bodyContent = `Hi ${customerName},\n\nPlease find your invoice attached.`;
+
+    if (templateDoc.exists) {
+      const template = templateDoc.data();
+      subject = template.subject || subject;
+      bodyContent = template.body || bodyContent;
+    }
+
+    // Replace placeholders
+    const personalizedSubject = subject
+      .replace(/{{customerName}}/g, customerName)
+      .replace(/{{invoice_number}}/g, invoiceNumber);
+    const personalizedBody = bodyContent
+      .replace(/{{customerName}}/g, customerName)
+      .replace(/{{invoice_number}}/g, invoiceNumber);
+
+    const mailOptions = {
+      from: '"Your App Name" <your-email@example.com>',
+      to: toEmail,
+      subject: personalizedSubject,
+      text: personalizedBody,
+      html: personalizedBody.replace(/\n/g, '<br>'),
+      attachments: [
+        {
+          filename: `invoice_${invoiceNumber}.pdf`,
+          content: pdfBase64,
+          encoding: 'base64',
+          contentType: 'application/pdf',
+        },
+      ],
+    };
+
+    if (ccEmail) {
+      mailOptions.cc = ccEmail;
+    }
+
+    await transporter.sendMail(mailOptions);
+
+    return { message: "Invoice email sent successfully." };
+  } catch (error) {
+    console.error("Error sending invoice email:", error);
+    throw new HttpsError("internal", "An unexpected error occurred while sending the invoice email.");
+  }
+});
+
+exports.sendAgreementEmail = onCall(async (request) => {
+  console.log("--- sendAgreementEmail ---");
+  console.log("Auth token received:", JSON.stringify(request.auth.token, null, 2));
+
+  if (!request.auth || request.auth.token.all !== true) {
+    console.error("Permission check failed in sendAgreementEmail. 'all' claim is not true. Token:", JSON.stringify(request.auth.token, null, 2));
+    throw new HttpsError("permission-denied", "Only admins can send agreement emails.");
+  }
+
+  const { toEmail, clientName, agreementName, pdfBase64, ccEmail } = request.data;
+  if (!toEmail || !clientName || !agreementName || !pdfBase64) {
+    throw new HttpsError("invalid-argument", "The function must be called with 'toEmail', 'clientName', 'agreementName', and 'pdfBase64'.");
+  }
+
+  try {
+    // Fetch email template from Firestore
+    const templateRef = admin.firestore().collection("email_templates").doc("agreement_email");
+    const templateDoc = await templateRef.get();
+
+    let subject = `Your Agreement [${agreementName}] is ready`;
+    let bodyContent = `Hi ${clientName},\n\nPlease find your agreement attached.`;
+
+    if (templateDoc.exists) {
+      const template = templateDoc.data();
+      subject = template.subject || subject;
+      bodyContent = template.body || bodyContent;
+    }
+
+    // Replace placeholders
+    const personalizedSubject = subject
+      .replace(/{{clientName}}/g, clientName)
+      .replace(/{{agreement_name}}/g, agreementName);
+    const personalizedBody = bodyContent
+      .replace(/{{clientName}}/g, clientName)
+      .replace(/{{agreement_name}}/g, agreementName);
+
+    const mailOptions = {
+      from: '"Your App Name" <your-email@example.com>',
+      to: toEmail,
+      subject: personalizedSubject,
+      text: personalizedBody,
+      html: personalizedBody.replace(/\n/g, '<br>'),
+      attachments: [
+        {
+          filename: `agreement_${agreementName}.pdf`,
+          content: pdfBase64,
+          encoding: 'base64',
+          contentType: 'application/pdf',
+        },
+      ],
+    };
+
+    if (ccEmail) {
+      mailOptions.cc = ccEmail;
+    }
+
+    await transporter.sendMail(mailOptions);
+
+    return { message: "Agreement email sent successfully." };
+  } catch (error) {
+    console.error("Error sending agreement email:", error);
+    throw new HttpsError("internal", "An unexpected error occurred while sending the agreement email.");
+  }
+});
