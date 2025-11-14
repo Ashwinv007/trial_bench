@@ -15,9 +15,9 @@ import {
   Select,
   Typography,
   IconButton,
-  FormControl, // Added
-  InputLabel,  // Added
-  FormHelperText // Added
+  FormControl,
+  InputLabel,
+  FormHelperText
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { 
@@ -25,131 +25,109 @@ import {
   Email as EmailIcon,
   AccountBox
 } from '@mui/icons-material';
-import styles from './AddLead.module.css'; // Reusing styles
-import { useNavigate } from 'react-router-dom';
+import styles from './AddLead.module.css';
+import ClientProfileModal from './ClientProfileModal';
 
 // Helper function to format birthday
 const formatBirthday = (day, month) => {
   if (!day || !month) return '';
-
-  const monthNamesFull = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-
+  const monthNamesFull = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const dayNum = parseInt(day, 10);
   const monthNum = parseInt(month, 10);
-
-  if (isNaN(dayNum) || isNaN(monthNum) || dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) {
-    return '';
-  }
-
+  if (isNaN(dayNum) || isNaN(monthNum) || dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) return '';
   let suffix = 'th';
-  if (dayNum === 1 || dayNum === 21 || dayNum === 31) {
-    suffix = 'st';
-  } else if (dayNum === 2 || dayNum === 22) {
-    suffix = 'nd';
-  } else if (dayNum === 3 || dayNum === 23) {
-    suffix = 'rd';
-  }
-
+  if (dayNum === 1 || dayNum === 21 || dayNum === 31) suffix = 'st';
+  else if (dayNum === 2 || dayNum === 22) suffix = 'nd';
+  else if (dayNum === 3 || dayNum === 23) suffix = 'rd';
   return `${dayNum}${suffix} ${monthNamesFull[monthNum - 1]}`;
 };
 
 export default function MemberModal({ open, onClose, onSave, editMember = null, primaryMemberId = null }) {
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     package: '',
     company: '',
-    birthdayDay: '', // Changed from birthday to separate day and month
-    birthdayMonth: '', // Changed from birthday to separate day and month
+    birthdayDay: '',
+    birthdayMonth: '',
     whatsapp: '',
     email: '',
-    ccEmail: '', // New field for CC email
+    ccEmail: '',
   });
 
   const [errors, setErrors] = useState({});
   const [note, setNote] = useState('');
   const [activities, setActivities] = useState([]);
+  
+  // State to manage swapping to the profile view
+  const [isViewingProfile, setIsViewingProfile] = useState(false);
+  const [profileMemberId, setProfileMemberId] = useState(null);
 
   const functions = getFunctions();
   const sendWelcomeEmailCallable = httpsCallable(functions, 'sendWelcomeEmail');
 
   useEffect(() => {
-    const fetchPrimaryMemberCompany = async () => {
-      if (!editMember && primaryMemberId && db) {
-        const primaryMemberDocRef = doc(db, "members", primaryMemberId);
-        const primaryMemberDocSnap = await getDoc(primaryMemberDocRef);
-        if (primaryMemberDocSnap.exists()) {
-          const primaryMemberData = primaryMemberDocSnap.data();
-          setFormData(prev => ({
-            ...prev,
-            company: primaryMemberData.company !== 'NA' ? primaryMemberData.company : ''
-          }));
+    // When the modal is opened/re-opened, reset everything
+    if (open) {
+      const fetchPrimaryMemberCompany = async () => {
+        if (!editMember && primaryMemberId && db) {
+          const primaryMemberDocRef = doc(db, "members", primaryMemberId);
+          const primaryMemberDocSnap = await getDoc(primaryMemberDocRef);
+          if (primaryMemberDocSnap.exists()) {
+            const primaryMemberData = primaryMemberDocSnap.data();
+            setFormData(prev => ({
+              ...prev,
+              company: primaryMemberData.company !== 'NA' ? primaryMemberData.company : ''
+            }));
+          }
         }
-      }
-    };
+      };
 
-    if (editMember) {
-      setFormData({
-        name: editMember.name || '',
-        package: editMember.package || '',
-        company: editMember.company !== 'NA' ? editMember.company : '',
-        birthdayDay: editMember.birthdayDay || '', // Populate day directly
-        birthdayMonth: editMember.birthdayMonth || '', // Populate month directly
-        whatsapp: editMember.whatsapp || '',
-        email: editMember.email || '',
-        ccEmail: editMember.ccEmail || '', // Populate ccEmail directly
-      });
-      setActivities(editMember.activities || []);
-    } else {
-      setFormData({
-        name: '',
-        package: '',
-        company: '',
-        birthdayDay: '',
-        birthdayMonth: '',
-        whatsapp: '',
-        email: '',
-        ccEmail: '', // Initialize ccEmail for new members
-      });
-      setActivities([]);
-      fetchPrimaryMemberCompany(); // Call fetch function when adding new member
+      if (editMember) {
+        setFormData({
+          name: editMember.name || '',
+          package: editMember.package || '',
+          company: editMember.company !== 'NA' ? editMember.company : '',
+          birthdayDay: editMember.birthdayDay || '',
+          birthdayMonth: editMember.birthdayMonth || '',
+          whatsapp: editMember.whatsapp || '',
+          email: editMember.email || '',
+          ccEmail: editMember.ccEmail || '',
+        });
+        setActivities(editMember.activities || []);
+      } else {
+        setFormData({
+          name: '', package: '', company: '', birthdayDay: '', birthdayMonth: '', whatsapp: '', email: '', ccEmail: '',
+        });
+        setActivities([]);
+        fetchPrimaryMemberCompany();
+      }
+      setErrors({});
+      setNote('');
+      setIsViewingProfile(false);
+      setProfileMemberId(null);
     }
-    setErrors({});
-    setNote('');
   }, [editMember, open, primaryMemberId, db]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => {
       const newState = { ...prev };
-      
       if (field === 'birthdayDay') {
         const dayValue = value;
-        // Allow empty string
         if (dayValue === '') {
           newState.birthdayDay = dayValue;
         } else {
           const day = parseInt(dayValue, 10);
-          // Allow if it's a valid number between 1 and 31
-          if (!isNaN(day) && day >= 1 && day >= 1 && day <= 31) {
+          if (!isNaN(day) && day >= 1 && day <= 31) {
             newState.birthdayDay = dayValue;
           }
-          // If it's not a valid number or out of range, newState.birthdayDay remains unchanged from the previous state.
-          // This means the input field will not visually update if the user types an invalid value.
         }
       } else {
-        // For other fields, update directly
         newState[field] = value;
       }
-
       return newState;
     });
-    
-    // Re-validate the form to update errors immediately
     const currentErrors = validateForm();
     setErrors(currentErrors);
   };
@@ -164,19 +142,14 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format';
     }
-
-    // Validate ccEmail if it's provided
     if (formData.ccEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.ccEmail)) {
       newErrors.ccEmail = 'Invalid CC email format';
     }
-
-    // Birthday validation: both day and month are required
     if (!formData.birthdayDay) newErrors.birthdayDay = 'Day is required';
     if (!formData.birthdayMonth) newErrors.birthdayMonth = 'Month is required';
     if (formData.birthdayDay && (parseInt(formData.birthdayDay, 10) < 1 || parseInt(formData.birthdayDay, 10) > 31)) {
       newErrors.birthdayDay = 'Day must be between 1 and 31';
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -184,15 +157,8 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
   const handleAddNote = () => {
     if (!note.trim()) return;
     const newActivity = {
-      id: activities.length + 1,
-      type: 'note',
-      title: 'Note Added',
-      description: note,
-      user: user ? user.displayName : 'Unknown User',
-      timestamp: new Date().toLocaleString('en-US', { 
-        month: 'short', day: 'numeric', year: 'numeric',
-        hour: 'numeric', minute: '2-digit', hour12: true 
-      }),
+      id: activities.length + 1, type: 'note', title: 'Note Added', description: note, user: user ? user.displayName : 'Unknown User',
+      timestamp: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }),
     };
     setActivities([newActivity, ...activities]);
     setNote('');
@@ -203,35 +169,19 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
       toast.error('Member email is required to send a welcome email.');
       return;
     }
-
     const emailSent = activities.some(activity => activity.type === 'email' && activity.title === 'Welcome Email Sent');
     if (emailSent) {
       toast.info('Welcome email has already been sent to this member.');
       return;
     }
-
     try {
       const result = await sendWelcomeEmailCallable({
-        toEmail: formData.email,
-        username: formData.name,
-        ccEmail: formData.ccEmail.trim() ? formData.ccEmail.trim() : null,
+        toEmail: formData.email, username: formData.name, ccEmail: formData.ccEmail.trim() ? formData.ccEmail.trim() : null,
       });
       toast.success(result.data.message);
-
       const newActivity = {
-        id: activities.length + 1,
-        type: 'email',
-        title: 'Welcome Email Sent',
-        description: `Welcome email sent to ${formData.email}`,
-        user: user ? user.displayName : 'Unknown User',
-        timestamp: new Date().toLocaleString('en-US', { 
-          month: 'short', 
-          day: 'numeric', 
-          year: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true 
-        })
+        id: activities.length + 1, type: 'email', title: 'Welcome Email Sent', description: `Welcome email sent to ${formData.email}`, user: user ? user.displayName : 'Unknown User',
+        timestamp: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
       };
       setActivities([newActivity, ...activities]);
     } catch (error) {
@@ -247,67 +197,58 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         const changes = [];
         Object.keys(formData).forEach(key => {
           if (formData[key] !== editMember[key]) {
-            changes.push({
-              field: key,
-              oldValue: editMember[key],
-              newValue: formData[key]
-            });
+            changes.push({ field: key, oldValue: editMember[key], newValue: formData[key] });
           }
         });
-
         changes.forEach(change => {
           newActivities.unshift({
-            id: newActivities.length + 1,
-            type: 'update',
-            title: `Field "${change.field}" updated`,
-            description: `Value changed from "${change.oldValue}" to "${change.newValue}"`,
-            user: user ? user.displayName : 'Unknown User',
-            timestamp: new Date().toLocaleString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-              hour: 'numeric',
-              minute: '2-digit',
-              hour12: true
-            })
+            id: newActivities.length + 1, type: 'update', title: `Field "${change.field}" updated`, description: `Value changed from "${change.oldValue}" to "${change.newValue}"`, user: user ? user.displayName : 'Unknown User',
+            timestamp: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
           });
         });
       } else {
         newActivities.unshift({
-          id: newActivities.length + 1,
-          type: 'created',
-          title: 'Member Created',
-          description: 'New member added to the system',
-          user: user ? user.displayName : 'Unknown User',
-          timestamp: new Date().toLocaleString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-          })
+          id: newActivities.length + 1, type: 'created', title: 'Member Created', description: 'New member added to the system', user: user ? user.displayName : 'Unknown User',
+          timestamp: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
         });
       }
-
       const memberData = {
-        ...formData,
-        company: formData.company.trim() ? formData.company.trim() : 'NA',
-        birthday: formatBirthday(formData.birthdayDay, formData.birthdayMonth), // Use helper function
-        activities: newActivities,
-        primaryMemberId: primaryMemberId,
-        ccEmail: formData.ccEmail.trim() ? formData.ccEmail.trim() : '', // Include ccEmail
+        ...formData, company: formData.company.trim() ? formData.company.trim() : 'NA', birthday: formatBirthday(formData.birthdayDay, formData.birthdayMonth),
+        activities: newActivities, primaryMemberId: primaryMemberId, ccEmail: formData.ccEmail.trim() ? formData.ccEmail.trim() : '',
       };
       onSave(memberData);
       onClose();
     }
   };
 
+  const handleViewProfile = (memberId) => {
+    setProfileMemberId(memberId);
+    setIsViewingProfile(true);
+  };
+
+  const handleProfileClose = () => {
+    setIsViewingProfile(false);
+    setProfileMemberId(null);
+    onClose(); // Close the main modal wrapper
+  };
+
+  // If viewing profile, render the ClientProfileModal instead.
+  // The MemberModal component stays mounted, so its state is preserved.
+  if (isViewingProfile) {
+    return (
+      <ClientProfileModal
+        open={true}
+        onClose={handleProfileClose}
+        clientId={profileMemberId}
+      />
+    );
+  }
+
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="lg" // Changed to large
+      maxWidth="lg"
       fullWidth
       PaperProps={{ sx: { borderRadius: '12px' } }}
     >
@@ -343,7 +284,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
                 type="number"
                 value={formData.birthdayDay}
                 onChange={(e) => handleChange('birthdayDay', e.target.value)}
-                inputProps={{ min: 1, max: 31 }} // Restrict day to 1-31
+                inputProps={{ min: 1, max: 31 }}
                 error={!!errors.birthdayDay}
                 helperText={errors.birthdayDay}
               />
@@ -424,7 +365,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
       <DialogActions sx={{ p: '16px 24px 24px', gap: 1.5 }}>
         {editMember && editMember.primary && (
           <Button
-            onClick={() => navigate(`/member/${editMember.id}`)}
+            onClick={() => handleViewProfile(editMember.id)}
             variant="outlined"
           >
             View Profile

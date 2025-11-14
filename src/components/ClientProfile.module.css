@@ -1,0 +1,442 @@
+.dialog {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.headerLeft h2 {
+  margin: 0;
+  color: #1a4d5c;
+}
+
+.backButton,
+.closeButton {
+  color: #1a4d5c !important;
+}
+
+.backButton:hover,
+.closeButton:hover {
+  background-color: #e8f4f8 !important;
+}
+
+.content {
+  padding: 24px !important;
+  background-color: #f8f9fa;
+}
+
+/* Profile Section */
+.profileSection {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.profileHeader {
+  margin-bottom: 24px;
+}
+
+.avatarSection {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2b7a8e 0%, #1a4d5c 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(43, 122, 142, 0.3);
+}
+
+.basicInfo {
+  flex: 1;
+}
+
+.clientName {
+  margin: 0 0 8px 0;
+  color: #1a4d5c;
+  font-size: 24px;
+}
+
+.primaryBadge {
+  background-color: #2b7a8e !important;
+  color: white !important;
+  font-size: 12px !important;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.detailItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detailLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detailIcon {
+  font-size: 18px !important;
+  color: #2b7a8e;
+}
+
+.detailValue {
+  font-size: 15px;
+  color: #1a4d5c;
+  padding-left: 26px;
+}
+
+/* Members Section */
+.membersSection {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 20px 0;
+  color: #1a4d5c;
+  font-size: 18px;
+}
+
+.sectionIcon {
+  color: #2b7a8e;
+  font-size: 22px !important;
+}
+
+.membersList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.memberCard {
+  border: 1px solid #e8f4f8 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.3s ease;
+}
+
+.memberCard:hover {
+  box-shadow: 0 4px 12px rgba(43, 122, 142, 0.1) !important;
+  border-color: #2b7a8e !important;
+}
+
+.memberCardContent {
+  padding: 16px !important;
+}
+
+.memberHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.memberInfo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.memberAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2b7a8e 0%, #1a4d5c 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.memberName {
+  color: #1a4d5c;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.memberPackage {
+  color: #666;
+  font-size: 13px;
+}
+
+.expandButton {
+  color: #2b7a8e !important;
+}
+
+.memberDetails {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e8f4f8;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.memberDetailItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #666;
+  font-size: 14px;
+}
+
+.memberDetailIcon {
+  color: #2b7a8e;
+  font-size: 18px !important;
+}
+
+/* Tabs Section */
+.tabsSection {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.tabs {
+  border-bottom: 2px solid #e8f4f8;
+  padding: 0 24px;
+}
+
+.tabs .MuiTab-root {
+  color: #666 !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  letter-spacing: 0.5px !important;
+}
+
+.tabs .MuiTab-root.Mui-selected {
+  color: #2b7a8e !important;
+}
+
+.tabs .MuiTabs-indicator {
+  background-color: #2b7a8e !important;
+  height: 3px !important;
+}
+
+.tabContent {
+  padding: 24px;
+}
+
+.tabSectionTitle {
+  margin: 0 0 20px 0;
+  color: #1a4d5c;
+  font-size: 18px;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+
+.emptyIcon {
+  font-size: 64px !important;
+  color: #ddd;
+  margin-bottom: 16px;
+}
+
+.emptyState p {
+  margin: 0;
+  font-size: 16px;
+}
+
+/* Agreements List */
+.agreementsList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.agreementCard {
+  border: 1px solid #e8f4f8 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.3s ease;
+}
+
+.agreementCard:hover {
+  box-shadow: 0 4px 12px rgba(43, 122, 142, 0.1) !important;
+  border-color: #2b7a8e !important;
+}
+
+.agreementHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.agreementNumber {
+  color: #1a4d5c;
+  font-size: 16px;
+}
+
+.agreementType {
+  background-color: #e8f4f8 !important;
+  color: #2b7a8e !important;
+}
+
+.agreementDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.agreementDetailRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.agreementDetailRow:last-child {
+  border-bottom: none;
+}
+
+.agreementLabel {
+  color: #666;
+  font-size: 14px;
+}
+
+.agreementValue {
+  color: #1a4d5c;
+  font-size: 14px;
+  text-align: right;
+}
+
+/* Invoices List */
+.invoicesList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.invoiceCard {
+  border: 1px solid #e8f4f8 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.3s ease;
+}
+
+.invoiceCard:hover {
+  box-shadow: 0 4px 12px rgba(43, 122, 142, 0.1) !important;
+  border-color: #2b7a8e !important;
+}
+
+.invoiceHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.invoiceNumber {
+  color: #1a4d5c;
+  font-size: 16px;
+}
+
+.invoiceDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.invoiceDetailRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.invoiceDetailRow:last-child {
+  border-bottom: none;
+}
+
+.invoiceLabel {
+  color: #666;
+  font-size: 14px;
+}
+
+.invoiceValue {
+  color: #1a4d5c;
+  font-size: 14px;
+  text-align: right;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .detailsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .avatarSection {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .avatar {
+    width: 60px;
+    height: 60px;
+    font-size: 22px;
+  }
+
+  .clientName {
+    font-size: 20px;
+  }
+
+  .agreementDetailRow,
+  .invoiceDetailRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .agreementValue,
+  .invoiceValue {
+    text-align: left;
+  }
+}
