@@ -154,13 +154,11 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
       newErrors.email = 'Invalid email format';
     }
 
-    // Birthday validation: if day or month is provided, both are required and day must be valid
-    if (formData.birthdayDay || formData.birthdayMonth) {
-      if (!formData.birthdayDay) newErrors.birthdayDay = 'Day is required if month is selected';
-      if (!formData.birthdayMonth) newErrors.birthdayMonth = 'Month is required if day is selected';
-      if (formData.birthdayDay && (parseInt(formData.birthdayDay, 10) < 1 || parseInt(formData.birthdayDay, 10) > 31)) {
-        newErrors.birthdayDay = 'Day must be between 1 and 31';
-      }
+    // Birthday validation: both day and month are required
+    if (!formData.birthdayDay) newErrors.birthdayDay = 'Day is required';
+    if (!formData.birthdayMonth) newErrors.birthdayMonth = 'Month is required';
+    if (formData.birthdayDay && (parseInt(formData.birthdayDay, 10) < 1 || parseInt(formData.birthdayDay, 10) > 31)) {
+      newErrors.birthdayDay = 'Day must be between 1 and 31';
     }
 
     setErrors(newErrors);

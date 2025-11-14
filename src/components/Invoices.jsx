@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext, useMemo, useCallback } from 'react';
-import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, Autocomplete, Select, MenuItem } from '@mui/material';
-import { Close, AddCircleOutline, Description } from '@mui/icons-material';
+import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, Autocomplete, Select, MenuItem, InputAdornment } from '@mui/material';
+import { Close, AddCircleOutline, Description, Search as SearchIcon, FilterList as FilterListIcon, RemoveCircleOutline } from '@mui/icons-material';
 import styles from './Invoices.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
 import { collection, getDocs, addDoc, doc, updateDoc, query, where, documentId } from 'firebase/firestore';
@@ -24,13 +24,17 @@ const updateCalculationsAndDescription = (currentFormData, allMembers) => {
   const updated = { ...currentFormData };
 
   // --- Price and Tax Calculations ---
-  const price = parseFloat(updated.price) || 0;
-  const quantity = parseInt(updated.quantity, 10) || 0;
+  let subtotal = 0;
+  updated.items.forEach(item => {
+    const price = parseFloat(item.price) || 0;
+    const quantity = parseInt(item.quantity, 10) || 0;
+    subtotal += price * quantity;
+  });
+
   const discount = parseFloat(updated.discountPercentage) || 0;
   const cgst = parseFloat(updated.cgstPercentage) || 0;
   const sgst = parseFloat(updated.sgstPercentage) || 0;
 
-  const subtotal = price * quantity;
   const discountAmount = (subtotal * discount) / 100;
   const priceAfterDiscount = subtotal - discountAmount;
   
@@ -42,27 +46,31 @@ const updateCalculationsAndDescription = (currentFormData, allMembers) => {
 
   updated.totalPrice = priceAfterDiscount.toFixed(2);
   updated.taxAmount = totalTax.toFixed(2);
-updated.totalAmountPayable = totalPayable.toFixed(2);
+  updated.totalAmountPayable = totalPayable.toFixed(2);
 
-  // --- Description Generation Logic ---
-  const selectedMember = allMembers.find(m => m.id === updated.memberId);
-  const packageName = selectedMember ? selectedMember.package : '';
-  const invoiceMonth = updated.month;
-  const invoiceYear = updated.year;
-  const fromDate = updated.fromDate;
-  const toDate = updated.toDate;
+  // --- Description Generation Logic for the first item ---
+  if (updated.items.length > 0) {
+    const selectedMember = allMembers.find(m => m.id === updated.memberId);
+    const packageName = selectedMember ? selectedMember.package : '';
+    const invoiceMonth = updated.month;
+    const invoiceYear = updated.year;
+    const fromDate = updated.fromDate;
+    const toDate = updated.toDate;
 
-  let generatedDescription = packageName || '';
-  if (packageName && invoiceMonth && invoiceYear) {
-    let datePart = '';
-    if (fromDate && toDate) {
-      const formattedFromDate = formatDate(fromDate);
-      const formattedToDate = formatDate(toDate);
-      datePart = ` (From ${formattedFromDate} To ${formattedToDate})`;
+    let generatedDescription = packageName || '';
+    if (packageName && invoiceMonth && invoiceYear) {
+      let datePart = '';
+      if (fromDate && toDate) {
+        const formattedFromDate = formatDate(fromDate);
+        const formattedToDate = formatDate(toDate);
+        datePart = ` (From ${formattedFromDate} To ${formattedToDate})`;
+      }
+      generatedDescription = `${packageName}(${invoiceMonth} ${invoiceYear})${datePart}`;
     }
-    generatedDescription = `${packageName}(${invoiceMonth} ${invoiceYear})${datePart}`;
+    const newItems = [...updated.items];
+    newItems[0] = { ...newItems[0], description: generatedDescription };
+    updated.items = newItems;
   }
-  updated.description = generatedDescription;
 
   return updated;
 };
@@ -104,10 +112,7 @@ const generateInvoicePdf = async (invoiceData) => {
     address,
     invoiceNumber,
     date,
-    description,
-    sacCode,
-    price,
-    quantity,
+    items,
     discountPercentage,
     cgstPercentage,
     sgstPercentage,
@@ -117,14 +122,18 @@ const generateInvoicePdf = async (invoiceData) => {
   } = invoiceData;
 
   // Calculations
-  const priceNum = parseFloat(price) || 0;
-  const quantityNum = parseInt(quantity, 10) || 0;
+  let subtotal = 0;
+  items.forEach(item => {
+      const price = parseFloat(item.price) || 0;
+      const quantity = parseInt(item.quantity, 10) || 0;
+      subtotal += price * quantity;
+  });
+
   const discountPerc = parseFloat(discountPercentage) || 0;
   const cgstPerc = parseFloat(cgstPercentage) || 0;
   const sgstPerc = parseFloat(sgstPercentage) || 0;
 
-  const lineItemSubtotal = priceNum * quantityNum;
-  const discountAmount = (lineItemSubtotal * discountPerc) / 100;
+  const discountAmount = (subtotal * discountPerc) / 100;
   const priceAfterDiscount = parseFloat(totalPrice) || 0;
   const cgstAmount = (priceAfterDiscount * cgstPerc) / 100;
   const sgstAmount = (priceAfterDiscount * sgstPerc) / 100;
@@ -145,20 +154,30 @@ const generateInvoicePdf = async (invoiceData) => {
   firstPage.drawText(formatDate(date) || '', { x: 450, y: 618, size: 11, font, color: rgb(0, 0, 0), maxWidth: 200 });
 
   // --- Table items ---
-  // Description
-  firstPage.drawText(description || '', { x: 66, y: 380, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150,lineHeight:12 });
+  let yPos = 380;
+  items.forEach(item => {
+    const priceNum = parseFloat(item.price) || 0;
+    const quantityNum = parseInt(item.quantity, 10) || 0;
+    const lineItemSubtotal = priceNum * quantityNum;
 
-  // SAC
-  firstPage.drawText(sacCode || '', { x: 306, y: 375, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150 });
+    // Description
+    firstPage.drawText(item.description || '', { x: 66, y: yPos, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150, lineHeight: 12 });
 
-  // Price
-  firstPage.drawText(formatCurrency(priceNum), { x: 385, y: 374, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150 });
+    // SAC
+    firstPage.drawText(item.sacCode || '', { x: 306, y: yPos - 5, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150 });
 
-  // Qty
-  firstPage.drawText(String(quantityNum), { x: 441, y: 374, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150 });
+    // Price
+    firstPage.drawText(formatCurrency(priceNum), { x: 385, y: yPos - 6, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150 });
 
-  // Total (line item)
-  firstPage.drawText(formatCurrency(lineItemSubtotal), { x: 500, y: 374, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150 });
+    // Qty
+    firstPage.drawText(String(quantityNum), { x: 441, y: yPos - 6, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150 });
+
+    // Total (line item)
+    firstPage.drawText(formatCurrency(lineItemSubtotal), { x: 500, y: yPos - 6, size: 10, font, color: rgb(0, 0, 0), maxWidth: 150 });
+
+    yPos -= 40; // reduce y axis by 40 for next item
+  });
+
 
   // --- Totals section ---
   // Subtotal (Price after discount)
@@ -196,6 +215,10 @@ export default function Invoices() {
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState(null);
   const [paymentDate, setPaymentDate] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [searchQuery, setSearchQuery] = useState(''); // New state for search query
+  const [packageFilter, setPackageFilter] = useState('All Packages'); // New state for package filter
+  const [monthFilter, setMonthFilter] = useState('All Months'); // New state for month filter
+  const [yearFilter, setYearFilter] = useState('All Years'); // New state for year filter
   const [invoiceGenerated, setInvoiceGenerated] = useState(null);
   const [formData, setFormData] = useState({
     memberId: null,
@@ -208,10 +231,7 @@ export default function Invoices() {
     year: '',
     fromDate: '',
     toDate: '',
-    description: '',
-    sacCode: '997212',
-    price: '',
-    quantity: 1,
+    items: [{ description: '', sacCode: '997212', price: '', quantity: 1 }],
     totalPrice: '',
     discountPercentage: 0,
     cgstPercentage: 9,
@@ -304,10 +324,7 @@ export default function Invoices() {
       year: new Date().getFullYear().toString(),
       fromDate: '',
       toDate: '',
-      description: '',
-      sacCode: '997212',
-      price: '',
-      quantity: 1,
+      items: [{ description: '', sacCode: '997212', price: '', quantity: 1 }],
       totalPrice: '',
       discountPercentage: 0,
       cgstPercentage: 9,
@@ -334,10 +351,12 @@ export default function Invoices() {
       year: invoice.year || '',
       fromDate: invoice.fromDate || '',
       toDate: invoice.toDate || '',
-      description: invoice.description,
-      sacCode: invoice.sacCode || '997212',
-      price: invoice.price,
-      quantity: invoice.quantity,
+      items: invoice.items || [{
+        description: invoice.description,
+        sacCode: invoice.sacCode || '997212',
+        price: invoice.price,
+        quantity: invoice.quantity,
+      }],
       totalPrice: invoice.totalPrice,
       discountPercentage: invoice.discountPercentage,
       cgstPercentage: invoice.cgstPercentage !== undefined ? invoice.cgstPercentage : 9,
@@ -369,8 +388,10 @@ export default function Invoices() {
 
         // Auto-fill last invoice details from the associated member
         if (member && member.lastInvoiceDetails) {
-          updated.price = member.lastInvoiceDetails.price || '';
-          updated.sacCode = member.lastInvoiceDetails.sacCode || '997212';
+          const newItems = [...prev.items];
+          newItems[0].price = member.lastInvoiceDetails.price || '';
+          newItems[0].sacCode = member.lastInvoiceDetails.sacCode || '997212';
+          updated.items = newItems;
           updated.discountPercentage = member.lastInvoiceDetails.discountPercentage || 0;
           updated.cgstPercentage = member.lastInvoiceDetails.cgstPercentage !== undefined ? member.lastInvoiceDetails.cgstPercentage : 9;
           updated.sgstPercentage = member.lastInvoiceDetails.sgstPercentage !== undefined ? member.lastInvoiceDetails.sgstPercentage : 9;
@@ -399,8 +420,10 @@ export default function Invoices() {
           }
         } else {
           // Reset to default invoice details if no saved data for this member or no member
-          updated.price = '';
-          updated.sacCode = '997212';
+          const newItems = [...prev.items];
+          newItems[0].price = '';
+          newItems[0].sacCode = '997212';
+          updated.items = newItems;
           updated.discountPercentage = 0;
           updated.cgstPercentage = 9;
           updated.sgstPercentage = 9;
@@ -415,16 +438,13 @@ export default function Invoices() {
         updated.memberId = null;
         updated.legalName = '';
         updated.address = '';
-        updated.sacCode = '997212';
-        updated.price = '';
-        updated.quantity = 1;
+        updated.items = [{ description: '', sacCode: '997212', price: '', quantity: 1 }];
         updated.totalPrice = '';
         updated.discountPercentage = 0;
         updated.cgstPercentage = 9;
         updated.sgstPercentage = 9;
         updated.taxAmount = '';
         updated.totalAmountPayable = '';
-        updated.description = '';
         updated.month = '';
         updated.year = new Date().getFullYear().toString();
         updated.fromDate = '';
@@ -437,6 +457,27 @@ export default function Invoices() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => updateCalculationsAndDescription({ ...prev, [name]: value }, members));
+  };
+
+  const handleItemInputChange = (index, e) => {
+    const { name, value } = e.target;
+    const newItems = [...formData.items];
+    newItems[index] = { ...newItems[index], [name]: value };
+    setFormData(prev => updateCalculationsAndDescription({ ...prev, items: newItems }, members));
+  };
+
+  const handleAddItem = () => {
+    if (formData.items.length < 4) {
+        const newItems = [...formData.items, { description: '', sacCode: '997212', price: '', quantity: 1 }];
+        setFormData(prev => ({ ...prev, items: newItems }));
+    }
+  };
+
+  const handleRemoveItem = (index) => {
+      if (formData.items.length > 1) {
+          const newItems = formData.items.filter((_, i) => i !== index);
+          setFormData(prev => updateCalculationsAndDescription({ ...prev, items: newItems }, members));
+      }
   };
 
   const handleDateChange = (name, newValue) => {
@@ -469,8 +510,8 @@ export default function Invoices() {
         // Save last invoice details to member
         const memberRef = doc(db, "members", formData.memberId);
         const lastInvoiceDetails = {
-            sacCode: formData.sacCode,
-            price: formData.price,
+            sacCode: formData.items[0].sacCode,
+            price: formData.items[0].price,
             discountPercentage: formData.discountPercentage,
             cgstPercentage: formData.cgstPercentage,
             sgstPercentage: formData.sgstPercentage,
@@ -521,10 +562,48 @@ export default function Invoices() {
     }
   };
 
-  const filteredInvoices = invoicesWithMemberData.filter((invoice) => {
-    if (filterStatus === 'All') return true;
-    return invoice.paymentStatus === filterStatus;
-  });
+  const filteredInvoices = useMemo(() => {
+    let currentInvoices = invoicesWithMemberData;
+
+    // Apply payment status filter
+    if (filterStatus !== 'All') {
+      currentInvoices = currentInvoices.filter((invoice) => {
+        const status = invoice.paymentStatus || 'Unpaid';
+        return status === filterStatus;
+      });
+    }
+
+    // Apply search query filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      currentInvoices = currentInvoices.filter(
+        (invoice) =>
+          (invoice.name && invoice.name.toLowerCase().includes(query)) ||
+          (invoice.email && invoice.email.toLowerCase().includes(query)) ||
+          (invoice.phone && invoice.phone.toLowerCase().includes(query))
+      );
+    }
+
+    // Apply package filter
+    if (packageFilter !== 'All Packages') {
+      currentInvoices = currentInvoices.filter((invoice) => {
+        const member = members.find(m => m.id === invoice.memberId);
+        return member && member.package === packageFilter;
+      });
+    }
+
+    // Apply month filter
+    if (monthFilter !== 'All Months') {
+      currentInvoices = currentInvoices.filter((invoice) => invoice.month === monthFilter);
+    }
+
+    // Apply year filter
+    if (yearFilter !== 'All Years') {
+      currentInvoices = currentInvoices.filter((invoice) => invoice.year === yearFilter);
+    }
+
+    return currentInvoices;
+  }, [invoicesWithMemberData, filterStatus, searchQuery, packageFilter, monthFilter, yearFilter, members]);
 
   const handleGenerateInvoiceForMember = useCallback((memberId, e) => {
     e.stopPropagation(); // Prevent row click event from firing
@@ -546,10 +625,7 @@ export default function Invoices() {
         year: new Date().getFullYear().toString(),
         fromDate: '',
         toDate: '',
-        description: '',
-        sacCode: '997212',
-        price: '',
-        quantity: 1,
+        items: [{ description: '', sacCode: '997212', price: '', quantity: 1 }],
         totalPrice: '',
         discountPercentage: 0,
         cgstPercentage: 9,
@@ -560,8 +636,8 @@ export default function Invoices() {
 
       // Apply last invoice details if available
       if (member.lastInvoiceDetails) {
-        initialData.price = member.lastInvoiceDetails.price || '';
-        initialData.sacCode = member.lastInvoiceDetails.sacCode || '997212';
+        initialData.items[0].price = member.lastInvoiceDetails.price || '';
+        initialData.items[0].sacCode = member.lastInvoiceDetails.sacCode || '997212';
         initialData.discountPercentage = member.lastInvoiceDetails.discountPercentage || 0;
         initialData.cgstPercentage = member.lastInvoiceDetails.cgstPercentage !== undefined ? member.lastInvoiceDetails.cgstPercentage : 9;
         initialData.sgstPercentage = member.lastInvoiceDetails.sgstPercentage !== undefined ? member.lastInvoiceDetails.sgstPercentage : 9;
@@ -607,6 +683,78 @@ export default function Invoices() {
           )}
         </div>
 
+        {/* Filter Controls */}
+        <div className={styles.filterControls}>
+          <TextField
+            placeholder="Search invoices by member name, email, or phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            size="small"
+            sx={{ flex: 1, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { fontSize: '14px', '& fieldset': { borderColor: '#e0e0e0' }, '&:hover fieldset': { borderColor: '#2b7a8e' }, '&.Mui-focused fieldset': { borderColor: '#2b7a8e' } } }}
+            InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#9e9e9e', fontSize: '20px' }} /></InputAdornment>) }}
+          />
+          <Select
+            value={packageFilter}
+            onChange={(e) => setPackageFilter(e.target.value)}
+            size="small"
+            sx={{ minWidth: '150px', bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } }}
+          >
+            <MenuItem value="All Packages">All Packages</MenuItem>
+            <MenuItem value="Dedicated Desk">Dedicated Desk</MenuItem>
+            <MenuItem value="Flexible Desk">Flexible Desk</MenuItem>
+            <MenuItem value="Private Cabin">Private Cabin</MenuItem>
+            <MenuItem value="Virtual Office">Virtual Office</MenuItem>
+            <MenuItem value="Meeting Room">Meeting Room</MenuItem>
+            <MenuItem value="Others">Others</MenuItem>
+          </Select>
+          <Select
+            value={monthFilter}
+            onChange={(e) => setMonthFilter(e.target.value)}
+            size="small"
+            sx={{ minWidth: '150px', bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } }}
+          >
+            <MenuItem value="All Months">All Months</MenuItem>
+            <MenuItem value="January">January</MenuItem>
+            <MenuItem value="February">February</MenuItem>
+            <MenuItem value="March">March</MenuItem>
+            <MenuItem value="April">April</MenuItem>
+            <MenuItem value="May">May</MenuItem>
+            <MenuItem value="June">June</MenuItem>
+            <MenuItem value="July">July</MenuItem>
+            <MenuItem value="August">August</MenuItem>
+            <MenuItem value="September">September</MenuItem>
+            <MenuItem value="October">October</MenuItem>
+            <MenuItem value="November">November</MenuItem>
+            <MenuItem value="December">December</MenuItem>
+          </Select>
+          <Select
+            value={yearFilter}
+            onChange={(e) => setYearFilter(e.target.value)}
+            size="small"
+            sx={{ minWidth: '150px', bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } }}
+          >
+            <MenuItem value="All Years">All Years</MenuItem>
+            {/* Generate years dynamically, e.g., last 5 years and next 2 years */}
+            {Array.from({ length: 8 }, (_, i) => new Date().getFullYear() - 5 + i).map(year => (
+              <MenuItem key={year} value={String(year)}>{year}</MenuItem>
+            ))}
+          </Select>
+          <Button
+            variant="outlined"
+            startIcon={<FilterListIcon />}
+            onClick={() => {
+              setSearchQuery('');
+              setPackageFilter('All Packages');
+              setMonthFilter('All Months');
+              setYearFilter('All Years');
+              setFilterStatus('All'); // Also clear the payment status filter
+            }}
+            sx={{ textTransform: 'none', fontSize: '14px', color: '#424242', borderColor: '#e0e0e0', bgcolor: '#ffffff', px: 2, '&:hover': { borderColor: '#2b7a8e', bgcolor: '#ffffff' } }}
+          >
+            Clear Filters
+          </Button>
+        </div>
+
         {/* Filter Tabs */}
         <div className={styles.filterContainer}>
           <button
@@ -631,7 +779,7 @@ export default function Invoices() {
           >
             Unpaid
             <span className={styles.filterCount}>
-              {invoices.filter(inv => inv.paymentStatus === 'Unpaid').length}
+              {invoices.filter(inv => !inv.paymentStatus || inv.paymentStatus === 'Unpaid').length}
             </span>
           </button>
         </div>
@@ -866,7 +1014,7 @@ export default function Invoices() {
               <div className={styles.formGrid} style={{ gridTemplateColumns: '1fr' }}>
                 <Autocomplete
                   options={agreements}
-                  getOptionLabel={(option) => option.name}
+                  getOptionLabel={(option) => `${option.name} (${option.company})`}
                   onChange={handleAgreementSelect}
                   value={agreements.find(a => a.id === formData.agreementId) || null}
                   disabled={!!editingInvoice}
@@ -979,61 +1127,87 @@ export default function Invoices() {
                   format="DD/MM/YYYY"
                   slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small', required: true } }}
                 />
-                <TextField
-                  label="Description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  required
-                  style={{ gridColumn: '1 / -1' }}
-                  InputProps={{
-                    readOnly: true,
-                  }}
-                />
-                <TextField
-                  label="SAC Code"
-                  name="sacCode"
-                  value={formData.sacCode}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  required
-                />
               </div>
             </div>
 
             {/* Pricing Section */}
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>Pricing Details</h3>
-              <div className={styles.formGrid}>
-                <TextField
-                  label="Price"
-                  name="price"
-                  type="number"
-                  value={formData.price}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  required
-                  inputProps={{ step: "0.01", min: "0" }}
-                />
-                <TextField
-                  label="Quantity"
-                  name="quantity"
-                  type="number"
-                  value={formData.quantity}
-                  onChange={handleInputChange}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  required
-                  inputProps={{ step: "1", min: "1" }}
-                />
+              {formData.items.map((item, index) => (
+                <div key={index} className={styles.itemRow}>
+                    <TextField
+                        label="Description"
+                        name="description"
+                        value={item.description}
+                        onChange={(e) => handleItemInputChange(index, e)}
+                        variant="outlined"
+                        size="small"
+                        required
+                        InputProps={{ readOnly: index === 0 && !!formData.agreementId }}
+                        style={{ flex: 3 }}
+                    />
+                    <TextField
+                        label="SAC"
+                        name="sacCode"
+                        value={item.sacCode}
+                        onChange={(e) => handleItemInputChange(index, e)}
+                        variant="outlined"
+                        size="small"
+                        required
+                        style={{ flex: 1 }}
+                    />
+                    <TextField
+                        label="Price"
+                        name="price"
+                        type="number"
+                        value={item.price}
+                        onChange={(e) => handleItemInputChange(index, e)}
+                        variant="outlined"
+                        size="small"
+                        required
+                        inputProps={{ step: "0.01", min: "0" }}
+                        style={{ flex: 1 }}
+                    />
+                    <TextField
+                        label="Qty"
+                        name="quantity"
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => handleItemInputChange(index, e)}
+                        variant="outlined"
+                        size="small"
+                        required
+                        inputProps={{ step: "1", min: "1" }}
+                        style={{ flex: 1 }}
+                    />
+                    <TextField
+                        label="Total"
+                        name="total"
+                        type="number"
+                        value={((parseFloat(item.price) || 0) * (parseInt(item.quantity, 10) || 0)).toFixed(2)}
+                        variant="outlined"
+                        size="small"
+                        InputProps={{ readOnly: true }}
+                        style={{ flex: 1 }}
+                    />
+                    {formData.items.length > 1 && (
+                        <IconButton onClick={() => handleRemoveItem(index)} size="small">
+                            <RemoveCircleOutline />
+                        </IconButton>
+                    )}
+                </div>
+              ))}
+              {formData.items.length < 4 && (
+                  <Button
+                      startIcon={<AddCircleOutline />}
+                      onClick={handleAddItem}
+                      size="small"
+                      style={{ marginTop: '10px' }}
+                  >
+                      Add Item
+                  </Button>
+              )}
+              <div className={styles.formGrid} style={{marginTop: '16px'}}>
                 <TextField
                   label="Discount (%)"
                   name="discountPercentage"
@@ -1144,5 +1318,3 @@ export default function Invoices() {
     </div>
   );
 }
-
-
