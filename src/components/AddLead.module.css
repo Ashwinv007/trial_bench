@@ -1,3 +1,13 @@
+.errorMessage {
+  color: red;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.inputError {
+  border-color: red !important;
+}
+
 .container {
   flex: 1;
   background-color: #f5f5f5;

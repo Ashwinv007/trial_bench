@@ -105,6 +105,11 @@ export default function EditLead() {
   }, [db, id]);
 
   const handleUpdateLead = async () => {
+    const newErrors = validateForm(formData); // Get errors
+    setErrors(newErrors); // Set errors state
+    if (Object.keys(newErrors).length > 0) {
+      return; // Stop if form is invalid
+    }
     if (!originalLead) return; // Add this check
     try {
       const leadRef = doc(db, "leads", id);
@@ -184,6 +189,10 @@ export default function EditLead() {
         newState.sourceDetail = '';
       }
 
+      // Validate immediately after setting the new state
+      const updatedErrors = validateForm(newState);
+      setErrors(updatedErrors); // Update errors state
+
       return newState;
     });
 
@@ -220,22 +229,32 @@ export default function EditLead() {
     setFollowUpDays('');
   };
 
-  const validateForm = () => {
+  const validateForm = (data) => { // Accepts formData as argument
     const newErrors = {};
-    if (!formData.name.trim()) newErrors.name = 'Name is required';
-    if (!formData.package) newErrors.package = 'Package is required';
+    if (!data.name.trim()) newErrors.name = 'Name is required';
+    if (!data.purposeOfVisit) newErrors.purposeOfVisit = 'Purpose of Visit is required';
+    if (data.phone.trim().length <= 3) newErrors.phone = 'Phone number is required (excluding country code)';
+    if (!data.sourceType) newErrors.sourceType = 'Source is required';
+    if (data.sourceType === 'Referral' && !data.sourceDetail.trim()) newErrors.sourceDetail = 'Referral Person Name is required';
+    if (data.sourceType === 'Social Media' && !data.sourceDetail.trim()) newErrors.sourceDetail = 'Social Media Platform is required';
+    if (!data.status) newErrors.status = 'Status is required';
+
+    if (data.status === 'Converted') {
+      if (!data.clientType) newErrors.clientType = 'Client Type is required';
+      if (data.clientType === 'Company' && !data.companyName.trim()) newErrors.companyName = 'Company Name is required';
+      if (!data.convertedEmail.trim()) newErrors.convertedEmail = 'Email is required';
+      if (!data.convertedWhatsapp.trim()) newErrors.convertedWhatsapp = 'WhatsApp is required';
+    }
 
     // Birthday validation: if day or month is provided, both are required and day must be valid
-    if (formData.birthdayDay || formData.birthdayMonth) {
-      if (!formData.birthdayDay) newErrors.birthdayDay = 'Day is required if month is selected';
-      if (!formData.birthdayMonth) newErrors.birthdayMonth = 'Month is required if day is selected';
-      if (formData.birthdayDay && (parseInt(formData.birthdayDay, 10) < 1 || parseInt(formData.birthdayDay, 10) > 31)) {
+    if (data.birthdayDay || data.birthdayMonth) {
+      if (!data.birthdayDay) newErrors.birthdayDay = 'Day is required if month is selected';
+      if (!data.birthdayMonth) newErrors.birthdayMonth = 'Month is required if day is selected';
+      if (data.birthdayDay && (parseInt(data.birthdayDay, 10) < 1 || parseInt(data.birthdayDay, 10) > 31)) {
         newErrors.birthdayDay = 'Day must be between 1 and 31';
       }
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors; // Return the errors object
   };
 
   if (!formData) {
@@ -269,8 +288,10 @@ export default function EditLead() {
                   value={formData.name}
                   onChange={handleInputChange}
                   placeholder="Enter full name"
-                  className={styles.input}
+                  className={`${styles.input} ${errors.name ? styles.inputError : ''}`}
+                  required
                 />
+                {errors.name && <p className={styles.errorMessage}>{errors.name}</p>}
               </div>
 
 
@@ -283,7 +304,8 @@ export default function EditLead() {
                   name="purposeOfVisit"
                   value={formData.purposeOfVisit}
                   onChange={handleInputChange}
-                  className={styles.select}
+                  className={`${styles.select} ${errors.purposeOfVisit ? styles.inputError : ''}`}
+                  required
                 >
                   <option value="">Select purpose</option>
                   <option value="Dedicated Desk">Dedicated Desk</option>
@@ -293,6 +315,7 @@ export default function EditLead() {
                   <option value="Meeting Room">Meeting Room</option>
                   <option value="Others">Others</option>
                 </select>
+                {errors.purposeOfVisit && <p className={styles.errorMessage}>{errors.purposeOfVisit}</p>}
               </div>
 
               <div className={styles.formGroup}>
@@ -303,8 +326,10 @@ export default function EditLead() {
                     value={formData.phone}
                     onChange={handleInputChange}
                     placeholder="Enter phone number"
-                    className={styles.input}
+                    className={`${styles.input} ${errors.phone ? styles.inputError : ''}`}
+                    required
                   />
+                  {errors.phone && <p className={styles.errorMessage}>{errors.phone}</p>}
                 </div>
 
               {/* Source */}
@@ -314,7 +339,8 @@ export default function EditLead() {
                   name="sourceType"
                   value={formData.sourceType}
                   onChange={handleInputChange}
-                  className={styles.select}
+                  className={`${styles.select} ${errors.sourceType ? styles.inputError : ''}`}
+                  required
                 >
                   <option value="">Select source</option>
                   <option value="Walk-in">Walk-in</option>
@@ -325,35 +351,40 @@ export default function EditLead() {
                   <option value="Social Media">Social Media</option>
                   <option value="Other">Other</option>
                 </select>
+                {errors.sourceType && <p className={styles.errorMessage}>{errors.sourceType}</p>}
               </div>
 
               {/* Referral Name */}
               {formData.sourceType === 'Referral' && (
                 <div className={styles.formGroup}>
-                  <label className={styles.label}>Referral Person Name</label>
+                  <label className={styles.label}>Referral Person Name *</label>
                   <input
                     type="text"
                     name="sourceDetail"
                     value={formData.sourceDetail}
                     onChange={handleInputChange}
                     placeholder="Enter referral person name"
-                    className={styles.input}
+                    className={`${styles.input} ${errors.sourceDetail ? styles.inputError : ''}`}
+                    required
                   />
+                  {errors.sourceDetail && <p className={styles.errorMessage}>{errors.sourceDetail}</p>}
                 </div>
               )}
 
               {/* Social Media Platform */}
               {formData.sourceType === 'Social Media' && (
                 <div className={styles.formGroup}>
-                  <label className={styles.label}>Social Media Platform</label>
+                  <label className={styles.label}>Social Media Platform *</label>
                   <input
                     type="text"
                     name="sourceDetail"
                     value={formData.sourceDetail}
                     onChange={handleInputChange}
                     placeholder="e.g., Instagram, LinkedIn, Facebook"
-                    className={styles.input}
+                    className={`${styles.input} ${errors.sourceDetail ? styles.inputError : ''}`}
+                    required
                   />
+                  {errors.sourceDetail && <p className={styles.errorMessage}>{errors.sourceDetail}</p>}
                 </div>
               )}
 
@@ -364,7 +395,8 @@ export default function EditLead() {
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
-                  className={styles.select}
+                  className={`${styles.select} ${errors.status ? styles.inputError : ''}`}
+                  required
                 >
                   <option value="">Select status</option>
                   <option value="New">New</option>
@@ -372,6 +404,7 @@ export default function EditLead() {
                   <option value="Converted">Converted</option>
                   <option value="Not Interested">Not Interested</option>
                 </select>
+                {errors.status && <p className={styles.errorMessage}>{errors.status}</p>}
               </div>
 
               {/* Converted Modal Fields */}
@@ -385,12 +418,14 @@ export default function EditLead() {
                       name="clientType"
                       value={formData.clientType}
                       onChange={handleInputChange}
-                      className={styles.select}
+                      className={`${styles.select} ${errors.clientType ? styles.inputError : ''}`}
+                      required
                     >
                       <option value="">Select client type</option>
                       <option value="Individual">Individual</option>
                       <option value="Company">Company</option>
                     </select>
+                    {errors.clientType && <p className={styles.errorMessage}>{errors.clientType}</p>}
                   </div>
 
                   {formData.clientType === 'Company' && (
@@ -402,33 +437,39 @@ export default function EditLead() {
                         value={formData.companyName}
                         onChange={handleInputChange}
                         placeholder="Enter company name"
-                        className={styles.input}
+                        className={`${styles.input} ${errors.companyName ? styles.inputError : ''}`}
+                        required
                       />
+                      {errors.companyName && <p className={styles.errorMessage}>{errors.companyName}</p>}
                     </div>
                   )}
 
                   <div className={styles.formGroup}>
-                    <label className={styles.label}>Email</label>
+                    <label className={styles.label}>Email *</label>
                     <input
                       type="email"
                       name="convertedEmail"
                       value={formData.convertedEmail}
                       onChange={handleInputChange}
                       placeholder="Enter email address"
-                      className={styles.input}
+                      className={`${styles.input} ${errors.convertedEmail ? styles.inputError : ''}`}
+                      required
                     />
+                    {errors.convertedEmail && <p className={styles.errorMessage}>{errors.convertedEmail}</p>}
                   </div>
 
                   <div className={styles.formGroup}>
-                    <label className={styles.label}>WhatsApp</label>
+                    <label className={styles.label}>WhatsApp *</label>
                     <input
                       type="text"
                       name="convertedWhatsapp"
                       value={formData.convertedWhatsapp}
                       onChange={handleInputChange}
                       placeholder="Enter WhatsApp number"
-                      className={styles.input}
+                      className={`${styles.input} ${errors.convertedWhatsapp ? styles.inputError : ''}`}
+                      required
                     />
+                    {errors.convertedWhatsapp && <p className={styles.errorMessage}>{errors.convertedWhatsapp}</p>}
                   </div>
 
                   {/* Birthday Input - Replaced with Day and Month Selectors */}
