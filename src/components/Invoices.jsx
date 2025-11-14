@@ -365,7 +365,7 @@ export default function Invoices() {
 
         // Auto-fill legal details from agreement
         updated.legalName = (agreement.company && agreement.company !== 'NA' ? agreement.company : agreement.name) || '';
-        updated.address = agreement.address || '';
+        updated.address = member?.legalDetails?.address || member?.address || agreement.address || '';
 
         // Auto-fill last invoice details from the associated member
         if (member && member.lastInvoiceDetails) {
