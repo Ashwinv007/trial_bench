@@ -1,5 +1,5 @@
 import { useState, useContext, useEffect } from 'react';
-import { FirebaseContext } from '../store/Context';
+import { FirebaseContext, AuthContext } from '../store/Context';
 import { doc, getDoc, updateDoc, collection, addDoc, deleteDoc } from 'firebase/firestore';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -63,6 +63,7 @@ export default function EditLead() {
   const [isSubmitted, setIsSubmitted] = useState(false); // New state for tracking submission
 
   const { db } = useContext(FirebaseContext);
+  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   const { id } = useParams();
 
@@ -146,6 +147,49 @@ export default function EditLead() {
       return; // Stop if form is invalid
     }
     if (!originalLead) return; // Add this check
+
+    const changes = [];
+    const noteworthyChanges = {};
+
+    Object.keys(formData).forEach(key => {
+      if (formData[key] !== originalLead[key]) {
+        changes.push({
+          field: key,
+          oldValue: originalLead[key],
+          newValue: formData[key]
+        });
+        noteworthyChanges[key] = {
+          old: originalLead[key],
+          new: formData[key]
+        };
+      }
+    });
+
+    if (changes.length === 0) {
+      navigate('/leads');
+      return;
+    }
+
+    const newActivities = [...activities];
+
+    changes.forEach(change => {
+      newActivities.unshift({
+        id: newActivities.length + 1,
+        type: 'update',
+        title: `Field "${change.field}" updated`,
+        description: `Value changed from "${change.oldValue}" to "${change.newValue}"`,
+        user: user ? user.displayName : 'Unknown User',
+        timestamp: new Date().toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        })
+      });
+    });
+
     try {
       const leadRef = doc(db, "leads", id);
 
@@ -197,7 +241,7 @@ export default function EditLead() {
         // Just update the lead
         await updateDoc(leadRef, {
           ...formData,
-          activities: activities
+          activities: newActivities
         });
         navigate('/leads');
       }
@@ -214,6 +258,7 @@ export default function EditLead() {
       type: 'note',
       title: followUpDays ? `Note Added - Follow up in ${followUpDays} days` : 'Note Added',
       description: note,
+      user: user ? user.displayName : 'Unknown User',
       timestamp: new Date().toLocaleString('en-US', { 
         month: 'short', 
         day: 'numeric', 
@@ -567,6 +612,7 @@ export default function EditLead() {
                         <span className={styles.timelineTimestamp}>{activity.timestamp}</span>
                       </div>
                       <p className={styles.timelineDescription}>{activity.description}</p>
+                      {activity.user && <p className={styles.activityUser}>by {activity.user}</p>}
                       {activity.hasFollowUp && (
                         <div className={styles.followUpBadge}>
                           Follow up reminder set for {activity.followUpDays} days

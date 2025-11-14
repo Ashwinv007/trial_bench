@@ -1,5 +1,5 @@
-import { useState, useContext } from 'react';
-import { FirebaseContext } from '../store/Context';
+import { useState, useContext, useEffect } from 'react';
+import { FirebaseContext, AuthContext } from '../store/Context';
 import { collection, addDoc, doc, deleteDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -93,7 +93,18 @@ export default function AddLead() {
   const [isSubmitted, setIsSubmitted] = useState(false); // New state for tracking submission
 
   const { db } = useContext(FirebaseContext);
+  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      setActivities(prevActivities => {
+        const newActivities = [...prevActivities];
+        newActivities[newActivities.length - 1].user = user.displayName;
+        return newActivities;
+      });
+    }
+  }, [user]);
 
   const handleSaveLead = async () => {
     setIsSubmitted(true); // Set to true on first submission attempt
@@ -206,6 +217,7 @@ export default function AddLead() {
       type: 'note',
       title: followUpDays ? `Note Added - Follow up in ${followUpDays} days` : 'Note Added',
       description: note,
+      user: user ? user.displayName : 'Unknown User',
       timestamp: new Date().toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -561,6 +573,7 @@ export default function AddLead() {
                         <span className={styles.timelineTimestamp}>{activity.timestamp}</span>
                       </div>
                       <p className={styles.timelineDescription}>{activity.description}</p>
+                      {activity.user && <p className={styles.activityUser}>by {activity.user}</p>}
                       {activity.hasFollowUp && (
                         <div className={styles.followUpBadge}>
                           Follow up reminder set for {activity.followUpDays} days

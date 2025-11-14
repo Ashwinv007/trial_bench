@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { FirebaseContext } from '../store/Context';
+import { FirebaseContext, AuthContext } from '../store/Context';
 import { doc, getDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
@@ -57,6 +57,7 @@ const formatBirthday = (day, month) => {
 
 export default function MemberModal({ open, onClose, onSave, editMember = null, primaryMemberId = null }) {
   const { db } = useContext(FirebaseContext);
+  const { user } = useContext(AuthContext);
   const [formData, setFormData] = useState({
     name: '',
     package: '',
@@ -185,6 +186,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
       type: 'note',
       title: 'Note Added',
       description: note,
+      user: user ? user.displayName : 'Unknown User',
       timestamp: new Date().toLocaleString('en-US', { 
         month: 'short', day: 'numeric', year: 'numeric',
         hour: 'numeric', minute: '2-digit', hour12: true 
@@ -219,6 +221,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         type: 'email',
         title: 'Welcome Email Sent',
         description: `Welcome email sent to ${formData.email}`,
+        user: user ? user.displayName : 'Unknown User',
         timestamp: new Date().toLocaleString('en-US', { 
           month: 'short', 
           day: 'numeric', 
@@ -237,11 +240,59 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
 
   const handleSubmit = () => {
     if (validateForm()) {
+      const newActivities = [...activities];
+      if (editMember) {
+        const changes = [];
+        Object.keys(formData).forEach(key => {
+          if (formData[key] !== editMember[key]) {
+            changes.push({
+              field: key,
+              oldValue: editMember[key],
+              newValue: formData[key]
+            });
+          }
+        });
+
+        changes.forEach(change => {
+          newActivities.unshift({
+            id: newActivities.length + 1,
+            type: 'update',
+            title: `Field "${change.field}" updated`,
+            description: `Value changed from "${change.oldValue}" to "${change.newValue}"`,
+            user: user ? user.displayName : 'Unknown User',
+            timestamp: new Date().toLocaleString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true
+            })
+          });
+        });
+      } else {
+        newActivities.unshift({
+          id: newActivities.length + 1,
+          type: 'created',
+          title: 'Member Created',
+          description: 'New member added to the system',
+          user: user ? user.displayName : 'Unknown User',
+          timestamp: new Date().toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          })
+        });
+      }
+
       const memberData = {
         ...formData,
         company: formData.company.trim() ? formData.company.trim() : 'NA',
         birthday: formatBirthday(formData.birthdayDay, formData.birthdayMonth), // Use helper function
-        activities: activities,
+        activities: newActivities,
         primaryMemberId: primaryMemberId,
         ccEmail: formData.ccEmail.trim() ? formData.ccEmail.trim() : '', // Include ccEmail
       };
@@ -353,6 +404,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
                         <span className={styles.timelineTimestamp}>{activity.timestamp}</span>
                       </div>
                       <p className={styles.timelineDescription}>{activity.description}</p>
+                      {activity.user && <p className={styles.activityUser}>by {activity.user}</p>}
                       {activity.hasFollowUp && (
                         <div className={styles.followUpBadge}>
                           Follow up reminder set for {activity.followUpDays} days
