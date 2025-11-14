@@ -27,6 +27,7 @@ import MemberModal from './MemberModal';
 import { KeyboardArrowDown, KeyboardArrowRight } from '@mui/icons-material';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 
 // Helper function to format birthday for display
 const formatBirthdayDisplay = (birthday) => {
@@ -183,6 +184,23 @@ export default function MembersPage() {
       .filter(Boolean);
   };
 
+  const handleExport = () => {
+    const dataToExport = filteredMembers.map(member => ({
+      Name: member.name,
+      Package: member.package,
+      Company: member.company,
+      Birthday: formatBirthdayDisplay(member.birthday),
+      WhatsApp: member.whatsapp,
+      Email: member.email,
+      Primary: member.primary ? 'Yes' : 'No',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Members");
+    XLSX.writeFile(wb, "members.xlsx");
+  };
+
   const renderAllMembersView = () => (
     filteredMembers.map((member) => (
       <TableRow key={member.id} sx={{ '&:hover': { backgroundColor: '#f5f5f5' }, cursor: 'pointer' }} onClick={() => handleOpenEditModal(member)}>
@@ -320,7 +338,7 @@ export default function MembersPage() {
             variant="contained"
             startIcon={<UploadFile />}
             sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
-            onClick={() => { /* export data function */ }}
+            onClick={handleExport}
           >
             Export
           </Button>
