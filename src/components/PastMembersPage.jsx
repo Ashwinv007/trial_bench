@@ -21,6 +21,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import UploadFile from '@mui/icons-material/UploadFile';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
 // Helper function to format birthday for display
 const formatBirthdayDisplay = (birthday) => {
@@ -83,6 +84,23 @@ export default function PastMembersPage() {
         toast.error("Failed to permanently delete member.");
       }
     }
+  };
+
+  const handleExport = () => {
+    const dataToExport = filteredMembers.map(member => ({
+      Name: member.name,
+      Package: member.package,
+      Company: member.company,
+      Birthday: formatBirthdayDisplay(member.birthday),
+      WhatsApp: member.whatsapp,
+      Email: member.email,
+      'Date Removed': member.removedAt?.toDate().toLocaleDateString() || '-',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "PastMembers");
+    XLSX.writeFile(wb, "past_members.xlsx");
   };
 
   const renderAllMembersView = () => (
@@ -157,7 +175,7 @@ export default function PastMembersPage() {
             variant="contained"
             startIcon={<UploadFile />}
             sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
-            onClick={() => { /* export data function */ }}
+            onClick={handleExport}
           >
             Export
           </Button>
