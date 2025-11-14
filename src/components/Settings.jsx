@@ -211,7 +211,7 @@ export default function Settings() {
       if (auth.currentUser && auth.currentUser.email === userEmail) {
         await auth.currentUser.getIdToken(true);
       }
-      setUsers(prev => prev.map(u => u.email === userEmail ? { ...u, roleId } : u));
+      fetchSettingsData(); // Re-fetch all data to ensure consistency
     } catch (error) {
       toast.error(error.message || "Failed to assign role.");
     }
