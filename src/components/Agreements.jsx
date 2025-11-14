@@ -340,7 +340,12 @@ export default function Agreements() {
     }
   
     const pdfBytes = await pdfDoc.save();
-    return Buffer.from(pdfBytes).toString('base64');
+    // Convert Uint8Array to binary string
+    let binary = '';
+    for (let i = 0; i < pdfBytes.length; i++) {
+      binary += String.fromCharCode(pdfBytes[i]);
+    }
+    return btoa(binary);
   };
   const handleSendAgreementEmail = async () => {
     if (!agreementGenerated || !agreementGenerated.email || !agreementGenerated.name || !agreementGenerated.agreementNumber) {
@@ -464,7 +469,9 @@ export default function Agreements() {
                   onClick={async () => {
                     try {
                       const pdfBase64 = await getAgreementPdfBase64(agreementGenerated);
-                      const blob = new Blob([Buffer.from(pdfBase64, 'base64')], { type: 'application/pdf' });
+                      const byteCharacters = atob(pdfBase64);
+                      const byteArray = Uint8Array.from(byteCharacters, char => char.charCodeAt(0));
+                      const blob = new Blob([byteArray], { type: 'application/pdf' });
                       saveAs(blob, `${agreementGenerated.agreementNumber || 'agreement'}.pdf`);
                       toast.success("Agreement downloaded successfully!");
                     } catch (error) {
