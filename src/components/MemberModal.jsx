@@ -26,6 +26,7 @@ import {
   AccountBox
 } from '@mui/icons-material';
 import styles from './AddLead.module.css'; // Reusing styles
+import { useNavigate } from 'react-router-dom';
 
 // Helper function to format birthday
 const formatBirthday = (day, month) => {
@@ -58,6 +59,7 @@ const formatBirthday = (day, month) => {
 export default function MemberModal({ open, onClose, onSave, editMember = null, primaryMemberId = null }) {
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     package: '',
@@ -420,6 +422,14 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
       </DialogContent>
 
       <DialogActions sx={{ p: '16px 24px 24px', gap: 1.5 }}>
+        {editMember && editMember.primary && (
+          <Button
+            onClick={() => navigate(`/member/${editMember.id}`)}
+            variant="outlined"
+          >
+            View Profile
+          </Button>
+        )}
         <Button onClick={onClose} variant="outlined">Cancel</Button>
         <Button onClick={handleSubmit} variant="contained" sx={{ bgcolor: '#2b7a8e' }}>
           {editMember ? 'Update Member' : 'Add Member'}

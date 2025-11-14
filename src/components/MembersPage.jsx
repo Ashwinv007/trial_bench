@@ -26,6 +26,7 @@ import UploadFile from '@mui/icons-material/UploadFile';
 import MemberModal from './MemberModal';
 import { KeyboardArrowDown, KeyboardArrowRight } from '@mui/icons-material';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 // Helper function to format birthday for display
 const formatBirthdayDisplay = (birthday) => {
@@ -46,6 +47,7 @@ export default function MembersPage() {
 
   const { db } = useContext(FirebaseContext);
   const [allMembers, setAllMembers] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -249,7 +251,7 @@ export default function MembersPage() {
               <TableCell>{subMember.birthday}</TableCell>
               <TableCell>{subMember.whatsapp}</TableCell>
               <TableCell>{subMember.email}</TableCell>
-              <TableCell colSpan={2}>
+              <TableCell colSpan={3}>
                 <Button size="small" onClick={(e) => { e.stopPropagation(); handleRemove(subMember.id); }}>Remove</Button>
               </TableCell>
             </TableRow>
