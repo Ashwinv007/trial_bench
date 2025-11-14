@@ -3,7 +3,7 @@ import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, Auto
 import { Close, AddCircleOutline, Description } from '@mui/icons-material';
 import styles from './Invoices.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
-import { collection, getDocs, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, query, where, documentId } from 'firebase/firestore';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -189,6 +189,7 @@ export default function Invoices() {
   const { hasPermission } = useContext(AuthContext);
   const [invoices, setInvoices] = useState([]);
   const [members, setMembers] = useState([]);
+  const [agreements, setAgreements] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPaymentDateModalOpen, setIsPaymentDateModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
@@ -198,6 +199,7 @@ export default function Invoices() {
   const [invoiceGenerated, setInvoiceGenerated] = useState(null);
   const [formData, setFormData] = useState({
     memberId: null,
+    agreementId: null,
     legalName: '',
     address: '',
     invoiceNumber: '',
@@ -228,15 +230,50 @@ export default function Invoices() {
       setInvoices(invoicesData);
     };
 
-    const fetchMembers = async () => {
-      const membersCollection = collection(db, 'members');
-      const membersSnapshot = await getDocs(membersCollection);
-      const membersData = membersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setMembers(membersData);
+    const fetchAgreementsAndMembers = async () => {
+      const agreementsCollection = collection(db, 'agreements');
+      const agreementsSnapshot = await getDocs(agreementsCollection);
+      let agreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Filter agreements to only include those with a memberId
+      const validAgreements = agreementsData.filter(agreement => agreement.memberId);
+
+      const memberIdsInAgreements = new Set(validAgreements.map(agreement => agreement.memberId).filter(Boolean));
+
+      let membersData = [];
+      if (memberIdsInAgreements.size > 0) {
+        const memberPromises = [];
+        const memberIdsArray = Array.from(memberIdsInAgreements);
+        for (let i = 0; i < memberIdsArray.length; i += 10) {
+          const batch = memberIdsArray.slice(i, i + 10);
+          memberPromises.push(getDocs(query(collection(db, 'members'), where(documentId(), 'in', batch))));
+        }
+        const memberSnapshots = await Promise.all(memberPromises);
+        memberSnapshots.forEach(snapshot => {
+          membersData = membersData.concat(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        });
+      }
+      
+      // Create a map for quick member lookup
+      const membersMap = new Map(membersData.map(member => [member.id, member]));
+
+      // Combine agreement data with member data for display in Autocomplete
+      const combinedAgreementsData = validAgreements.map(agreement => {
+        const member = membersMap.get(agreement.memberId);
+        return {
+          ...agreement,
+          name: member ? member.name : 'Unknown Member', // Add member's name
+          company: member ? member.company : 'N/A', // Add member's company
+          // You might want to add other member fields needed for display or logic
+        };
+      });
+
+      setAgreements(combinedAgreementsData); // Set the combined data to agreements state
+      setMembers(membersData); // Set the filtered members
     };
 
     fetchInvoices();
-    fetchMembers();
+    fetchAgreementsAndMembers();
   }, [db]);
 
   const invoicesWithMemberData = useMemo(() => {
@@ -258,6 +295,7 @@ export default function Invoices() {
     const newInvoiceNumber = generateInvoiceNumber(invoices);
     const initialData = {
       memberId: null,
+      agreementId: null,
       legalName: '',
       address: '',
       invoiceNumber: newInvoiceNumber,
@@ -316,18 +354,21 @@ export default function Invoices() {
     setInvoiceGenerated(null);
   };
 
-  const handleMemberSelect = (event, member) => {
+  const handleAgreementSelect = (event, agreement) => {
     setFormData(prev => {
       let updated = { ...prev };
 
-      if (member) {
-        updated.memberId = member.id;
-        // Auto-fill legal details from member.legalDetails
-        updated.legalName = member.legalDetails?.legalName || (member.company && member.company !== 'NA' ? member.company : member.name) || '';
-        updated.address = member.legalDetails?.address || member.address || ''; // Use member.address as fallback
+      if (agreement) {
+        const member = members.find(m => m.id === agreement.memberId);
+        updated.agreementId = agreement.id;
+        updated.memberId = agreement.memberId;
 
-        // Auto-fill last invoice details
-        if (member.lastInvoiceDetails) {
+        // Auto-fill legal details from agreement
+        updated.legalName = (agreement.company && agreement.company !== 'NA' ? agreement.company : agreement.name) || '';
+        updated.address = agreement.address || '';
+
+        // Auto-fill last invoice details from the associated member
+        if (member && member.lastInvoiceDetails) {
           updated.price = member.lastInvoiceDetails.price || '';
           updated.sacCode = member.lastInvoiceDetails.sacCode || '997212';
           updated.discountPercentage = member.lastInvoiceDetails.discountPercentage || 0;
@@ -357,7 +398,7 @@ export default function Invoices() {
             updated.toDate = '';
           }
         } else {
-          // Reset to default invoice details if no saved data for this member
+          // Reset to default invoice details if no saved data for this member or no member
           updated.price = '';
           updated.sacCode = '997212';
           updated.discountPercentage = 0;
@@ -369,7 +410,8 @@ export default function Invoices() {
           updated.toDate = '';
         }
       } else {
-        // Member deselected, reset relevant fields to initial defaults
+        // Agreement deselected, reset relevant fields to initial defaults
+        updated.agreementId = null;
         updated.memberId = null;
         updated.legalName = '';
         updated.address = '';
@@ -823,15 +865,15 @@ export default function Invoices() {
               <h3 className={styles.sectionTitle}>Client Details</h3>
               <div className={styles.formGrid} style={{ gridTemplateColumns: '1fr' }}>
                 <Autocomplete
-                  options={members}
-                  getOptionLabel={(option) => `${option.name} (${option.company !== 'NA' ? option.company : 'Individual'})`}
-                  onChange={handleMemberSelect}
-                  value={members.find(m => m.id === formData.memberId) || null}
+                  options={agreements}
+                  getOptionLabel={(option) => option.name}
+                  onChange={handleAgreementSelect}
+                  value={agreements.find(a => a.id === formData.agreementId) || null}
                   disabled={!!editingInvoice}
                   renderInput={(params) => (
                     <TextField
                       {...params}
-                      label="Select Member"
+                      label="Select Agreement"
                       variant="outlined"
                       size="small"
                       required
