@@ -63,6 +63,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     birthdayMonth: '', // Changed from birthday to separate day and month
     whatsapp: '',
     email: '',
+    ccEmail: '', // New field for CC email
   });
 
   const [errors, setErrors] = useState({});
@@ -93,6 +94,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         birthdayMonth: editMember.birthdayMonth || '', // Populate month directly
         whatsapp: editMember.whatsapp || '',
         email: editMember.email || '',
+        ccEmail: editMember.ccEmail || '', // Populate ccEmail directly
       });
       setActivities(editMember.activities || []);
     } else {
@@ -104,6 +106,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         birthdayMonth: '',
         whatsapp: '',
         email: '',
+        ccEmail: '', // Initialize ccEmail for new members
       });
       setActivities([]);
       fetchPrimaryMemberCompany(); // Call fetch function when adding new member
@@ -152,6 +155,11 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format';
+    }
+
+    // Validate ccEmail if it's provided
+    if (formData.ccEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.ccEmail)) {
+      newErrors.ccEmail = 'Invalid CC email format';
     }
 
     // Birthday validation: both day and month are required
@@ -213,6 +221,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         birthday: formatBirthday(formData.birthdayDay, formData.birthdayMonth), // Use helper function
         activities: activities,
         primaryMemberId: primaryMemberId,
+        ccEmail: formData.ccEmail.trim() ? formData.ccEmail.trim() : '', // Include ccEmail
       };
       onSave(memberData);
       onClose();
@@ -281,6 +290,9 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
             </Box>
             <TextField label="WhatsApp" fullWidth value={formData.whatsapp} onChange={(e) => handleChange('whatsapp', e.target.value)} error={!!errors.whatsapp} helperText={errors.whatsapp} />
             <TextField label="Email" fullWidth value={formData.email} onChange={(e) => handleChange('email', e.target.value)} error={!!errors.email} helperText={errors.email} />
+            {primaryMemberId === null && (
+              <TextField label="CC Email (optional)" fullWidth value={formData.ccEmail} onChange={(e) => handleChange('ccEmail', e.target.value)} error={!!errors.ccEmail} helperText={errors.ccEmail} />
+            )}
           </Box>
 
           {/* Right Panel - Timeline Activity Log */}
