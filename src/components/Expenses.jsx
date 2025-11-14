@@ -22,6 +22,7 @@ import styles from './Expenses.module.css';
 import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { AuthContext } from '../store/Context';
+import * as XLSX from 'xlsx';
 
 const initialCategories = [
   'Rent',
@@ -238,7 +239,18 @@ export default function Expenses() {
   };
 
   const handleExport = () => {
-    toast.info('Export functionality will be implemented soon');
+    const dataToExport = filteredExpenses.map(expense => ({
+      Date: formatDate(expense.date),
+      Category: expense.category,
+      Amount: parseFloat(expense.amount),
+      'Bill Number': expense.billNumber || '-',
+      Notes: expense.notes || '-',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Expenses");
+    XLSX.writeFile(wb, "expenses.xlsx");
   };
 
   const formatCurrency = (amount) => {
