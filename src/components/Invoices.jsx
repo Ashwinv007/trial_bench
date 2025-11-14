@@ -201,7 +201,12 @@ const getInvoicePdfBase64 = async (invoiceData) => {
   firstPage.drawText(totalAmountPayable, { x: 490, y: 117, size: 13, font, color: rgb(0, 0, 0), maxWidth: 150 });
 
   const pdfBytes = await pdfDoc.save();
-  return Buffer.from(pdfBytes).toString('base64');
+  // Convert Uint8Array to binary string
+  let binary = '';
+  for (let i = 0; i < pdfBytes.length; i++) {
+    binary += String.fromCharCode(pdfBytes[i]);
+  }
+  return btoa(binary);
 };
 
 export default function Invoices() {
@@ -498,16 +503,20 @@ export default function Invoices() {
 
     const { name, phone, email, ...invoicePayload } = formData;
 
+    const member = members.find(m => m.id === formData.memberId);
+    const memberName = member ? member.name : 'Unknown Member';
+    const memberEmail = member ? member.email : '';
+
     if (editingInvoice) {
       const invoiceRef = doc(db, "invoices", editingInvoice.id);
       await updateDoc(invoiceRef, invoicePayload);
-      const updatedInvoice = { ...editingInvoice, ...invoicePayload };
+      const updatedInvoice = { ...editingInvoice, ...invoicePayload, name: memberName, email: memberEmail };
       setInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? updatedInvoice : inv));
       setInvoiceGenerated(updatedInvoice);
     } else {
       try {
         const docRef = await addDoc(collection(db, "invoices"), invoicePayload);
-        const newInvoice = { id: docRef.id, ...invoicePayload };
+        const newInvoice = { id: docRef.id, ...invoicePayload, name: memberName, email: memberEmail };
         setInvoices(prev => [...prev, newInvoice]);
         setInvoiceGenerated(newInvoice);
 
@@ -671,8 +680,20 @@ export default function Invoices() {
   }, [members, hasPermission, setEditingInvoice, setInvoiceGenerated, setFormData, setIsModalOpen]);
 
   const handleSendInvoiceEmail = async () => {
-    if (!invoiceGenerated || !invoiceGenerated.email || !invoiceGenerated.name || !invoiceGenerated.invoiceNumber) {
-      toast.error("Missing invoice details to send email.");
+    if (!invoiceGenerated) {
+      toast.error("No invoice has been generated yet.");
+      return;
+    }
+    if (!invoiceGenerated.email) {
+      toast.error("Invoice recipient email is missing.");
+      return;
+    }
+    if (!invoiceGenerated.name) {
+      toast.error("Invoice recipient name is missing.");
+      return;
+    }
+    if (!invoiceGenerated.invoiceNumber) {
+      toast.error("Invoice number is missing.");
       return;
     }
 
