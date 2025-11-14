@@ -276,7 +276,7 @@ export default function Settings() {
   };
 
   const handleOpenEditUserModal = (user) => {
-    setEditingUser({ ...user, newUsername: user.displayName });
+    setEditingUser({ ...user, newUsername: user.displayName || '' });
     setIsEditUserModalOpen(true);
   };
 
@@ -290,7 +290,7 @@ export default function Settings() {
     try {
       await updateUser({ uid: editingUser.uid, username: editingUser.newUsername });
       toast.success("User updated successfully.");
-      fetchSettingsData();
+      fetchSettingsData(); // Re-fetch data to reflect the change from the backend
       handleCloseEditUserModal();
     } catch (error) {
       toast.error(error.message || "Failed to update user.");
