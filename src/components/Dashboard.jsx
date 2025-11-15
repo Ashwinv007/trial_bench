@@ -79,19 +79,22 @@ const statCards = [
 
 export default function Dashboard() {
   const { db } = useContext(FirebaseContext);
-  const [notifications, setNotifications] = useState([]);
+  const [followUpNotifications, setFollowUpNotifications] = useState([]);
+  const [agreementNotifications, setAgreementNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(true);
 
   useEffect(() => {
-    const fetchFollowUps = async () => {
+    const fetchNotifications = async () => {
       if (!db) return;
-      const leadsCollection = collection(db, 'leads');
-      const leadsSnapshot = await getDocs(leadsCollection);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
       const dueFollowUps = [];
+      const expiringAgreements = [];
 
+      // Fetch Follow-ups
+      const leadsCollection = collection(db, 'leads');
+      const leadsSnapshot = await getDocs(leadsCollection);
       leadsSnapshot.forEach(doc => {
         const lead = doc.data();
         if (lead.activities) {
@@ -104,6 +107,7 @@ export default function Dashboard() {
 
               if (dueDate.getTime() === today.getTime()) {
                 dueFollowUps.push({
+                  type: 'followUp',
                   leadName: lead.name,
                   note: activity.description,
                 });
@@ -113,19 +117,58 @@ export default function Dashboard() {
         }
       });
 
-      setNotifications(dueFollowUps);
+      // Fetch Expiring Agreements
+      const agreementsCollection = collection(db, 'agreements');
+      const agreementsSnapshot = await getDocs(agreementsCollection);
+      agreementsSnapshot.forEach(doc => {
+        const agreement = doc.data();
+        if (agreement.endDate) {
+          const endDate = new Date(agreement.endDate);
+          const diffTime = endDate.getTime() - today.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          let message = '';
+          if (diffDays < 0) {
+            message = `Agreement for ${agreement.memberLegalName || agreement.name} has expired.`;
+          } else if (diffDays <= 7) {
+            message = `Agreement for ${agreement.memberLegalName || agreement.name} is expiring in ${diffDays} days.`;
+          } else if (diffDays <= 15) {
+            message = `Agreement for ${agreement.memberLegalName || agreement.name} is expiring in ${diffDays} days.`;
+          } else if (diffDays <= 30) {
+            message = `Agreement for ${agreement.memberLegalName || agreement.name} is expiring in ${diffDays} days.`;
+          }
+
+          if (message) {
+            expiringAgreements.push({
+              type: 'agreement',
+              message: message,
+            });
+          }
+        }
+      });
+
+      setFollowUpNotifications(dueFollowUps);
+      setAgreementNotifications(expiringAgreements);
     };
 
-    fetchFollowUps();
+    fetchNotifications();
   }, [db]);
 
   return (
     <div className={styles.container}>
       {showNotifications && (
-        <Notifications
-          notifications={notifications}
-          onClose={() => setShowNotifications(false)}
-        />
+        <>
+          <Notifications
+            notifications={followUpNotifications}
+            onClose={() => setShowNotifications(false)}
+            title="Follow-up Reminders"
+          />
+          <Notifications
+            notifications={agreementNotifications}
+            onClose={() => setShowNotifications(false)}
+            title="Agreement Expirations"
+          />
+        </>
       )}
       <div className={styles.content}>
         {/* Header */}
