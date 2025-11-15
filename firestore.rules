@@ -23,6 +23,11 @@ service cloud.firestore {
       allow delete: if isAllowed('manage_settings');
     }
 
+    match /logs/{logId} {
+      allow read: if isAllowed('view_members');
+      allow write: if isAllowed('add_members') || isAllowed('edit_members') || isAllowed('delete_members');
+    }
+
     match /agreements/{agreementId} {
       allow read: if isAllowed('view_agreements');
       allow write: if isAllowed('add_agreements') || isAllowed('edit_agreements') || isAllowed('delete_agreements');

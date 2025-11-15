@@ -2,8 +2,8 @@ import React, { useContext } from 'react';
 import { FirebaseContext } from '../store/Context';
 import { signOut } from 'firebase/auth';
 import Sidebar from '../components/Sidebar';
-import MembersPage from '../components/MembersPage';
-function LeadsPage() {
+import MembersComponent from '../components/MembersPage';
+function MembersPage() {
   const { auth } = useContext(FirebaseContext);
 
   const handleLogout = () => {
@@ -15,10 +15,10 @@ function LeadsPage() {
 
 
     <Sidebar/>
-    <MembersPage/>
+    <MembersComponent/>
     </div>
    
   );
 }
 
-export default LeadsPage;
+export default MembersPage;

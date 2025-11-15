@@ -9,7 +9,8 @@ import {
   MonetizationOn,
   Receipt,
   ContactPage,
-  Description
+  Description,
+  History
 } from '@mui/icons-material';
 import styles from './Sidebar.module.css';
 import { AuthContext } from '../store/Context';
@@ -24,7 +25,8 @@ const navItems = [
     { label: 'Members', icon: People, path: '/members', permission: 'view_members' },
     { label: 'Past Members', icon: Assignment, path: '/past-members', permission: 'view_members' },
     { label: 'Expenses', icon: Receipt, path: '/expenses', permission: 'view_expenses' },
-    { label: 'Settings', icon: Settings, path: '/settings', permission: 'manage_settings' }
+    { label: 'Settings', icon: Settings, path: '/settings', permission: 'manage_settings' },
+    { label: 'Logs', icon: History, path: '/logs', permission: 'view_logs' }
 ];
 
 export default function Sidebar() {

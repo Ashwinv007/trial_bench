@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { FirebaseContext, AuthContext } from '../store/Context';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import {
@@ -20,11 +20,7 @@ import {
   FormHelperText
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { 
-  CheckCircle, 
-  Email as EmailIcon,
-  AccountBox
-} from '@mui/icons-material';
+import { Email as EmailIcon } from '@mui/icons-material';
 import styles from './AddLead.module.css';
 import ClientProfileModal from './ClientProfileModal';
 
@@ -57,8 +53,6 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
   });
 
   const [errors, setErrors] = useState({});
-  const [note, setNote] = useState('');
-  const [activities, setActivities] = useState([]);
   
   // State to manage swapping to the profile view
   const [isViewingProfile, setIsViewingProfile] = useState(false);
@@ -95,20 +89,35 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
           email: editMember.email || '',
           ccEmail: editMember.ccEmail || '',
         });
-        setActivities(editMember.activities || []);
       } else {
         setFormData({
           name: '', package: '', company: '', birthdayDay: '', birthdayMonth: '', whatsapp: '', email: '', ccEmail: '',
         });
-        setActivities([]);
         fetchPrimaryMemberCompany();
       }
       setErrors({});
-      setNote('');
       setIsViewingProfile(false);
       setProfileMemberId(null);
     }
   }, [editMember, open, primaryMemberId, db]);
+
+  const logActivity = async (action, message, details = {}) => {
+    if (!db || !user) return;
+    try {
+      await addDoc(collection(db, 'logs'), {
+        timestamp: serverTimestamp(),
+        user: {
+          uid: user.uid,
+          displayName: user.displayName,
+        },
+        action,
+        message,
+        details,
+      });
+    } catch (error) {
+      console.error("Error writing to log:", error);
+    }
+  };
 
   const handleChange = (field, value) => {
     setFormData((prev) => {
@@ -154,36 +163,22 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleAddNote = () => {
-    if (!note.trim()) return;
-    const newActivity = {
-      id: activities.length + 1, type: 'note', title: 'Note Added', description: note, user: user ? user.displayName : 'Unknown User',
-      timestamp: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }),
-    };
-    setActivities([newActivity, ...activities]);
-    setNote('');
-  };
-
   const handleSendWelcomeEmail = async () => {
     if (!formData.email.trim()) {
       toast.error('Member email is required to send a welcome email.');
       return;
     }
-    const emailSent = activities.some(activity => activity.type === 'email' && activity.title === 'Welcome Email Sent');
-    if (emailSent) {
-      toast.info('Welcome email has already been sent to this member.');
-      return;
-    }
+
     try {
-      const result = await sendWelcomeEmailCallable({
+      await sendWelcomeEmailCallable({
         toEmail: formData.email, username: formData.name, ccEmail: formData.ccEmail.trim() ? formData.ccEmail.trim() : null,
       });
-      toast.success(result.data.message);
-      const newActivity = {
-        id: activities.length + 1, type: 'email', title: 'Welcome Email Sent', description: `Welcome email sent to ${formData.email}`, user: user ? user.displayName : 'Unknown User',
-        timestamp: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
-      };
-      setActivities([newActivity, ...activities]);
+      toast.success('Welcome email sent successfully!');
+      logActivity(
+        'email_sent',
+        `Welcome email sent to ${formData.name} (${formData.email}).`,
+        { memberName: formData.name, email: formData.email, memberId: editMember?.id }
+      );
     } catch (error) {
       console.error("Error sending welcome email:", error);
       toast.error(error.message || "Failed to send welcome email.");
@@ -192,30 +187,14 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
 
   const handleSubmit = () => {
     if (validateForm()) {
-      const newActivities = [...activities];
-      if (editMember) {
-        const changes = [];
-        Object.keys(formData).forEach(key => {
-          if (formData[key] !== editMember[key]) {
-            changes.push({ field: key, oldValue: editMember[key], newValue: formData[key] });
-          }
-        });
-        changes.forEach(change => {
-          newActivities.unshift({
-            id: newActivities.length + 1, type: 'update', title: `Field "${change.field}" updated`, description: `Value changed from "${change.oldValue}" to "${change.newValue}"`, user: user ? user.displayName : 'Unknown User',
-            timestamp: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
-          });
-        });
-      } else {
-        newActivities.unshift({
-          id: newActivities.length + 1, type: 'created', title: 'Member Created', description: 'New member added to the system', user: user ? user.displayName : 'Unknown User',
-          timestamp: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
-        });
-      }
       const memberData = {
-        ...formData, company: formData.company.trim() ? formData.company.trim() : 'NA', birthday: formatBirthday(formData.birthdayDay, formData.birthdayMonth),
-        activities: newActivities, primaryMemberId: primaryMemberId, ccEmail: formData.ccEmail.trim() ? formData.ccEmail.trim() : '',
+        ...formData,
+        company: formData.company.trim() ? formData.company.trim() : 'NA',
+        birthday: formatBirthday(formData.birthdayDay, formData.birthdayMonth),
+        primaryMemberId: primaryMemberId,
+        ccEmail: formData.ccEmail.trim() ? formData.ccEmail.trim() : '',
       };
+      // The onSave function (defined in the parent) will now handle the logging
       onSave(memberData);
       onClose();
     }
@@ -233,7 +212,6 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
   };
 
   // If viewing profile, render the ClientProfileModal instead.
-  // The MemberModal component stays mounted, so its state is preserved.
   if (isViewingProfile) {
     return (
       <ClientProfileModal
@@ -311,52 +289,19 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
             )}
           </Box>
 
-          {/* Right Panel - Timeline Activity Log */}
+          {/* Right Panel - Actions */}
           <div className={styles.rightPanel} style={{paddingLeft: '10px'}}>
             <div className={styles.timelineCard}>
-              <h2 className={styles.sectionTitle}>Timeline Activity Log</h2>
-              {primaryMemberId === null && (
+              <h2 className={styles.sectionTitle}>Actions</h2>
+              {primaryMemberId === null && editMember && (
                 <button className={styles.welcomeButton} onClick={handleSendWelcomeEmail} style={{marginBottom: '15px'}}>
                     <EmailIcon className={styles.buttonIcon} />
                     Send Welcome Email
                 </button>
               )}
-              <div className={styles.addNoteSection}>
-                <h3 className={styles.addNoteTitle}>Add Note</h3>
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Enter activity note..." className={styles.textarea} rows="3" />
-
-                <button className={styles.addToTimelineButton} onClick={handleAddNote}>
-                  <CheckCircle className={styles.buttonIcon} />
-                  Add to Timeline
-                </button>
-              </div>
-              <div className={styles.timeline}>
-                {activities.map((activity, index) => (
-                  <div key={activity.id || index} className={styles.timelineItem}>
-                    <div className={styles.timelineIconWrapper}>
-                      <div className={`${styles.timelineIcon} ${styles[activity.type]}`}>
-                        {activity.type === 'created' && <CheckCircle />}
-                        {activity.type === 'note' && <AccountBox />}
-                        {activity.type === 'email' && <EmailIcon />}
-                      </div>
-                      {index < activities.length - 1 && <div className={styles.timelineLine} />}
-                    </div>
-                    <div className={styles.timelineContent}>
-                      <div className={styles.timelineHeader}>
-                        <h4 className={styles.timelineTitle}>{activity.title}</h4>
-                        <span className={styles.timelineTimestamp}>{activity.timestamp}</span>
-                      </div>
-                      <p className={styles.timelineDescription}>{activity.description}</p>
-                      {activity.user && <p className={styles.activityUser}>by {activity.user}</p>}
-                      {activity.hasFollowUp && (
-                        <div className={styles.followUpBadge}>
-                          Follow up reminder set for {activity.followUpDays} days
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <Typography variant="body2" color="text.secondary">
+                All activities such as member creation and updates are now automatically logged in the central platform logs.
+              </Typography>
             </div>
           </div>
         </Box>

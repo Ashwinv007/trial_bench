@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useContext, useEffect } from 'react';
-import { FirebaseContext } from '../store/Context';
-import { collection, getDocs, addDoc, doc, updateDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { AuthContext, FirebaseContext } from '../store/Context';
+import { collection, getDocs, addDoc, doc, updateDoc, getDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import {
   Box,
   Typography,
@@ -35,8 +35,6 @@ const formatBirthdayDisplay = (birthday) => {
   return birthday;
 };
 
-// The Row component is removed, and its logic is integrated into the main component.
-
 export default function MembersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [packageFilter, setPackageFilter] = useState('All Packages');
@@ -47,8 +45,27 @@ export default function MembersPage() {
   const [expandedRows, setExpandedRows] = useState({});
 
   const { db } = useContext(FirebaseContext);
+  const { user } = useContext(AuthContext);
   const [allMembers, setAllMembers] = useState([]);
   const navigate = useNavigate();
+
+  const logActivity = async (action, message, details = {}) => {
+    if (!db || !user) return;
+    try {
+      await addDoc(collection(db, 'logs'), {
+        timestamp: serverTimestamp(),
+        user: {
+          uid: user.uid,
+          displayName: user.displayName,
+        },
+        action,
+        message,
+        details,
+      });
+    } catch (error) {
+      console.error("Error writing to log:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -91,6 +108,11 @@ export default function MembersPage() {
         await updateDoc(memberDoc, memberData);
         setAllMembers(prev => prev.map(m => m.id === editingMember.id ? { ...m, ...memberData } : m));
         toast.success("Member updated successfully!");
+        logActivity(
+          'member_edited',
+          `Member "${memberData.name}" was updated.`,
+          { memberId: editingMember.id, memberName: memberData.name }
+        );
       } else {
         const docRef = await addDoc(collection(db, "members"), memberData);
         const newMember = { ...memberData, id: docRef.id };
@@ -107,6 +129,11 @@ export default function MembersPage() {
         }
         setAllMembers(newAllMembers);
         toast.success("Member added successfully!");
+        logActivity(
+          'member_created',
+          `New member "${memberData.name}" was added.`,
+          { memberId: docRef.id, memberName: memberData.name }
+        );
       }
     } catch (error) {
       console.error("Error saving member: ", error);
@@ -136,6 +163,11 @@ export default function MembersPage() {
           await deleteDoc(doc(db, "members", memberId));
           setAllMembers(allMembers.filter(member => member.id !== memberId));
           toast.success("Member moved to Past Members successfully!");
+          logActivity(
+            'member_removed',
+            `Member "${memberData.name}" was removed and moved to Past Members.`,
+            { memberId: memberId, memberName: memberData.name }
+          );
         } else {
           toast.error("Member not found.");
         }

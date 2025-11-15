@@ -14,6 +14,7 @@ import ExpensesPage from './pages/ExpensesPage';
 import SettingsPage from './pages/SettingsPage';
 import PastMembersPage from './pages/PastMembersPage';
 import ClientProfilePage from './pages/ClientProfilePage';
+import LogsPage from './pages/LogsPage'; // Import LogsPage
 import { Toaster } from 'sonner';
 import ProtectedRoute from './auth/ProtectedRoute'; // New import
 
@@ -40,6 +41,7 @@ function App() {
         <Route path="/invoices" element={<ProtectedRoute permission="view_invoices"><InvoicesPage /></ProtectedRoute>} />
         <Route path="/expenses" element={<ProtectedRoute permission="view_expenses"><ExpensesPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute permission="manage_settings"><SettingsPage /></ProtectedRoute>} />
+        <Route path="/logs" element={<ProtectedRoute permission="view_logs"><LogsPage /></ProtectedRoute>} />
       </Routes>
     </Router>
   );
