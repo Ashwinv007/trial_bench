@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useContext, useEffect } from 'react';
 import { AuthContext, FirebaseContext } from '../store/Context';
 import { collection, getDocs, addDoc, doc, updateDoc, getDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { logActivity } from '../utils/logActivity';
 import {
   Box,
   Typography,
@@ -49,23 +50,7 @@ export default function MembersPage() {
   const [allMembers, setAllMembers] = useState([]);
   const navigate = useNavigate();
 
-  const logActivity = async (action, message, details = {}) => {
-    if (!db || !user) return;
-    try {
-      await addDoc(collection(db, 'logs'), {
-        timestamp: serverTimestamp(),
-        user: {
-          uid: user.uid,
-          displayName: user.displayName,
-        },
-        action,
-        message,
-        details,
-      });
-    } catch (error) {
-      console.error("Error writing to log:", error);
-    }
-  };
+
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -109,6 +94,8 @@ export default function MembersPage() {
         setAllMembers(prev => prev.map(m => m.id === editingMember.id ? { ...m, ...memberData } : m));
         toast.success("Member updated successfully!");
         logActivity(
+          db,
+          user,
           'member_edited',
           `Member "${memberData.name}" was updated.`,
           { memberId: editingMember.id, memberName: memberData.name }
@@ -130,6 +117,8 @@ export default function MembersPage() {
         setAllMembers(newAllMembers);
         toast.success("Member added successfully!");
         logActivity(
+          db,
+          user,
           'member_created',
           `New member "${memberData.name}" was added.`,
           { memberId: docRef.id, memberName: memberData.name }
@@ -164,6 +153,8 @@ export default function MembersPage() {
           setAllMembers(allMembers.filter(member => member.id !== memberId));
           toast.success("Member moved to Past Members successfully!");
           logActivity(
+            db,
+            user,
             'member_removed',
             `Member "${memberData.name}" was removed and moved to Past Members.`,
             { memberId: memberId, memberName: memberData.name }

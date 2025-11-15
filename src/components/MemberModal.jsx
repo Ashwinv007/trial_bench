@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { FirebaseContext, AuthContext } from '../store/Context';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { logActivity } from '../utils/logActivity';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import {
@@ -101,23 +102,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     }
   }, [editMember, open, primaryMemberId, db]);
 
-  const logActivity = async (action, message, details = {}) => {
-    if (!db || !user) return;
-    try {
-      await addDoc(collection(db, 'logs'), {
-        timestamp: serverTimestamp(),
-        user: {
-          uid: user.uid,
-          displayName: user.displayName,
-        },
-        action,
-        message,
-        details,
-      });
-    } catch (error) {
-      console.error("Error writing to log:", error);
-    }
-  };
+
 
   const handleChange = (field, value) => {
     setFormData((prev) => {
@@ -175,6 +160,8 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
       });
       toast.success('Welcome email sent successfully!');
       logActivity(
+        db,
+        user,
         'email_sent',
         `Welcome email sent to ${formData.name} (${formData.email}).`,
         { memberName: formData.name, email: formData.email, memberId: editMember?.id }

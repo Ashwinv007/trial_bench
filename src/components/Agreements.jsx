@@ -8,6 +8,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { toast } from 'sonner';
+import { logActivity } from '../utils/logActivity';
 
 const generateAgreementNumber = (memberPackageName, allAgreements) => {
   if (!memberPackageName) {
@@ -44,7 +45,7 @@ const generateAgreementNumber = (memberPackageName, allAgreements) => {
 
 export default function Agreements() {
   const { db } = useContext(FirebaseContext);
-  const { hasPermission } = useContext(AuthContext);
+  const { user, hasPermission } = useContext(AuthContext);
   const [agreements, setAgreements] = useState([]);
   const [selectedAgreement, setSelectedAgreement] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -214,6 +215,13 @@ export default function Agreements() {
     }
 
     setAgreementGenerated(updatedAgreement);
+    logActivity(
+      db,
+      user,
+      'agreement_updated',
+      `Agreement "${updatedAgreement.agreementNumber}" for "${updatedAgreement.name}" was updated.`,
+      { agreementId: updatedAgreement.id, agreementNumber: updatedAgreement.agreementNumber, memberName: updatedAgreement.name }
+    );
   };
 
   const handleDeleteClick = async () => {

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useContext, useEffect } from 'react';
 import { FirebaseContext, AuthContext } from '../store/Context';
 import { collection, getDocs, doc, deleteDoc } from 'firebase/firestore';
+import { logActivity } from '../utils/logActivity';
 import {
   Box,
   Typography,
@@ -33,7 +34,7 @@ export default function PastMembersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [packageFilter, setPackageFilter] = useState('All Packages');
   const { db } = useContext(FirebaseContext);
-  const { hasPermission } = useContext(AuthContext);
+  const { user, hasPermission } = useContext(AuthContext);
   const [allMembers, setAllMembers] = useState([]);
 
   useEffect(() => {
@@ -76,9 +77,19 @@ export default function PastMembersPage() {
   const handlePermanentDelete = async (memberId) => {
     if (window.confirm('Are you sure you want to permanently delete this member? This action cannot be undone.')) {
       try {
+        const memberToDelete = allMembers.find(member => member.id === memberId);
         await deleteDoc(doc(db, "past_members", memberId));
         setAllMembers(allMembers.filter(member => member.id !== memberId));
         toast.success("Member permanently deleted.");
+        if (memberToDelete) {
+          logActivity(
+            db,
+            user,
+            'past_member_deleted',
+            `Past member "${memberToDelete.name}" was permanently deleted.`,
+            { memberId: memberId, memberName: memberToDelete.name }
+          );
+        }
       } catch (error) {
         console.error("Error deleting member: ", error);
         toast.error("Failed to permanently delete member.");

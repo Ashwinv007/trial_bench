@@ -3,6 +3,7 @@ import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, Auto
 import { Close, AddCircleOutline, Description, Search as SearchIcon, FilterList as FilterListIcon, RemoveCircleOutline } from '@mui/icons-material';
 import styles from './Invoices.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
+import { logActivity } from '../utils/logActivity';
 import { collection, getDocs, addDoc, doc, updateDoc, query, where, documentId } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
@@ -211,7 +212,7 @@ const getInvoicePdfBase64 = async (invoiceData) => {
 
 export default function Invoices() {
   const { db } = useContext(FirebaseContext);
-  const { hasPermission } = useContext(AuthContext);
+  const { user, hasPermission } = useContext(AuthContext);
   const [invoices, setInvoices] = useState([]);
   const [members, setMembers] = useState([]);
   const [agreements, setAgreements] = useState([]);
@@ -513,12 +514,26 @@ export default function Invoices() {
       const updatedInvoice = { ...editingInvoice, ...invoicePayload, name: memberName, email: memberEmail };
       setInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? updatedInvoice : inv));
       setInvoiceGenerated(updatedInvoice);
+      logActivity(
+        db,
+        user,
+        'invoice_updated',
+        `Invoice "${updatedInvoice.invoiceNumber}" for "${updatedInvoice.name}" was updated.`,
+        { invoiceId: updatedInvoice.id, invoiceNumber: updatedInvoice.invoiceNumber, memberName: updatedInvoice.name }
+      );
     } else {
       try {
         const docRef = await addDoc(collection(db, "invoices"), invoicePayload);
         const newInvoice = { id: docRef.id, ...invoicePayload, name: memberName, email: memberEmail };
         setInvoices(prev => [...prev, newInvoice]);
         setInvoiceGenerated(newInvoice);
+        logActivity(
+          db,
+          user,
+          'invoice_generated',
+          `Invoice "${newInvoice.invoiceNumber}" for "${newInvoice.name}" was generated.`,
+          { invoiceId: newInvoice.id, invoiceNumber: newInvoice.invoiceNumber, memberName: newInvoice.name }
+        );
 
         // Save last invoice details to member
         const memberRef = doc(db, "members", formData.memberId);
@@ -572,6 +587,13 @@ export default function Invoices() {
       setIsPaymentDateModalOpen(false);
       setSelectedInvoiceForPayment(null);
       setPaymentDate('');
+      logActivity(
+        db,
+        user,
+        'invoice_paid',
+        `Invoice "${selectedInvoiceForPayment.invoiceNumber}" for "${selectedInvoiceForPayment.name}" was marked as paid.`,
+        { invoiceId: selectedInvoiceForPayment.id, invoiceNumber: selectedInvoiceForPayment.invoiceNumber, memberName: selectedInvoiceForPayment.name, dateOfPayment: paymentDate }
+      );
     }
   };
 
