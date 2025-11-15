@@ -1,6 +1,10 @@
 import { AttachMoney, Adjust, People } from '@mui/icons-material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import styles from './Dashboard.module.css';
+import { useState, useEffect, useContext } from 'react';
+import { FirebaseContext } from '../store/Context';
+import { collection, getDocs } from 'firebase/firestore';
+import Notifications from './Notifications';
 
 const revenueData = [
   { month: 'Jan', value: 4.4 },
@@ -74,8 +78,55 @@ const statCards = [
 ];
 
 export default function Dashboard() {
+  const { db } = useContext(FirebaseContext);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(true);
+
+  useEffect(() => {
+    const fetchFollowUps = async () => {
+      if (!db) return;
+      const leadsCollection = collection(db, 'leads');
+      const leadsSnapshot = await getDocs(leadsCollection);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const dueFollowUps = [];
+
+      leadsSnapshot.forEach(doc => {
+        const lead = doc.data();
+        if (lead.activities) {
+          lead.activities.forEach(activity => {
+            if (activity.hasFollowUp && activity.followUpDays) {
+              const addedDate = new Date(activity.timestamp);
+              const dueDate = new Date(addedDate);
+              dueDate.setDate(addedDate.getDate() + parseInt(activity.followUpDays, 10));
+              dueDate.setHours(0, 0, 0, 0);
+
+              if (dueDate.getTime() === today.getTime()) {
+                dueFollowUps.push({
+                  leadName: lead.name,
+                  note: activity.description,
+                });
+              }
+            }
+          });
+        }
+      });
+
+      setNotifications(dueFollowUps);
+    };
+
+    fetchFollowUps();
+  }, [db]);
+
   return (
     <div className={styles.container}>
+      {showNotifications && (
+        <Notifications
+          notifications={notifications}
+          onClose={() => setShowNotifications(false)}
+        />
+      )}
       <div className={styles.content}>
         {/* Header */}
         <div className={styles.header}>

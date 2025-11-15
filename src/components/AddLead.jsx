@@ -218,14 +218,7 @@ export default function AddLead() {
       title: followUpDays ? `Note Added - Follow up in ${followUpDays} days` : 'Note Added',
       description: note,
       user: user ? user.displayName : 'Unknown User',
-      timestamp: new Date().toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      }),
+      timestamp: new Date().toISOString(),
       hasFollowUp: !!followUpDays,
       followUpDays: followUpDays
     };
