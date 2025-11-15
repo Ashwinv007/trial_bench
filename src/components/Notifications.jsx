@@ -32,6 +32,11 @@ export default function Notifications({ notifications, onClose, title }) {
                 {notification.message}
               </p>
             )}
+            {notification.type === 'birthday' && (
+              <p className={styles.notificationText}>
+                {notification.message}
+              </p>
+            )}
           </li>
         ))}
       </ul>

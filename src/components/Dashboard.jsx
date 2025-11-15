@@ -81,6 +81,7 @@ export default function Dashboard() {
   const { db } = useContext(FirebaseContext);
   const [followUpNotifications, setFollowUpNotifications] = useState([]);
   const [agreementNotifications, setAgreementNotifications] = useState([]);
+  const [birthdayNotifications, setBirthdayNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(true);
 
   useEffect(() => {
@@ -91,6 +92,7 @@ export default function Dashboard() {
 
       const dueFollowUps = [];
       const expiringAgreements = [];
+      const birthdayReminders = [];
 
       // Fetch Follow-ups
       const leadsCollection = collection(db, 'leads');
@@ -158,6 +160,45 @@ export default function Dashboard() {
             expiringAgreements.push({
               type: 'agreement',
               message: message,
+              level: level,
+            });
+          }
+        }
+      });
+
+      // Fetch Birthday Reminders
+      const membersCollection = collection(db, 'members');
+      const membersSnapshot = await getDocs(membersCollection);
+      membersSnapshot.forEach(doc => {
+        const member = doc.data();
+        if (member.birthdayDay && member.birthdayMonth) {
+          const birthdayMonth = parseInt(member.birthdayMonth, 10) - 1; // Month is 0-indexed
+          const birthdayDay = parseInt(member.birthdayDay, 10);
+
+          const todayMonth = today.getMonth();
+          const todayDay = today.getDate();
+
+          const tomorrow = new Date(today);
+          tomorrow.setDate(today.getDate() + 1);
+          const tomorrowMonth = tomorrow.getMonth();
+          const tomorrowDay = tomorrow.getDate();
+
+          let message = '';
+          let level = 'info';
+
+          if (birthdayMonth === todayMonth && birthdayDay === todayDay) {
+            message = `It's ${member.name}'s birthday today!`;
+            level = 'info';
+          } else if (birthdayMonth === tomorrowMonth && birthdayDay === tomorrowDay) {
+            message = `${member.name}'s birthday is tomorrow!`;
+            level = 'info';
+          }
+
+          if (message) {
+            birthdayReminders.push({
+              type: 'birthday',
+              message: message,
+              level: level,
             });
           }
         }
@@ -165,6 +206,7 @@ export default function Dashboard() {
 
       setFollowUpNotifications(dueFollowUps);
       setAgreementNotifications(expiringAgreements);
+      setBirthdayNotifications(birthdayReminders);
     };
 
     fetchNotifications();
@@ -183,6 +225,11 @@ export default function Dashboard() {
             notifications={agreementNotifications}
             onClose={() => setShowNotifications(false)}
             title="Agreement Expirations"
+          />
+          <Notifications
+            notifications={birthdayNotifications}
+            onClose={() => setShowNotifications(false)}
+            title="Birthday Reminders"
           />
         </>
       )}
