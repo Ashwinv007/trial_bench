@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import styles from './Settings.module.css';
 import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Checkbox, FormControlLabel, Chip, Tooltip, Select, MenuItem, DialogContentText, CircularProgress } from '@mui/material';
 import { AddCircleOutline, Edit, Delete, Close, LockReset } from '@mui/icons-material';
 import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
+import { logActivity } from '../utils/logActivity';
+import { AuthContext } from '../store/Context';
 
 const allPermissions = [
     'all',
@@ -74,6 +76,7 @@ export default function Settings() {
   const [resettingUser, setResettingUser] = useState(null);
   const [newPasswordForReset, setNewPasswordForReset] = useState('');
   
+  const { user } = useContext(AuthContext);
   const functions = getFunctions();
   const auth = getAuth();
   const listUsers = httpsCallable(functions, 'listUsers');
@@ -168,9 +171,11 @@ export default function Settings() {
       if (editingRole) {
         await updateDoc(doc(db, 'roles', editingRole.id), roleData);
         toast.success('Role updated successfully');
+        logActivity(db, user, 'role_updated', `Role "${roleName}" was updated.`, { roleId: editingRole.id, roleName });
       } else {
         await addDoc(collection(db, 'roles'), roleData);
         toast.success('Role added successfully');
+        logActivity(db, user, 'role_added', `Role "${roleName}" was added.`, { roleName });
       }
       fetchSettingsData();
       handleCloseModal();
@@ -182,9 +187,13 @@ export default function Settings() {
   const handleDeleteRole = async (id) => {
     if (window.confirm('Are you sure you want to delete this role?')) {
       try {
+        const roleToDelete = roles.find(role => role.id === id);
         await deleteDoc(doc(db, 'roles', id));
         fetchSettingsData();
         toast.success('Role deleted successfully');
+        if (roleToDelete) {
+          logActivity(db, user, 'role_deleted', `Role "${roleToDelete.name}" was deleted.`, { roleId: id, roleName: roleToDelete.name });
+        }
       } catch (error) {
         toast.error('Failed to delete role.');
       }
@@ -212,6 +221,8 @@ export default function Settings() {
         await auth.currentUser.getIdToken(true);
       }
       fetchSettingsData(); // Re-fetch all data to ensure consistency
+      const role = roles.find(r => r.id === roleId);
+      logActivity(db, user, 'role_assigned', `Role "${role ? role.name : 'None'}" assigned to user "${userEmail}".`, { userEmail, roleId, roleName: role ? role.name : 'None' });
     } catch (error) {
       toast.error(error.message || "Failed to assign role.");
     }
@@ -270,6 +281,7 @@ export default function Settings() {
       toast.success("User created successfully.");
       fetchSettingsData();
       handleCloseAddUserModal();
+      logActivity(db, user, 'user_created', `User "${newUsername}" with email "${newUserEmail}" was created.`, { newUserEmail, newUsername });
     } catch (error) {
       toast.error(error.message || "Failed to create user.");
     }
@@ -292,6 +304,7 @@ export default function Settings() {
       toast.success("User updated successfully.");
       fetchSettingsData(); // Re-fetch data to reflect the change from the backend
       handleCloseEditUserModal();
+      logActivity(db, user, 'user_updated', `User "${editingUser.uid}" was updated with username "${editingUser.newUsername}".`, { userId: editingUser.uid, newUsername: editingUser.newUsername });
     } catch (error) {
       toast.error(error.message || "Failed to update user.");
     }
@@ -314,6 +327,7 @@ export default function Settings() {
       await adminSetUserPassword({ uid: resettingUser.uid, newPassword: newPasswordForReset });
       toast.success(`Password for ${resettingUser.email} has been reset.`);
       handleCloseResetPasswordModal();
+      logActivity(db, user, 'password_reset', `Password for user "${resettingUser.email}" was reset.`, { userId: resettingUser.uid, userEmail: resettingUser.email });
     } catch (error) {
       toast.error(error.message || "Failed to reset password.");
     }
@@ -322,9 +336,13 @@ export default function Settings() {
   const handleDeleteUser = async (uid) => {
     if (window.confirm('Are you sure you want to permanently delete this user? This action cannot be undone.')) {
       try {
+        const userToDelete = users.find(u => u.uid === uid);
         await deleteUser({ uid });
         toast.success("User deleted successfully.");
         fetchSettingsData();
+        if (userToDelete) {
+          logActivity(db, user, 'user_deleted', `User "${userToDelete.email}" was deleted.`, { userId: uid, userEmail: userToDelete.email });
+        }
       } catch (error) {
         toast.error(error.message || "Failed to delete user.");
       }
@@ -347,6 +365,7 @@ export default function Settings() {
           const newTemplates = [...emailTemplates];
           delete newTemplates[index].isNew;
           setEmailTemplates(newTemplates);
+          logActivity(db, user, 'template_saved', `Email template "${template.name}" was saved.`, { templateId: template.id, templateName: template.name });
       } catch (error) {
           toast.error(`Failed to save ${template.name} template.`);
       }
