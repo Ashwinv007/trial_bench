@@ -86,3 +86,13 @@
   font-size: 12px;
   color: #666;
 }
+
+.notificationItem.warning {
+  background-color: #fffbe6; /* Light yellow */
+  border-left: 4px solid #ffe082; /* Yellow border */
+}
+
+.notificationItem.critical {
+  background-color: #ffebee; /* Light red */
+  border-left: 4px solid #ef9a9a; /* Red border */
+}

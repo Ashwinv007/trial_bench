@@ -18,7 +18,7 @@ export default function Notifications({ notifications, onClose, title }) {
       </div>
       <ul className={styles.notificationList}>
         {notifications.map((notification, index) => (
-          <li key={index} className={styles.notificationItem}>
+          <li key={index} className={`${styles.notificationItem} ${notification.type === 'agreement' ? styles[notification.level] : ''}`}>
             {notification.type === 'followUp' && (
               <>
                 <p className={styles.notificationText}>

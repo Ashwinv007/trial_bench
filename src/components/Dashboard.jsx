@@ -128,14 +128,30 @@ export default function Dashboard() {
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
           let message = '';
+          let level = 'info'; // Default level
+
           if (diffDays < 0) {
-            message = `Agreement for ${agreement.memberLegalName || agreement.name} has expired.`;
-          } else if (diffDays <= 7) {
-            message = `Agreement for ${agreement.memberLegalName || agreement.name} is expiring in ${diffDays} days.`;
-          } else if (diffDays <= 15) {
-            message = `Agreement for ${agreement.memberLegalName || agreement.name} is expiring in ${diffDays} days.`;
-          } else if (diffDays <= 30) {
-            message = `Agreement for ${agreement.memberLegalName || agreement.name} is expiring in ${diffDays} days.`;
+            // Expired
+            if (diffDays === -1) { // Only show on the day it expires
+                message = `Agreement for ${agreement.memberLegalName || agreement.name} has expired today.`;
+                level = 'critical';
+            }
+          } else if (diffDays === 0) {
+            // Expires today
+            message = `Agreement for ${agreement.memberLegalName || agreement.name} expires today!`;
+            level = 'critical';
+          } else if (diffDays > 0 && diffDays <= 7) {
+            // Within 7 days, show every day
+            message = `Agreement for ${agreement.memberLegalName || agreement.name} is expiring in ${diffDays} day(s).`;
+            level = 'critical';
+          } else if (diffDays === 15) {
+            // Exactly 15 days
+            message = `Agreement for ${agreement.memberLegalName || agreement.name} is expiring in 15 days.`;
+            level = 'warning';
+          } else if (diffDays === 30) {
+            // Exactly 30 days
+            message = `Agreement for ${agreement.memberLegalName || agreement.name} is expiring in 30 days.`;
+            level = 'warning';
           }
 
           if (message) {
