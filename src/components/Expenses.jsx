@@ -59,7 +59,7 @@ const getCategoryColor = (category) => {
 };
 
 export default function Expenses() {
-  const { hasPermission } = useContext(AuthContext);
+  const { user, hasPermission } = useContext(AuthContext);
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState(initialCategories);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -159,7 +159,7 @@ export default function Expenses() {
       await updateDoc(expenseDoc, { ...formData, amount: amount });
       toast.success('Expense updated successfully');
     } else {
-      await addDoc(collection(db, 'expenses'), { ...formData, amount: amount });
+      await addDoc(collection(db, 'expenses'), { ...formData, amount: amount, addedBy: user.displayName });
       toast.success('Expense added successfully');
     }
 
@@ -245,6 +245,7 @@ export default function Expenses() {
       Amount: parseFloat(expense.amount),
       'Bill Number': expense.billNumber || '-',
       Notes: expense.notes || '-',
+      'Added By': expense.addedBy || 'N/A',
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -553,13 +554,14 @@ export default function Expenses() {
               <th>Amount</th>
               <th>Bill Number</th>
               <th>Notes</th>
+              <th>Added By</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredExpenses.length === 0 ? (
               <tr>
-                <td colSpan="6" className={styles.emptyState}>
+                <td colSpan="7" className={styles.emptyState}>
                   {expenses.length === 0 
                     ? 'No expenses recorded yet. Click "Add Expense" to get started.'
                     : 'No expenses match the selected filters.'}
@@ -570,7 +572,7 @@ export default function Expenses() {
               groupedExpensesByTime.map(([groupKey, groupData]) => (
                 <>
                   <tr key={`group-${groupKey}`} className={styles.groupHeader}>
-                    <td colSpan="6">
+                    <td colSpan="7">
                       <div className={styles.groupHeaderContent}>
                         <span className={styles.groupLabel}>{groupData.label}</span>
                         <span className={styles.groupTotal}>
@@ -597,6 +599,7 @@ export default function Expenses() {
                       <td className={styles.amount}>{formatCurrency(expense.amount)}</td>
                       <td>{expense.billNumber || '-'}</td>
                       <td className={styles.notes}>{expense.notes || '-'}</td>
+                      <td>{expense.addedBy || 'N/A'}</td>
                       <td>
                         <div className={styles.actions}>
                           {hasPermission('edit_expenses') && (
@@ -643,6 +646,7 @@ export default function Expenses() {
                   <td className={styles.amount}>{formatCurrency(expense.amount)}</td>
                   <td>{expense.billNumber || '-'}</td>
                   <td className={styles.notes}>{expense.notes || '-'}</td>
+                  <td>{expense.addedBy || 'N/A'}</td>
                   <td>
                     <div className={styles.actions}>
                       {hasPermission('edit_expenses') && (
