@@ -157,13 +157,15 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     if (!formData.name.trim()) newErrors.name = 'Name is required';
     if (!formData.package) newErrors.package = 'Package is required';
     if (!formData.whatsapp.trim()) newErrors.whatsapp = 'WhatsApp number is required';
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Invalid email format';
-    }
-    if (formData.ccEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.ccEmail)) {
-      newErrors.ccEmail = 'Invalid CC email format';
+    if (primaryMemberId === null) {
+      if (!formData.email.trim()) {
+        newErrors.email = 'Email is required';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        newErrors.email = 'Invalid email format';
+      }
+      if (formData.ccEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.ccEmail)) {
+        newErrors.ccEmail = 'Invalid CC email format';
+      }
     }
     if (!formData.birthdayDay) newErrors.birthdayDay = 'Day is required';
     if (!formData.birthdayMonth) newErrors.birthdayMonth = 'Month is required';
@@ -313,9 +315,11 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
               </FormControl>
             </Box>
             <TextField label="WhatsApp" fullWidth value={formData.whatsapp} onChange={(e) => handleChange('whatsapp', e.target.value)} error={!!errors.whatsapp} helperText={errors.whatsapp} />
-            <TextField label="Email" fullWidth value={formData.email} onChange={(e) => handleChange('email', e.target.value)} error={!!errors.email} helperText={errors.email} />
             {primaryMemberId === null && (
-              <TextField label="CC Email (optional)" fullWidth value={formData.ccEmail} onChange={(e) => handleChange('ccEmail', e.target.value)} error={!!errors.ccEmail} helperText={errors.ccEmail} />
+              <>
+                <TextField label="Email" fullWidth value={formData.email} onChange={(e) => handleChange('email', e.target.value)} error={!!errors.email} helperText={errors.email} />
+                <TextField label="CC Email (optional)" fullWidth value={formData.ccEmail} onChange={(e) => handleChange('ccEmail', e.target.value)} error={!!errors.ccEmail} helperText={errors.ccEmail} />
+              </>
             )}
           </Box>
 

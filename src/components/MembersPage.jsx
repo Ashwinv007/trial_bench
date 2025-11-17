@@ -196,7 +196,26 @@ export default function MembersPage() {
       members = members.filter((member) => member.package === packageFilter);
     }
 
-    members.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    if (primaryMemberFilter === 'All Members') {
+      members.sort((a, b) => {
+        const getGroupId = (m) => m.primaryMemberId || m.id;
+        const aGroupId = getGroupId(a);
+        const bGroupId = getGroupId(b);
+
+        if (aGroupId < bGroupId) return -1;
+        if (aGroupId > bGroupId) return 1;
+
+        // If in the same group, primary member should come first.
+        if (a.primary) return -1;
+        if (b.primary) return 1;
+        
+        // if both are sub-members, sort by name
+        return (a.name || '').localeCompare(b.name || '');
+      });
+    } else {
+      members.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }
+    
     return members;
   }, [searchQuery, packageFilter, primaryMemberFilter, allMembers]);
 
