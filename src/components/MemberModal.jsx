@@ -54,6 +54,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
   });
 
   const [errors, setErrors] = useState({});
+  const [isOtherPackage, setIsOtherPackage] = useState(false);
   
   // State to manage swapping to the profile view
   const [isViewingProfile, setIsViewingProfile] = useState(false);
@@ -65,37 +66,51 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
   useEffect(() => {
     // When the modal is opened/re-opened, reset everything
     if (open) {
-      const fetchPrimaryMemberCompany = async () => {
-        if (!editMember && primaryMemberId && db) {
-          const primaryMemberDocRef = doc(db, "members", primaryMemberId);
-          const primaryMemberDocSnap = await getDoc(primaryMemberDocRef);
-          if (primaryMemberDocSnap.exists()) {
-            const primaryMemberData = primaryMemberDocSnap.data();
-            setFormData(prev => ({
-              ...prev,
-              company: primaryMemberData.company !== 'NA' ? primaryMemberData.company : ''
-            }));
-          }
+      const standardPackages = ["Dedicated Desk", "Flexible Desk", "Cabin", "Virtual Office", "Meeting Room"];
+      
+      const setupForm = (memberData) => {
+        const initialPackage = memberData.package || '';
+        if (initialPackage && !standardPackages.includes(initialPackage)) {
+          setIsOtherPackage(true);
+        } else {
+          setIsOtherPackage(false);
         }
+
+        setFormData({
+          name: memberData.name || '',
+          package: initialPackage,
+          company: memberData.company !== 'NA' ? memberData.company : '',
+          birthdayDay: memberData.birthdayDay || '',
+          birthdayMonth: memberData.birthdayMonth || '',
+          whatsapp: memberData.whatsapp || '',
+          email: memberData.email || '',
+          ccEmail: memberData.ccEmail || '',
+        });
       };
 
       if (editMember) {
-        setFormData({
-          name: editMember.name || '',
-          package: editMember.package || '',
-          company: editMember.company !== 'NA' ? editMember.company : '',
-          birthdayDay: editMember.birthdayDay || '',
-          birthdayMonth: editMember.birthdayMonth || '',
-          whatsapp: editMember.whatsapp || '',
-          email: editMember.email || '',
-          ccEmail: editMember.ccEmail || '',
-        });
+        setupForm(editMember);
       } else {
-        setFormData({
-          name: '', package: '', company: '', birthdayDay: '', birthdayMonth: '', whatsapp: '', email: '', ccEmail: '',
-        });
-        fetchPrimaryMemberCompany();
+        const fetchPrimaryMemberDetails = async () => {
+          if (primaryMemberId && db) {
+            const primaryMemberDocRef = doc(db, "members", primaryMemberId);
+            const primaryMemberDocSnap = await getDoc(primaryMemberDocRef);
+            if (primaryMemberDocSnap.exists()) {
+              const primaryMemberData = primaryMemberDocSnap.data();
+              setupForm({
+                ...formData, // Start with blank form data
+                company: primaryMemberData.company !== 'NA' ? primaryMemberData.company : '',
+                package: primaryMemberData.package || ''
+              });
+            }
+          }
+        };
+        // Reset form for new member before fetching details
+        setFormData({ name: '', package: '', company: '', birthdayDay: '', birthdayMonth: '', whatsapp: '', email: '', ccEmail: '' });
+        setIsOtherPackage(false);
+        fetchPrimaryMemberDetails();
       }
+      
       setErrors({});
       setIsViewingProfile(false);
       setProfileMemberId(null);
@@ -105,6 +120,17 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
 
 
   const handleChange = (field, value) => {
+    if (field === 'package_select') {
+        if (value === 'Others') {
+            setIsOtherPackage(true);
+            setFormData(prev => ({...prev, package: ''}));
+        } else {
+            setIsOtherPackage(false);
+            setFormData(prev => ({...prev, package: value}));
+        }
+        return;
+    }
+
     setFormData((prev) => {
       const newState = { ...prev };
       if (field === 'birthdayDay') {
@@ -233,14 +259,31 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
           {/* Left Panel - Member Form */}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             <TextField label="Name" fullWidth value={formData.name} onChange={(e) => handleChange('name', e.target.value)} error={!!errors.name} helperText={errors.name} />
-            <Select fullWidth value={formData.package} onChange={(e) => handleChange('package', e.target.value)} displayEmpty error={!!errors.package}>
+            <Select
+              fullWidth
+              value={isOtherPackage ? 'Others' : formData.package}
+              onChange={(e) => handleChange('package_select', e.target.value)}
+              displayEmpty
+              error={!!errors.package}
+            >
                 <MenuItem value="" disabled>Select package</MenuItem>
                 <MenuItem value="Dedicated Desk">Dedicated Desk</MenuItem>
                 <MenuItem value="Flexible Desk">Flexible Desk</MenuItem>
                 <MenuItem value="Cabin">Cabin</MenuItem>
                 <MenuItem value="Virtual Office">Virtual Office</MenuItem>
                 <MenuItem value="Meeting Room">Meeting Room</MenuItem>
+                <MenuItem value="Others">Others</MenuItem>
             </Select>
+            {isOtherPackage && (
+              <TextField
+                label="Other Package"
+                fullWidth
+                value={formData.package}
+                onChange={(e) => handleChange('package', e.target.value)}
+                error={!!errors.package}
+                helperText={errors.package}
+              />
+            )}
             <TextField label="Company Name (optional)" fullWidth value={formData.company} onChange={(e) => handleChange('company', e.target.value)} />
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField
