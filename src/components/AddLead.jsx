@@ -69,6 +69,7 @@ export default function AddLead() {
     package: ''
   });
 
+  const [isOtherPurpose, setIsOtherPurpose] = useState(false);
   const [showConvertedModal, setShowConvertedModal] = useState(false);
   const [note, setNote] = useState('');
   const [followUpDays, setFollowUpDays] = useState('');
