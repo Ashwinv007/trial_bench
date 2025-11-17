@@ -177,6 +177,18 @@ export default function AddLead() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === 'purposeOfVisit_select') {
+        if (value === 'Others') {
+            setIsOtherPurpose(true);
+            setFormData(prev => ({...prev, purposeOfVisit: ''}));
+        } else {
+            setIsOtherPurpose(false);
+            setFormData(prev => ({...prev, purposeOfVisit: value}));
+        }
+        return;
+    }
+
     setFormData(prev => {
       const newState = {...prev, [name]: value};
 
@@ -302,8 +314,8 @@ export default function AddLead() {
               <div className={styles.formGroup}>
                 <label className={styles.label}>Purpose of Visit *</label>
                 <select
-                  name="purposeOfVisit"
-                  value={formData.purposeOfVisit}
+                  name="purposeOfVisit_select"
+                  value={isOtherPurpose ? 'Others' : formData.purposeOfVisit}
                   onChange={handleInputChange}
                   className={`${styles.select} ${errors.purposeOfVisit ? styles.inputError : ''}`}
                   required
@@ -316,8 +328,24 @@ export default function AddLead() {
                   <option value="Meeting Room">Meeting Room</option>
                   <option value="Others">Others</option>
                 </select>
-                {errors.purposeOfVisit && <p className={styles.errorMessage}>{errors.purposeOfVisit}</p>}
+                {errors.purposeOfVisit && !isOtherPurpose && <p className={styles.errorMessage}>{errors.purposeOfVisit}</p>}
               </div>
+
+              {isOtherPurpose && (
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Other Purpose *</label>
+                  <input
+                    type="text"
+                    name="purposeOfVisit"
+                    value={formData.purposeOfVisit}
+                    onChange={handleInputChange}
+                    placeholder="Please specify"
+                    className={`${styles.input} ${errors.purposeOfVisit ? styles.inputError : ''}`}
+                    required
+                  />
+                  {errors.purposeOfVisit && <p className={styles.errorMessage}>{errors.purposeOfVisit}</p>}
+                </div>
+              )}
 
               <div className={styles.formGroup}>
                 <label className={styles.label}>Phone *</label>
