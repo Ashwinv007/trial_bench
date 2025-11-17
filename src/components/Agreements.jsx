@@ -49,6 +49,7 @@ export default function Agreements() {
   const [agreements, setAgreements] = useState([]);
   const [selectedAgreement, setSelectedAgreement] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isOtherPackage, setIsOtherPackage] = useState(false);
   const [agreementGenerated, setAgreementGenerated] = useState(null);
   const [latestAuthDetails, setLatestAuthDetails] = useState({ // New state for latest auth details
     authorizorName: '',
@@ -66,7 +67,8 @@ export default function Agreements() {
     agreementNumber: '',
     startDate: '',
     endDate: '',
-    serviceAgreementType: '',
+    servicePackage: '',
+    serviceQuantity: 1,
     totalMonthlyPayment: '',
     authorizorName: '',
     designation: '',
@@ -145,6 +147,31 @@ export default function Agreements() {
     if (!hasPermission('edit_agreements')) return;
     setAgreementGenerated(null);
     setSelectedAgreement(agreement);
+
+    const serviceAgreementType = agreement.serviceAgreementType || '';
+    let servicePackage = '';
+    let serviceQuantity = 1;
+    let isOtherPkg = false;
+    const standardPackages = ["Dedicated Desk", "Flexible Desk", "Private Cabin", "Virtual Office", "Meeting Room", ""];
+
+    if (serviceAgreementType) { // Agreement has been saved before
+        // Parse the saved value
+        const parts = serviceAgreementType.split(' - ');
+        servicePackage = parts[0];
+        if (parts.length > 1) {
+            const qtyPart = parts[1].split(' ')[0];
+            if (qtyPart && !isNaN(qtyPart)) {
+                serviceQuantity = parseInt(qtyPart, 10);
+            }
+        }
+    } else { // New/untouched agreement, use member's package
+        servicePackage = agreement.purposeOfVisit || '';
+    }
+
+    if (servicePackage && !standardPackages.includes(servicePackage)) {
+        isOtherPkg = true;
+    }
+
     setFormData({
       memberLegalName: agreement.memberLegalName || agreement.name || '', // Auto-fill from member name
       memberCIN: agreement.memberCIN || '',
@@ -156,7 +183,8 @@ export default function Agreements() {
       agreementNumber: agreement.agreementNumber || '',
       startDate: agreement.startDate || '',
       endDate: agreement.endDate || '',
-      serviceAgreementType: agreement.serviceAgreementType || '',
+      servicePackage: servicePackage,
+      serviceQuantity: serviceQuantity,
       totalMonthlyPayment: agreement.totalMonthlyPayment || '',
       authorizorName: agreement.authorizorName || latestAuthDetails.authorizorName || '',
       designation: agreement.designation || latestAuthDetails.designation || '',
@@ -164,6 +192,7 @@ export default function Agreements() {
       title: agreement.title || '',
       agreementLength: agreement.agreementLength || '',
     });
+    setIsOtherPackage(isOtherPkg);
     setIsModalOpen(true);
   };
 
@@ -175,6 +204,16 @@ export default function Agreements() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    if (name === 'servicePackage_select') {
+        if (value === 'Others') {
+            setIsOtherPackage(true);
+            setFormData(prev => ({...prev, servicePackage: ''}));
+        } else {
+            setIsOtherPackage(false);
+            setFormData(prev => ({...prev, servicePackage: value}));
+        }
+        return;
+    }
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -186,10 +225,16 @@ export default function Agreements() {
     
     if (!selectedAgreement) return;
 
-    const agreementRef = doc(db, 'agreements', selectedAgreement.id);
-    await updateDoc(agreementRef, formData);
+    const serviceAgreementType = `${formData.servicePackage} - ${formData.serviceQuantity} nos`;
+    const dataToUpdate = {
+        ...formData,
+        serviceAgreementType: serviceAgreementType,
+    };
 
-    const updatedAgreement = { ...selectedAgreement, ...formData };
+    const agreementRef = doc(db, 'agreements', selectedAgreement.id);
+    await updateDoc(agreementRef, dataToUpdate);
+
+    const updatedAgreement = { ...selectedAgreement, ...dataToUpdate };
 
     setAgreements((prev) =>
       prev.map((agreement) =>
@@ -651,14 +696,46 @@ export default function Agreements() {
                     disabled
                   />
                   <TextField
-                    label="Service Agreement Type"
-                    name="serviceAgreementType"
-                    value={formData.serviceAgreementType}
+                    label="Package"
+                    name="servicePackage_select"
+                    value={isOtherPackage ? 'Others' : formData.servicePackage}
                     onChange={handleInputChange}
                     fullWidth
                     variant="outlined"
                     size="small"
+                    select
+                  >
+                    <MenuItem value="">Select Package</MenuItem>
+                    <MenuItem value="Dedicated Desk">Dedicated Desk</MenuItem>
+                    <MenuItem value="Flexible Desk">Flexible Desk</MenuItem>
+                    <MenuItem value="Private Cabin">Private Cabin</MenuItem>
+                    <MenuItem value="Virtual Office">Virtual Office</MenuItem>
+                    <MenuItem value="Meeting Room">Meeting Room</MenuItem>
+                    <MenuItem value="Others">Others</MenuItem>
+                  </TextField>
+                  <TextField
+                      label="Quantity"
+                      name="serviceQuantity"
+                      type="number"
+                      value={formData.serviceQuantity}
+                      onChange={handleInputChange}
+                      fullWidth
+                      variant="outlined"
+                      size="small"
+                      InputProps={{ inputProps: { min: 1 } }}
                   />
+                  {isOtherPackage && (
+                      <TextField
+                          label="Other Package"
+                          name="servicePackage"
+                          value={formData.servicePackage}
+                          onChange={handleInputChange}
+                          fullWidth
+                          variant="outlined"
+                          size="small"
+                          style={{ gridColumn: '1 / -1' }}
+                      />
+                  )}
                   <TextField
                     label="Total Monthly Payment"
                     name="totalMonthlyPayment"
