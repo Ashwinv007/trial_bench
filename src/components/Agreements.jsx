@@ -174,10 +174,10 @@ export default function Agreements() {
 
     setFormData({
       memberLegalName: agreement.memberLegalName || agreement.name || '', // Auto-fill from member name
-      memberCIN: agreement.memberCIN || '',
-      memberGST: agreement.memberGST || '',
-      memberPAN: agreement.memberPAN || '',
-      memberKYC: agreement.memberKYC || '',
+      memberCIN: agreement.memberCIN || 'Not Applicable',
+      memberGST: agreement.memberGST || 'Not Applicable',
+      memberPAN: agreement.memberPAN || 'Not Applicable',
+      memberKYC: agreement.memberKYC || 'Not Applicable',
       memberAddress: agreement.memberAddress || '',
       agreementDate: agreement.agreementDate || '',
       agreementNumber: agreement.agreementNumber || '',
