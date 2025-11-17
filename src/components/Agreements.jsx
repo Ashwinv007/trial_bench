@@ -754,18 +754,18 @@ export default function Agreements() {
                 <h3 className={styles.sectionTitle}>Authorization Details</h3>
                 <div className={styles.formGrid}>
                   <TextField
-                    label="Prepared By"
-                    name="preparedByNew"
-                    value={formData.preparedByNew}
+                    label="Authorizor Name"
+                    name="authorizorName"
+                    value={formData.authorizorName}
                     onChange={handleInputChange}
                     fullWidth
                     variant="outlined"
                     size="small"
                   />
                   <TextField
-                    label="Authorizor Name"
-                    name="authorizorName"
-                    value={formData.authorizorName}
+                    label="Prepared By"
+                    name="preparedByNew"
+                    value={formData.preparedByNew}
                     onChange={handleInputChange}
                     fullWidth
                     variant="outlined"
