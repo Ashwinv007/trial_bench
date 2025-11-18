@@ -52,6 +52,20 @@ const formatBirthday = (day, month) => {
   return `${dayNum}${suffix} ${monthNamesFull[monthNum - 1]}`;
 };
 
+// Helper function to format activity timestamp
+const formatActivityTimestamp = (isoString) => {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+};
+
 export default function AddLead() {
   const [formData, setFormData] = useState({
     name: '',
@@ -79,14 +93,7 @@ export default function AddLead() {
       type: 'created',
       title: 'Lead Created',
       description: 'New lead added to the system',
-      timestamp: new Date().toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      })
+      timestamp: new Date().toISOString()
     }
   ]);
 
@@ -124,13 +131,18 @@ export default function AddLead() {
 
         // 2. Create a new member
         const memberData = {
-          ...formData,
+          name: formData.name,
           email: formData.convertedEmail,
           whatsapp: formData.convertedWhatsapp,
+          phone: formData.phone,
+          birthday: formatBirthday(formData.birthdayDay, formData.birthdayMonth),
           package: formData.purposeOfVisit,
-          birthday: formatBirthday(formData.birthdayDay, formData.birthdayMonth), // Use helper function
-          company: formData.companyName,
-          primary: true, // Set primary to true for new members
+          clientType: formData.clientType,
+          company: formData.clientType === 'Company' ? formData.companyName : '',
+          primary: true,
+          sourceType: formData.sourceType,
+          sourceDetail: formData.sourceDetail,
+          subMembers: [],
         };
         const membersCollection = collection(db, 'members');
         const memberDocRef = await addDoc(membersCollection, memberData);

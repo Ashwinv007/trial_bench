@@ -52,6 +52,20 @@ const formatBirthday = (day, month) => {
   return `${dayNum}${suffix} ${monthNamesFull[monthNum - 1]}`;
 };
 
+// Helper function to format activity timestamp
+const formatActivityTimestamp = (isoString) => {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+};
+
 export default function EditLead() {
   const [formData, setFormData] = useState(null);
   const [originalLead, setOriginalLead] = useState(null);
@@ -183,7 +197,9 @@ export default function EditLead() {
       }
     });
 
-    if (changes.length === 0) {
+    const originalActivitiesCount = originalLead?.activities?.length || 0;
+
+    if (changes.length === 0 && activities.length === originalActivitiesCount) {
       navigate('/leads');
       return;
     }
@@ -197,14 +213,7 @@ export default function EditLead() {
         title: `Field "${change.field}" updated`,
         description: `Value changed from "${change.oldValue}" to "${change.newValue}"`,
         user: user ? user.displayName : 'Unknown User',
-        timestamp: new Date().toLocaleString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        })
+        timestamp: new Date().toISOString()
       });
     });
 
@@ -216,13 +225,18 @@ export default function EditLead() {
 
         // 1. Create a new member
         const memberData = {
-          ...formData,
+          name: formData.name,
           email: formData.convertedEmail,
           whatsapp: formData.convertedWhatsapp,
+          phone: formData.phone,
+          birthday: formatBirthday(formData.birthdayDay, formData.birthdayMonth),
           package: formData.purposeOfVisit,
-          birthday: formatBirthday(formData.birthdayDay, formData.birthdayMonth), // Use helper function
-          company: formData.companyName,
+          clientType: formData.clientType,
+          company: formData.clientType === 'Company' ? formData.companyName : '',
           primary: true,
+          sourceType: formData.sourceType,
+          sourceDetail: formData.sourceDetail,
+          subMembers: [],
         };
         const membersCollection = collection(db, 'members');
         const memberDocRef = await addDoc(membersCollection, memberData);
@@ -636,7 +650,7 @@ export default function EditLead() {
                     <div className={styles.timelineContent}>
                       <div className={styles.timelineHeader}>
                         <h4 className={styles.timelineTitle}>{activity.title}</h4>
-                        <span className={styles.timelineTimestamp}>{activity.timestamp}</span>
+                        <span className={styles.timelineTimestamp}>{formatActivityTimestamp(activity.timestamp)}</span>
                       </div>
                       <p className={styles.timelineDescription}>{activity.description}</p>
                       {activity.user && <p className={styles.activityUser}>by {activity.user}</p>}
