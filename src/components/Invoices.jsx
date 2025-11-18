@@ -101,7 +101,7 @@ const generateInvoiceNumber = (allInvoices) => {
   return `${prefix}${newSeq}`;
 };
 
-const getInvoicePdfBase64 = async (invoiceData) => {
+const getInvoicePdfBytes = async (invoiceData) => {
   const url = '/tb_invoice.pdf';
   const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
 
@@ -202,12 +202,7 @@ const getInvoicePdfBase64 = async (invoiceData) => {
   firstPage.drawText(totalAmountPayable, { x: 490, y: 117, size: 13, font, color: rgb(0, 0, 0), maxWidth: 150 });
 
   const pdfBytes = await pdfDoc.save();
-  // Convert Uint8Array to binary string
-  let binary = '';
-  for (let i = 0; i < pdfBytes.length; i++) {
-    binary += String.fromCharCode(pdfBytes[i]);
-  }
-  return btoa(binary);
+  return pdfBytes;
 };
 
 export default function Invoices() {
@@ -720,7 +715,15 @@ export default function Invoices() {
     }
 
     try {
-      const pdfBase64 = await getInvoicePdfBase64(invoiceGenerated);
+      const pdfBytes = await getInvoicePdfBytes(invoiceGenerated);
+      
+      // Convert Uint8Array to base64
+      let binary = '';
+      for (let i = 0; i < pdfBytes.length; i++) {
+        binary += String.fromCharCode(pdfBytes[i]);
+      }
+      const pdfBase64 = btoa(binary);
+
       await sendInvoiceEmailCallable({
         toEmail: invoiceGenerated.email,
         customerName: invoiceGenerated.name,
@@ -1052,8 +1055,8 @@ export default function Invoices() {
                 <Button
                   onClick={async () => {
                     try {
-                      const pdfBase64 = await getInvoicePdfBase64(invoiceGenerated);
-                      const blob = new Blob([Buffer.from(pdfBase64, 'base64')], { type: 'application/pdf' });
+                      const pdfBytes = await getInvoicePdfBytes(invoiceGenerated);
+                      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
                       saveAs(blob, `${invoiceGenerated.invoiceNumber || 'invoice'}.pdf`);
                       toast.success("Invoice downloaded successfully!");
                     } catch (error) {
