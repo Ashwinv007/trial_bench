@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect } from 'react';
 import { FirebaseContext, AuthContext } from '../store/Context';
-import { collection, addDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc } from 'firebase/firestore'; // Added updateDoc
 import { useNavigate } from 'react-router-dom';
 import {
   CheckCircle,
@@ -11,7 +11,7 @@ import {
   Cake,
   AccountBox
 } from '@mui/icons-material';
-import { // Added Material-UI components
+import {
   Box,
   TextField,
   MenuItem,
@@ -23,6 +23,7 @@ import { // Added Material-UI components
   FormHelperText
 } from '@mui/material';
 import styles from './AddLead.module.css';
+import ConversionModal from './ConversionModal'; // Import the new modal
 
 // Helper function to format birthday
 const formatBirthday = (day, month) => {
@@ -78,8 +79,8 @@ export default function AddLead() {
     companyName: '',
     convertedEmail: '',
     convertedWhatsapp: '',
-    birthdayDay: '', // Replaced birthday with separate day and month
-    birthdayMonth: '', // Replaced birthday with separate day and month
+    birthdayDay: '',
+    birthdayMonth: '',
     package: ''
   });
 
@@ -98,7 +99,9 @@ export default function AddLead() {
   ]);
 
   const [errors, setErrors] = useState({});
-  const [isSubmitted, setIsSubmitted] = useState(false); // New state for tracking submission
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isConversionModalOpen, setIsConversionModalOpen] = useState(false); // State for the new modal
+  const [newlyCreatedLeadId, setNewlyCreatedLeadId] = useState(null); // To store the ID of the lead just created
 
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
@@ -115,48 +118,52 @@ export default function AddLead() {
   }, [user]);
 
   const handleSaveLead = async () => {
-    setIsSubmitted(true); // Set to true on first submission attempt
-    const newErrors = validateForm(formData); // Get errors
-    setErrors(newErrors); // Set errors state
+    setIsSubmitted(true);
+    const newErrors = validateForm(formData);
+    setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) {
-      return; // Stop if form is invalid
+      return;
     }
+
     try {
-      // 1. Always create the lead document
       const leadsCollection = collection(db, 'leads');
       const newLeadData = { ...formData, activities: activities };
       const leadDocRef = await addDoc(leadsCollection, newLeadData);
       const leadId = leadDocRef.id;
+      setNewlyCreatedLeadId(leadId); // Store the new lead ID
 
-      // 2. If the new lead is converted, also create a corresponding agreement
       if (formData.status === 'Converted') {
-        const agreementData = {
-          leadId: leadId, // Link agreement to the new lead
-          memberLegalName: '',
-          memberCIN: '',
-          memberGST: '',
-          memberPAN: '',
-          memberKYC: '',
-          memberAddress: '',
-          agreementDate: '',
-          agreementNumber: '',
-          startDate: '',
-          endDate: '',
-          serviceAgreementType: '',
-          totalMonthlyPayment: '',
-          preparedBy: '',
-        };
-        const agreementsCollection = collection(db, 'agreements');
-        await addDoc(agreementsCollection, agreementData);
-
-        // 3. Navigate to the agreements page to complete it
-        navigate('/agreements');
+        setIsConversionModalOpen(true); // Open the conversion modal
+        // The modal's onConvert will handle member creation and navigation
       } else {
-        // For a non-converted lead, just go to the leads list
-        navigate('/leads');
+        navigate('/leads'); // For non-converted leads, just navigate
       }
     } catch (error) {
       console.error("Error processing lead: ", error);
+    }
+  };
+
+  const handleConvert = async (memberData) => {
+    try {
+      const membersCollection = collection(db, 'members');
+      await addDoc(membersCollection, {
+        ...memberData,
+        leadId: newlyCreatedLeadId, // Use the newly created lead's ID
+        primary: true,
+        createdAt: new Date().toISOString(),
+      });
+
+      // Update the lead's status to 'Converted' in Firestore (if not already)
+      // This is important if the modal was opened but the lead wasn't marked converted yet
+      const leadRef = doc(db, "leads", newlyCreatedLeadId);
+      await updateDoc(leadRef, {
+        status: 'Converted',
+      });
+
+      setIsConversionModalOpen(false);
+      navigate('/members');
+    } catch (error) {
+      console.error("Error converting lead: ", error);
     }
   };
 
@@ -193,13 +200,12 @@ export default function AddLead() {
       // Validate immediately after setting the new state, ONLY IF form has been submitted once
       if (isSubmitted) {
         const updatedErrors = validateForm(newState);
-        setErrors(updatedErrors); // Update errors state
+        setErrors(updatedErrors);
       }
 
       return newState;
     });
 
-    // Show converted modal when status is Converted
     if (name === 'status' && value === 'Converted') {
       setShowConvertedModal(true);
     } else if (name === 'status' && value !== 'Converted') {
@@ -226,7 +232,7 @@ export default function AddLead() {
     setFollowUpDays('');
   };
 
-  const validateForm = (data) => { // Accepts formData as argument
+  const validateForm = (data) => {
     const newErrors = {};
     if (!data.name.trim()) newErrors.name = 'Name is required';
     if (!data.purposeOfVisit) newErrors.purposeOfVisit = 'Purpose of Visit is required';
@@ -246,7 +252,7 @@ export default function AddLead() {
       }
       if (!data.convertedWhatsapp.trim()) {
         newErrors.convertedWhatsapp = 'WhatsApp is required';
-      } else if (!/^\+\d{10,}$/.test(data.convertedWhatsapp)) { // Added country code validation
+      } else if (!/^\+\d{10,}$/.test(data.convertedWhatsapp)) {
         newErrors.convertedWhatsapp = 'WhatsApp number must include country code (e.g., +91XXXXXXXXXX)';
       }
     }
@@ -258,7 +264,7 @@ export default function AddLead() {
         newErrors.birthdayDay = 'Day must be between 1 and 31';
       }
     }
-    return newErrors; // Return the errors object
+    return newErrors;
   };
 
   return (
@@ -598,6 +604,12 @@ export default function AddLead() {
           </div>
         </div>
       </div>
+      <ConversionModal
+        open={isConversionModalOpen}
+        onClose={() => setIsConversionModalOpen(false)}
+        leadData={{...formData, id: newlyCreatedLeadId}}
+        onConvert={handleConvert}
+      />
     </div>
   );
 }
