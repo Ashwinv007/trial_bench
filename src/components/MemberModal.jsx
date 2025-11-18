@@ -215,8 +215,8 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     }
   };
 
-  const handleViewProfile = (memberId) => {
-    setProfileMemberId(memberId);
+  const handleViewProfile = (member) => {
+    setProfileMemberId(member.leadId);
     setIsViewingProfile(true);
   };
 
@@ -344,10 +344,10 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
       <DialogActions sx={{ p: '16px 24px 24px', gap: 1.5 }}>
         {editMember && editMember.primary && (
           <Button
-            onClick={() => handleViewProfile(editMember.id)}
+            onClick={() => handleViewProfile(editMember)}
             variant="outlined"
           >
-            View Profile
+            View Lead Profile
           </Button>
         )}
         <Button onClick={onClose} variant="outlined">Cancel</Button>
