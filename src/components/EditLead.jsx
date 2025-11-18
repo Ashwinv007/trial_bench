@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect } from 'react';
 import { FirebaseContext, AuthContext } from '../store/Context';
-import { doc, getDoc, updateDoc, collection, addDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, addDoc } from 'firebase/firestore';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   CheckCircle, 
@@ -11,7 +11,7 @@ import {
   Cake,
   AccountBox
 } from '@mui/icons-material';
-import { // Added Material-UI components
+import {
   Box,
   TextField,
   MenuItem,
@@ -23,6 +23,7 @@ import { // Added Material-UI components
   FormHelperText 
 } from '@mui/material';
 import styles from './AddLead.module.css'; // Reusing styles
+import ConversionModal from './ConversionModal'; // Import the new modal
 
 // Helper function to format birthday
 const formatBirthday = (day, month) => {
@@ -74,8 +75,9 @@ export default function EditLead() {
   const [note, setNote] = useState('');
   const [followUpDays, setFollowUpDays] = useState('');
   const [activities, setActivities] = useState([]);
-  const [errors, setErrors] = useState({}); // Added errors state
-  const [isSubmitted, setIsSubmitted] = useState(false); // New state for tracking submission
+  const [errors, setErrors] = useState({});
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isConversionModalOpen, setIsConversionModalOpen] = useState(false); // State for the new modal
 
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
@@ -104,8 +106,8 @@ export default function EditLead() {
           companyName: leadData.companyName !== 'NA' ? leadData.companyName : '',
           convertedEmail: leadData.convertedEmail || '',
           convertedWhatsapp: leadData.convertedWhatsapp || '',
-          birthdayDay: leadData.birthdayDay || '', // Populate day directly
-          birthdayMonth: leadData.birthdayMonth || '', // Populate month directly
+          birthdayDay: leadData.birthdayDay || '',
+          birthdayMonth: leadData.birthdayMonth || '',
         });
         setOriginalLead(leadData);
         if (leadData.activities) {
@@ -149,21 +151,18 @@ export default function EditLead() {
         newState.convertedWhatsapp = value;
       }
 
-      // When sourceType changes, reset sourceDetail if not applicable
       if (name === 'sourceType' && value !== 'Referral' && value !== 'Social Media') {
         newState.sourceDetail = '';
       }
 
-      // Validate immediately after setting the new state, ONLY IF form has been submitted once
       if (isSubmitted) {
         const updatedErrors = validateForm(newState);
-        setErrors(updatedErrors); // Update errors state
+        setErrors(updatedErrors);
       }
 
       return newState;
     });
 
-    // Show converted modal when status is Converted
     if (name === 'status' && value === 'Converted') {
       setShowConvertedModal(true);
     } else if (name === 'status' && value !== 'Converted') {
@@ -172,17 +171,20 @@ export default function EditLead() {
   };
 
   const handleUpdateLead = async () => {
-    setIsSubmitted(true); // Set to true on first submission attempt
-    const newErrors = validateForm(formData); // Get errors
-    setErrors(newErrors); // Set errors state
+    setIsSubmitted(true);
+    const newErrors = validateForm(formData);
+    setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) {
-      return; // Stop if form is invalid
+      return;
     }
-    if (!originalLead) return; // Add this check
+    if (!originalLead) return;
+
+    if (formData.status === 'Converted' && originalLead.status !== 'Converted') {
+      setIsConversionModalOpen(true);
+      return;
+    }
 
     const changes = [];
-    const noteworthyChanges = {};
-
     Object.keys(formData).forEach(key => {
       if (formData[key] !== originalLead[key]) {
         changes.push({
@@ -190,10 +192,6 @@ export default function EditLead() {
           oldValue: originalLead[key],
           newValue: formData[key]
         });
-        noteworthyChanges[key] = {
-          old: originalLead[key],
-          new: formData[key]
-        };
       }
     });
 
@@ -205,7 +203,6 @@ export default function EditLead() {
     }
 
     const newActivities = [...activities];
-
     changes.forEach(change => {
       newActivities.unshift({
         id: newActivities.length + 1,
@@ -219,43 +216,36 @@ export default function EditLead() {
 
     try {
       const leadRef = doc(db, "leads", id);
-
-      // Always update the lead document with the latest form data and activities
       await updateDoc(leadRef, {
         ...formData,
         activities: newActivities
       });
-
-      // If the lead was just converted, also create a new agreement
-      if (formData.status === 'Converted' && originalLead.status !== 'Converted') {
-        const agreementData = {
-          leadId: id, // Link agreement to the lead
-          memberLegalName: '',
-          memberCIN: '',
-          memberGST: '',
-          memberPAN: '',
-          memberKYC: '',
-          memberAddress: '',
-          agreementDate: '',
-          agreementNumber: '',
-          startDate: '',
-          endDate: '',
-          serviceAgreementType: '',
-          totalMonthlyPayment: '',
-          preparedBy: '',
-        };
-
-        const agreementsCollection = collection(db, 'agreements');
-        await addDoc(agreementsCollection, agreementData);
-
-        // Navigate to agreements page to complete the new agreement
-        navigate('/agreements');
-      } else {
-        // For any other update, just go back to the leads list
-        navigate('/leads');
-      }
+      navigate('/leads');
     } catch (error) {
       console.error("Error updating document: ", error);
+    }
+  };
+
+  const handleConvert = async (memberData) => {
+    try {
+      const membersCollection = collection(db, 'members');
+      await addDoc(membersCollection, {
+        ...memberData,
+        leadId: id,
+        primary: true,
+        createdAt: new Date().toISOString(),
+      });
+
+      const leadRef = doc(db, "leads", id);
+      await updateDoc(leadRef, {
+        ...formData,
+        status: 'Converted',
+      });
+
+      setIsConversionModalOpen(false);
+      navigate('/members');
+    } catch (error) {
+      console.error("Error converting lead: ", error);
     }
   };
 
@@ -278,7 +268,7 @@ export default function EditLead() {
     setFollowUpDays('');
   };
 
-  const validateForm = (data) => { // Accepts formData as argument
+  const validateForm = (data) => {
     const newErrors = {};
     if (!data.name.trim()) newErrors.name = 'Name is required';
     if (!data.purposeOfVisit) newErrors.purposeOfVisit = 'Purpose of Visit is required';
@@ -302,7 +292,8 @@ export default function EditLead() {
       if (data.birthdayDay && (parseInt(data.birthdayDay, 10) < 1 || parseInt(data.birthdayDay, 10) > 31)) {
         newErrors.birthdayDay = 'Day must be between 1 and 31';
       }
-    }    return newErrors; // Return the errors object
+    }
+    return newErrors;
   };
 
   if (!formData) {
@@ -341,9 +332,6 @@ export default function EditLead() {
                 />
                 {errors.name && <p className={styles.errorMessage}>{errors.name}</p>}
               </div>
-
-
-
 
               {/* Purpose of Visit */}
               <div className={styles.formGroup}>
@@ -644,6 +632,12 @@ export default function EditLead() {
           </div>
         </div>
       </div>
+      <ConversionModal
+        open={isConversionModalOpen}
+        onClose={() => setIsConversionModalOpen(false)}
+        leadData={formData}
+        onConvert={handleConvert}
+      />
     </div>
   );
 }

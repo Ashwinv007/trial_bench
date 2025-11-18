@@ -31,9 +31,31 @@ import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 
 // Helper function to format birthday for display
-const formatBirthdayDisplay = (birthday) => {
-  if (!birthday) return '-';
-  return birthday;
+const formatBirthdayDisplay = (day, month) => {
+  if (!day || !month) return '-';
+
+  const monthNamesFull = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const dayNum = parseInt(day, 10);
+  const monthNum = parseInt(month, 10);
+
+  if (isNaN(dayNum) || isNaN(monthNum) || dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) {
+    return '-';
+  }
+
+  let suffix = 'th';
+  if (dayNum === 1 || dayNum === 21 || dayNum === 31) {
+    suffix = 'st';
+  } else if (dayNum === 2 || dayNum === 22) {
+    suffix = 'nd';
+  } else if (dayNum === 3 || dayNum === 23) {
+    suffix = 'rd';
+  }
+
+  return `${dayNum}${suffix} ${monthNamesFull[monthNum - 1]}`;
 };
 
 export default function MembersPage() {
@@ -231,7 +253,7 @@ export default function MembersPage() {
       Name: member.name,
       Package: member.package,
       Company: member.company,
-      Birthday: formatBirthdayDisplay(member.birthday),
+      Birthday: formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth),
       WhatsApp: member.whatsapp,
       Email: member.email,
       Primary: member.primary ? 'Yes' : 'No',
@@ -254,7 +276,7 @@ export default function MembersPage() {
         </TableCell>
         <TableCell>{member.package}</TableCell>
         <TableCell>{member.company}</TableCell>
-        <TableCell>{formatBirthdayDisplay(member.birthday)}</TableCell>
+        <TableCell>{formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth)}</TableCell>
         <TableCell>{member.whatsapp}</TableCell>
         <TableCell>{member.email}</TableCell>
         <TableCell colSpan={2}>
@@ -285,7 +307,7 @@ export default function MembersPage() {
             </TableCell>
             <TableCell onClick={() => handleOpenEditModal(member)}>{member.package}</TableCell>
             <TableCell onClick={() => handleOpenEditModal(member)}>{member.company}</TableCell>
-            <TableCell onClick={() => handleOpenEditModal(member)}>{formatBirthdayDisplay(member.birthday)}</TableCell>
+            <TableCell onClick={() => handleOpenEditModal(member)}>{formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth)}</TableCell>
             <TableCell onClick={() => handleOpenEditModal(member)}>{member.whatsapp}</TableCell>
             <TableCell onClick={() => handleOpenEditModal(member)}>{member.email}</TableCell>
             <TableCell>
@@ -308,7 +330,7 @@ export default function MembersPage() {
               </TableCell>
               <TableCell>{subMember.package}</TableCell>
               <TableCell>{subMember.company}</TableCell>
-              <TableCell>{subMember.birthday}</TableCell>
+              <TableCell>{formatBirthdayDisplay(subMember.birthdayDay, subMember.birthdayMonth)}</TableCell>
               <TableCell>{subMember.whatsapp}</TableCell>
               <TableCell>{subMember.email}</TableCell>
               <TableCell colSpan={3}>

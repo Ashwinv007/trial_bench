@@ -478,7 +478,7 @@ export default function AddLead() {
 
                   <div className={styles.formGroup}>
                     <label className={styles.label}>WhatsApp *</label>
-                    <input
+                        <input
                       type="text"
                       name="convertedWhatsapp"
                       value={formData.convertedWhatsapp}
