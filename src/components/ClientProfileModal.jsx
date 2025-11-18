@@ -1,19 +1,17 @@
 import { useState, useEffect, useContext } from 'react';
 import { Dialog, DialogContent, IconButton, Tabs, Tab, Card, CardContent, Button, Chip, Typography, Box, CircularProgress } from '@mui/material';
-import { Close, Email, Phone, Cake, Person, Business, CalendarToday, AttachMoney, Description, KeyboardArrowDown, KeyboardArrowRight } from '@mui/icons-material';
+import { Close, Email, Phone, Cake, Business } from '@mui/icons-material';
 import styles from './ClientProfile.module.css';
 import { FirebaseContext } from '../store/Context';
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 
 export default function ClientProfileModal({ open, onClose, clientId }) {
   const { db } = useContext(FirebaseContext);
   const [client, setClient] = useState(null);
   const [agreements, setAgreements] = useState([]);
   const [invoices, setInvoices] = useState([]);
-  const [subMembersData, setSubMembersData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
-  const [expandedMembers, setExpandedMembers] = useState({});
 
   useEffect(() => {
     const fetchClientData = async () => {
@@ -25,38 +23,35 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
       
       setLoading(true);
       try {
-        const clientDocRef = doc(db, 'members', clientId);
+        // 1. Fetch the lead document
+        const clientDocRef = doc(db, 'leads', clientId);
         const clientDocSnap = await getDoc(clientDocRef);
 
         if (clientDocSnap.exists()) {
-          const primaryClientData = { id: clientDocSnap.id, ...clientDocSnap.data() };
-          setClient(primaryClientData);
-
-          if (primaryClientData.primary && primaryClientData.subMembers && primaryClientData.subMembers.length > 0) {
-            const fetchedSubMembers = [];
-            for (const subMemberId of primaryClientData.subMembers) {
-              const subMemberDocRef = doc(db, 'members', subMemberId);
-              const subMemberDocSnap = await getDoc(subMemberDocRef);
-              if (subMemberDocSnap.exists()) {
-                fetchedSubMembers.push({ id: subMemberDocSnap.id, ...subMemberDocSnap.data() });
-              }
-            }
-            setSubMembersData(fetchedSubMembers);
-          } else {
-            setSubMembersData([]);
-          }
+          setClient({ id: clientDocSnap.id, ...clientDocSnap.data() });
         } else {
           console.warn("Client not found with ID:", clientId);
           setClient(null);
+          setLoading(false);
+          return;
         }
 
-        const allAgreementsSnapshot = await getDocs(collection(db, 'agreements'));
-        const allAgreementsList = allAgreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setAgreements(allAgreementsList);
+        // 2. Fetch agreements for the current client
+        const agreementsQuery = query(collection(db, 'agreements'), where('leadId', '==', clientId));
+        const agreementsSnapshot = await getDocs(agreementsQuery);
+        const clientAgreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAgreements(clientAgreementsData);
 
-        const allInvoicesSnapshot = await getDocs(collection(db, 'invoices'));
-        const allInvoicesList = allInvoicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setInvoices(allInvoicesList);
+        // 3. Fetch invoices based on the fetched agreements
+        if (clientAgreementsData.length > 0) {
+          const agreementIds = clientAgreementsData.map(a => a.id);
+          const invoicesQuery = query(collection(db, 'invoices'), where('agreementId', 'in', agreementIds));
+          const invoicesSnapshot = await getDocs(invoicesQuery);
+          const clientInvoicesData = invoicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setInvoices(clientInvoicesData);
+        } else {
+          setInvoices([]);
+        }
 
       } catch (error) {
         console.error("Error fetching client data:", error);
@@ -70,16 +65,14 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
     }
   }, [open, clientId, db]);
 
-  // Reset state when modal is closed to avoid showing stale data
+  // Reset state when modal is closed
   useEffect(() => {
     if (!open) {
       setClient(null);
       setAgreements([]);
       setInvoices([]);
-      setSubMembersData([]);
       setLoading(true);
       setActiveTab(0);
-      setExpandedMembers({});
     }
   }, [open]);
 
@@ -97,11 +90,7 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount);
   };
-
-  const toggleMemberExpansion = (memberId) => {
-    setExpandedMembers(prev => ({ ...prev, [memberId]: !prev[memberId] }));
-  };
-
+  
   const getPaymentStatusColor = (status) => {
     switch(status?.toLowerCase()) {
       case 'paid': return '#4caf50';
@@ -124,9 +113,9 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
     if (!client) {
       return (
         <Box sx={{ textAlign: 'center', p: 4 }}>
-          <Typography variant="h6">Member Not Found</Typography>
+          <Typography variant="h6">Client Not Found</Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
-            The member profile you are looking for could not be found.
+            The client profile you are looking for could not be found.
           </Typography>
           <Button variant="outlined" onClick={onClose} sx={{ mt: 3 }}>
             Close
@@ -135,15 +124,11 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
       );
     }
 
-    const relevantMemberIds = [client.id, ...subMembersData.map(sm => sm.id)];
-    const clientAgreements = agreements.filter(agreement => relevantMemberIds.includes(agreement.memberId));
-    const clientInvoices = invoices.filter(invoice => relevantMemberIds.includes(invoice.memberId));
-
     return (
       <div className={styles.container}>
         <div className={styles.header}>
           <div className={styles.headerLeft}>
-            <h2>Member Profile</h2>
+            <h2>Client Profile</h2>
           </div>
           <IconButton onClick={onClose} className={styles.closeButton} aria-label="close">
             <Close />
@@ -157,50 +142,17 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
                 <div className={styles.avatar}>{getInitials(client.name)}</div>
                 <div className={styles.basicInfo}>
                   <h3 className={styles.clientName}>{client.name}</h3>
-                  {client.primary && <Chip label="Primary Member" size="small" className={styles.primaryBadge} />}
+                  {client.companyName && <Typography variant="body2" color="text.secondary">{client.companyName}</Typography>}
                 </div>
               </div>
             </div>
             <div className={styles.detailsGrid}>
-              <div className={styles.detailItem}><div className={styles.detailLabel}><Business className={styles.detailIcon} />Package</div><div className={styles.detailValue}>{client.package || '-'}</div></div>
-              <div className={styles.detailItem}><div className={styles.detailLabel}><Email className={styles.detailIcon} />Email</div><div className={styles.detailValue}>{client.email || '-'}</div></div>
-              <div className={styles.detailItem}><div className={styles.detailLabel}><Phone className={styles.detailIcon} />WhatsApp</div><div className={styles.detailValue}>{client.whatsapp || '-'}</div></div>
-              {client.birthday && <div className={styles.detailItem}><div className={styles.detailLabel}><Cake className={styles.detailIcon} />Birthday</div><div className={styles.detailValue}>{formatDate(client.birthday)}</div></div>}
+              <div className={styles.detailItem}><div className={styles.detailLabel}><Business className={styles.detailIcon} />Package</div><div className={styles.detailValue}>{client.purposeOfVisit || '-'}</div></div>
+              <div className={styles.detailItem}><div className={styles.detailLabel}><Email className={styles.detailIcon} />Email</div><div className={styles.detailValue}>{client.convertedEmail || '-'}</div></div>
+              <div className={styles.detailItem}><div className={styles.detailLabel}><Phone className={styles.detailIcon} />WhatsApp</div><div className={styles.detailValue}>{client.convertedWhatsapp || '-'}</div></div>
+              {client.birthdayDay && client.birthdayMonth && <div className={styles.detailItem}><div className={styles.detailLabel}><Cake className={styles.detailIcon} />Birthday</div><div className={styles.detailValue}>{`${client.birthdayDay}/${client.birthdayMonth}`}</div></div>}
             </div>
           </div>
-
-          {client.primary && subMembersData.length > 0 && (
-            <div className={styles.membersSection}>
-              <h4 className={styles.sectionTitle}><Person className={styles.sectionIcon} />Team Members ({subMembersData.length})</h4>
-              <div className={styles.membersList}>
-                {subMembersData.map(subMember => (
-                  <Card key={subMember.id} className={styles.memberCard}>
-                    <CardContent className={styles.memberCardContent}>
-                      <div className={styles.memberHeader}>
-                        <div className={styles.memberInfo}>
-                          <div className={styles.memberAvatar}>{getInitials(subMember.name)}</div>
-                          <div>
-                            <div className={styles.memberName}>{subMember.name}</div>
-                            <div className={styles.memberPackage}>{subMember.package}</div>
-                          </div>
-                        </div>
-                        <IconButton size="small" onClick={() => toggleMemberExpansion(subMember.id)} className={styles.expandButton}>
-                          {expandedMembers[subMember.id] ? <KeyboardArrowDown /> : <KeyboardArrowRight />}
-                        </IconButton>
-                      </div>
-                      {expandedMembers[subMember.id] && (
-                        <div className={styles.memberDetails}>
-                          <div className={styles.memberDetailItem}><Email className={styles.memberDetailIcon} /><span>{subMember.email}</span></div>
-                          <div className={styles.memberDetailItem}><Phone className={styles.memberDetailIcon} /><span>{subMember.whatsapp}</span></div>
-                          {subMember.birthday && <div className={styles.memberDetailItem}><Cake className={styles.memberDetailIcon} /><span>{formatDate(subMember.birthday)}</span></div>}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className={styles.tabsSection}>
             <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} className={styles.tabs}>
@@ -211,11 +163,11 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
             {activeTab === 0 && (
               <div className={styles.tabContent}>
                 <h4 className={styles.tabSectionTitle}>Recent Agreements</h4>
-                {clientAgreements.length === 0 ? (
-                  <div className={styles.emptyState}><Description className={styles.emptyIcon} /><p>No agreements found for this member</p></div>
+                {agreements.length === 0 ? (
+                  <div className={styles.emptyState}><p>No agreements found for this client</p></div>
                 ) : (
                   <div className={styles.agreementsList}>
-                    {clientAgreements.map((agreement) => (
+                    {agreements.map((agreement) => (
                       <Card key={agreement.id} className={styles.agreementCard}>
                         <CardContent>
                           <div className={styles.agreementHeader}>
@@ -239,11 +191,11 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
             {activeTab === 1 && (
               <div className={styles.tabContent}>
                 <h4 className={styles.tabSectionTitle}>Recent Invoices</h4>
-                {clientInvoices.length === 0 ? (
-                  <div className={styles.emptyState}><Description className={styles.emptyIcon} /><p>No invoices found for this member</p></div>
+                {invoices.length === 0 ? (
+                  <div className={styles.emptyState}><p>No invoices found for this client</p></div>
                 ) : (
                   <div className={styles.invoicesList}>
-                    {clientInvoices.map((invoice) => (
+                    {invoices.map((invoice) => (
                       <Card key={invoice.id} className={styles.invoiceCard}>
                         <CardContent>
                           <div className={styles.invoiceHeader}>

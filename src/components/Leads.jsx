@@ -102,8 +102,8 @@ export default function Leads() {
                     </div>
                   </td>
                   <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('edit_leads') ? 'pointer' : 'default' }}>{lead.phone}</td>
-                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('edit_leads') ? 'pointer' : 'default' }}>{lead.whatsapp}</td>
-                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('edit_leads') ? 'pointer' : 'default' }}>{lead.email}</td>
+                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('edit_leads') ? 'pointer' : 'default' }}>{lead.convertedWhatsapp}</td>
+                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('edit_leads') ? 'pointer' : 'default' }}>{lead.convertedEmail}</td>
                   <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('edit_leads') ? 'pointer' : 'default' }}>
                     <div className={styles.sourceCell}>
                       <span className={styles.sourceType}>{lead.sourceType}</span>

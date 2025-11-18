@@ -122,35 +122,16 @@ export default function AddLead() {
       return; // Stop if form is invalid
     }
     try {
+      // 1. Always create the lead document
+      const leadsCollection = collection(db, 'leads');
+      const newLeadData = { ...formData, activities: activities };
+      const leadDocRef = await addDoc(leadsCollection, newLeadData);
+      const leadId = leadDocRef.id;
+
+      // 2. If the new lead is converted, also create a corresponding agreement
       if (formData.status === 'Converted') {
-        // 1. Create the lead document first to get its ID
-        const leadsCollection = collection(db, 'leads');
-        const newLeadData = { ...formData, activities: activities }; // Keep activities for the lead itself
-        const leadDocRef = await addDoc(leadsCollection, newLeadData);
-        const leadId = leadDocRef.id; // Get the ID of the newly created lead
-
-        // 2. Create a new member
-        const memberData = {
-          name: formData.name,
-          email: formData.convertedEmail,
-          whatsapp: formData.convertedWhatsapp,
-          phone: formData.phone,
-          birthday: formatBirthday(formData.birthdayDay, formData.birthdayMonth),
-          package: formData.purposeOfVisit,
-          clientType: formData.clientType,
-          company: formData.clientType === 'Company' ? formData.companyName : '',
-          primary: true,
-          sourceType: formData.sourceType,
-          sourceDetail: formData.sourceDetail,
-          subMembers: [],
-        };
-        const membersCollection = collection(db, 'members');
-        const memberDocRef = await addDoc(membersCollection, memberData);
-        const memberId = memberDocRef.id;
-
-        // 3. Create a new agreement
         const agreementData = {
-          memberId: memberId,
+          leadId: leadId, // Link agreement to the new lead
           memberLegalName: '',
           memberCIN: '',
           memberGST: '',
@@ -163,23 +144,15 @@ export default function AddLead() {
           endDate: '',
           serviceAgreementType: '',
           totalMonthlyPayment: '',
-          preparedBy: '', // Changed from preparedByNew
+          preparedBy: '',
         };
         const agreementsCollection = collection(db, 'agreements');
         await addDoc(agreementsCollection, agreementData);
 
-        // 4. Delete the lead document
-        const leadRefToDelete = doc(db, "leads", leadId);
-        await deleteDoc(leadRefToDelete);
-
-        // 5. Navigate to agreements page
+        // 3. Navigate to the agreements page to complete it
         navigate('/agreements');
-
       } else {
-        // Just create the lead
-        const newLead = { ...formData, activities: activities };
-        const leadsCollection = collection(db, 'leads');
-        await addDoc(leadsCollection, newLead);
+        // For a non-converted lead, just go to the leads list
         navigate('/leads');
       }
     } catch (error) {

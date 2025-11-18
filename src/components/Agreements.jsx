@@ -42,6 +42,12 @@ const generateAgreementNumber = (memberPackageName, allAgreements) => {
   return `TB${currentYear}${monthChar}${packageChar}${newSeq}`;
 };
 
+const formatBirthday = (day, month) => {
+  if (!day || !month) return '-';
+  const date = new Date(2000, month - 1, day); // Use a dummy year like 2000
+  return date.toLocaleString('en-US', { month: 'short', day: 'numeric' });
+};
+
 
 export default function Agreements() {
   const { db } = useContext(FirebaseContext);
@@ -88,19 +94,22 @@ export default function Agreements() {
         const agreementsSnapshot = await getDocs(agreementsCollection);
         const agreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        const validAgreements = agreementsData.filter(agreement => agreement.memberId);
+        // Filter for agreements that have the new leadId
+        const validAgreements = agreementsData.filter(agreement => agreement.leadId);
 
-        const memberPromises = validAgreements.map(agreement => {
-          const memberDocRef = doc(db, 'members', agreement.memberId);
-          return getDoc(memberDocRef);
+        // Fetch the corresponding lead for each agreement
+        const leadPromises = validAgreements.map(agreement => {
+          const leadDocRef = doc(db, 'leads', agreement.leadId);
+          return getDoc(leadDocRef);
         });
 
-        const memberSnapshots = await Promise.all(memberPromises);
+        const leadSnapshots = await Promise.all(leadPromises);
 
         const combinedData = validAgreements.map((agreement, index) => {
-          const memberData = memberSnapshots[index].data();
-          return { ...agreement, ...memberData };
-        });
+          const leadData = leadSnapshots[index].data();
+          // Ensure leadData exists before combining
+          return leadData ? { ...agreement, ...leadData } : null;
+        }).filter(Boolean); // Filter out any nulls if a lead was not found
 
         setAgreements(combinedData);
 
@@ -248,19 +257,17 @@ export default function Agreements() {
       )
     );
 
-    // New logic: Update member's legal details
-    if (selectedAgreement.memberId) {
-        const memberRef = doc(db, 'members', selectedAgreement.memberId);
-        const legalDetailsToSave = {
-            legalName: formData.memberLegalName,
-            address: formData.memberAddress,
-            cin: formData.memberCIN,
-            gst: formData.memberGST,
-            pan: formData.memberPAN,
-            kyc: formData.memberKYC,
-            // Removed title field
-        };
-        await updateDoc(memberRef, { legalDetails: legalDetailsToSave });
+    // New logic: Update lead's legal details
+    if (selectedAgreement.leadId) {
+        const leadRef = doc(db, 'leads', selectedAgreement.leadId);
+        await updateDoc(leadRef, {
+            memberLegalName: formData.memberLegalName,
+            memberAddress: formData.memberAddress,
+            memberCIN: formData.memberCIN,
+            memberGST: formData.memberGST,
+            memberPAN: formData.memberPAN,
+            memberKYC: formData.memberKYC,
+        });
     }
 
     setAgreementGenerated(updatedAgreement);
@@ -405,7 +412,7 @@ export default function Agreements() {
     return btoa(binary);
   };
   const handleSendAgreementEmail = async () => {
-    if (!agreementGenerated || !agreementGenerated.email || !agreementGenerated.name || !agreementGenerated.agreementNumber) {
+    if (!agreementGenerated || !agreementGenerated.convertedEmail || !agreementGenerated.name || !agreementGenerated.agreementNumber) {
       toast.error("Missing agreement details to send email.");
       return;
     }
@@ -413,7 +420,7 @@ export default function Agreements() {
     try {
       const pdfBase64 = await getAgreementPdfBase64(agreementGenerated);
       await sendAgreementEmailCallable({
-        toEmail: agreementGenerated.email,
+        toEmail: agreementGenerated.convertedEmail,
         clientName: agreementGenerated.name,
         agreementName: agreementGenerated.agreementNumber,
         pdfBase64: pdfBase64,
@@ -456,402 +463,402 @@ export default function Agreements() {
                   onClick={() => handleRowClick(agreement)}
                   className={hasPermission('edit_agreements') ? styles.clickableRow : ''}
                 >
-                  <td>
-                    <span className={styles.nameText}>{agreement.name}</span>
-                  </td>
-                  <td>
-                    {agreement.purposeOfVisit}
-                  </td>
-                  <td>{agreement.birthday}</td>
-                  <td>{agreement.email}</td>
-                  <td>{agreement.phone}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Agreement Details Modal */}
-      <Dialog 
-        open={isModalOpen} 
-        onClose={handleCloseModal}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          style: {
-            borderRadius: '12px',
-          }
-        }}
-      >
-        <DialogTitle style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          backgroundColor: '#f8fafc',
-          borderBottom: '1px solid #e2e8f0',
-          padding: '20px 24px'
-        }}>
-          <div>
-            <h2 style={{ 
-              margin: 0, 
-              color: '#1a4d5c', 
-              fontSize: '20px',
-              fontWeight: 600 
-            }}>
-              {agreementGenerated ? 'Agreement Updated' : 'Agreement Details'}
-            </h2>
-            <p style={{ 
-              margin: '4px 0 0 0', 
-              color: '#64748b', 
-              fontSize: '14px',
-              fontWeight: 400
-            }}>
-              {agreementGenerated ? 'The agreement has been saved.' : selectedAgreement?.name}
-            </p>
-          </div>
-          <IconButton onClick={handleCloseModal} size="small">
-            <Close />
-          </IconButton>
-        </DialogTitle>
-        
-        <DialogContent style={{ padding: '24px' }}>
-          {agreementGenerated ? (
-            <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <p style={{ margin: '4px 0 24px 0', color: '#64748b', fontSize: '14px', fontWeight: 400 }}>
-                You can now download the agreement or send it via email.
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
-                <Button
-                  onClick={async () => {
-                    try {
-                      const pdfBase64 = await getAgreementPdfBase64(agreementGenerated);
-                      const byteCharacters = atob(pdfBase64);
-                      const byteArray = Uint8Array.from(byteCharacters, char => char.charCodeAt(0));
-                      const blob = new Blob([byteArray], { type: 'application/pdf' });
-                      saveAs(blob, `${agreementGenerated.agreementNumber || 'agreement'}.pdf`);
-                      toast.success("Agreement downloaded successfully!");
-                    } catch (error) {
-                      console.error("Error downloading agreement:", error);
-                      toast.error("Failed to download agreement.");
-                    }
-                  }}
-                  variant="contained"
-                  style={{
-                    backgroundColor: '#2b7a8e',
-                    color: 'white',
-                    textTransform: 'none',
-                    padding: '8px 24px'
-                  }}
-                >
-                  Download Agreement
-                </Button>
-                <Button
-                  onClick={handleSendAgreementEmail}
-                  variant="outlined"
-                  style={{
-                    color: '#64748b',
-                    borderColor: '#cbd5e1',
-                    textTransform: 'none',
-                    padding: '8px 24px'
-                  }}
-                >
-                  Send Email
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit}>
-              {/* Member Details Section */}
-              <div className={styles.section}>
-                <h3 className={styles.sectionTitle}>Member Details</h3>
-                <div className={styles.formGrid}>
-                  <TextField
-                    label="Member Legal Name"
-                    name="memberLegalName"
-                    value={formData.memberLegalName}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                  />
-                  {/* Removed Title field */}
-                  <TextField
-                    label="Member CIN"
-                    name="memberCIN"
-                    value={formData.memberCIN}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                  />
-                  <TextField
-                    label="Member GST Number"
-                    name="memberGST"
-                    value={formData.memberGST}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                  />
-                  <TextField
-                    label="Member PAN"
-                    name="memberPAN"
-                    value={formData.memberPAN}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                  />
-                  <TextField
-                    label="Member KYC"
-                    name="memberKYC"
-                    value={formData.memberKYC}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                  />
-                  <TextField
-                    label="Member Address"
-                    name="memberAddress"
-                    value={formData.memberAddress}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                    multiline
-                    rows={2}
-                    style={{ gridColumn: '1 / -1' }}
-                  />
-                </div>
-              </div>
-
-              {/* Client Authorization Details Section */}
-              <div className={styles.section}>
-                <h3 className={styles.sectionTitle}>Client Authorization Details</h3>
-                <div className={styles.formGrid}>
-                  <TextField
-                    label="Name"
-                    name="clientAuthorizorName"
-                    value={formData.clientAuthorizorName}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                  />
-                  <TextField
-                    label="Title"
-                    name="clientAuthorizorTitle"
-                    value={formData.clientAuthorizorTitle}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                  />
-                </div>
-              </div>
-
-              {/* Agreement Details Section */}
-              <div className={styles.section}>
-                <h3 className={styles.sectionTitle}>Agreement Information</h3>
-                <div className={styles.formGrid}>
-                  <TextField
-                    label="Agreement Date"
-                    name="agreementDate"
-                    type="date"
-                    value={formData.agreementDate}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                    InputLabelProps={{ shrink: true }}
-                  />
-                  <TextField
-                    label="Agreement Number"
-                    name="agreementNumber"
-                    value={formData.agreementNumber}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                    disabled
-                  />
-                  <TextField
-                    label="Start Date"
-                    name="startDate"
-                    type="date"
-                    value={formData.startDate}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                    InputLabelProps={{ shrink: true }}
-                  />
-                  <TextField
-                    label="Length of Agreement"
-                    name="agreementLength"
-                    value={formData.agreementLength}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                    select
-                  >
-                    {[...Array(11).keys()].map((i) => (
-                      <MenuItem key={i + 1} value={i + 1}>
-                        {i + 1} month(s)
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    label="End Date"
-                    name="endDate"
-                    type="date"
-                    value={formData.endDate}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                    InputLabelProps={{ shrink: true }}
-                    disabled
-                  />
-                  <TextField
-                    label="Package"
-                    name="servicePackage_select"
-                    value={isOtherPackage ? 'Others' : formData.servicePackage}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                    select
-                  >
-                    <MenuItem value="">Select Package</MenuItem>
-                    <MenuItem value="Dedicated Desk">Dedicated Desk</MenuItem>
-                    <MenuItem value="Flexible Desk">Flexible Desk</MenuItem>
-                    <MenuItem value="Private Cabin">Private Cabin</MenuItem>
-                    <MenuItem value="Virtual Office">Virtual Office</MenuItem>
-                    <MenuItem value="Meeting Room">Meeting Room</MenuItem>
-                    <MenuItem value="Others">Others</MenuItem>
-                  </TextField>
-                  <TextField
-                      label="Quantity"
-                      name="serviceQuantity"
-                      type="number"
-                      value={formData.serviceQuantity}
-                      onChange={handleInputChange}
-                      fullWidth
-                      variant="outlined"
-                      size="small"
-                      InputProps={{ inputProps: { min: 1 } }}
-                  />
-                  {isOtherPackage && (
-                      <TextField
-                          label="Other Package"
-                          name="servicePackage"
-                          value={formData.servicePackage}
-                          onChange={handleInputChange}
+                                    <td>
+                                      <span className={styles.nameText}>{agreement.name}</span>
+                                    </td>
+                                    <td>
+                                      {agreement.purposeOfVisit}
+                                    </td>
+                                    <td>{agreement.birthdayDay && agreement.birthdayMonth ? formatBirthday(agreement.birthdayDay, agreement.birthdayMonth) : '-'}</td>
+                                    <td>{agreement.convertedEmail}</td>
+                                    <td>{agreement.phone}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                  
+                        {/* Agreement Details Modal */}
+                        <Dialog 
+                          open={isModalOpen} 
+                          onClose={handleCloseModal}
+                          maxWidth="md"
                           fullWidth
-                          variant="outlined"
-                          size="small"
-                          style={{ gridColumn: '1 / -1' }}
-                      />
-                  )}
-                  <TextField
-                    label="Total Monthly Payment"
-                    name="totalMonthlyPayment"
-                    value={formData.totalMonthlyPayment}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                    type="number"
-                  />
-
-                </div>
-              </div>
-
-              <div className={styles.section}>
-                <h3 className={styles.sectionTitle}>Authorization Details</h3>
-                <div className={styles.formGrid}>
-                  <TextField
-                    label="Authorizor Name"
-                    name="authorizorName"
-                    value={formData.authorizorName}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                  />
-                  <TextField
-                    label="Prepared By"
-                    name="preparedByNew"
-                    value={formData.preparedByNew}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                  />
-                  <TextField
-                    label="Designation"
-                    name="designation"
-                    value={formData.designation}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                  />
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className={styles.modalActions}>
-                {hasPermission('edit_agreements') && (
-                  <Button
-                    onClick={handleDeleteClick}
-                    variant="outlined"
-                    style={{
-                      color: '#f44336',
-                      borderColor: '#f44336',
-                      textTransform: 'none',
-                      padding: '8px 24px',
-                      marginRight: 'auto'
-                    }}
-                  >
-                    Delete
-                  </Button>
-                )}
-                <Button 
-                  onClick={handleCloseModal} 
-                  variant="outlined"
-                  style={{
-                    color: '#64748b',
-                    borderColor: '#cbd5e1',
-                    textTransform: 'none',
-                    padding: '8px 24px'
-                  }}
-                >
-                  Cancel
-                </Button>
-                {hasPermission('edit_agreements') && (
-                  <Button 
-                    type="submit" 
-                    variant="contained"
-                    style={{
-                      backgroundColor: '#2b7a8e',
-                      color: 'white',
-                      textTransform: 'none',
-                      padding: '8px 24px'
-                    }}
-                  >
-                    Update Agreement
-                  </Button>
-                )}
-              </div>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
+                          PaperProps={{
+                            style: {
+                              borderRadius: '12px',
+                            }
+                          }}
+                        >
+                          <DialogTitle style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            backgroundColor: '#f8fafc',
+                            borderBottom: '1px solid #e2e8f0',
+                            padding: '20px 24px'
+                          }}>
+                            <div>
+                              <h2 style={{ 
+                                margin: 0, 
+                                color: '#1a4d5c', 
+                                fontSize: '20px',
+                                fontWeight: 600 
+                              }}>
+                                {agreementGenerated ? 'Agreement Updated' : 'Agreement Details'}
+                              </h2>
+                              <p style={{ 
+                                margin: '4px 0 0 0', 
+                                color: '#64748b', 
+                                fontSize: '14px',
+                                fontWeight: 400
+                              }}>
+                                {agreementGenerated ? 'The agreement has been saved.' : selectedAgreement?.name}
+                              </p>
+                            </div>
+                            <IconButton onClick={handleCloseModal} size="small">
+                              <Close />
+                            </IconButton>
+                          </DialogTitle>
+                          
+                          <DialogContent style={{ padding: '24px' }}>
+                            {agreementGenerated ? (
+                              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                                <p style={{ margin: '4px 0 24px 0', color: '#64748b', fontSize: '14px', fontWeight: 400 }}>
+                                  You can now download the agreement or send it via email.
+                                </p>
+                                <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+                                  <Button
+                                    onClick={async () => {
+                                      try {
+                                        const pdfBase64 = await getAgreementPdfBase64(agreementGenerated);
+                                        const byteCharacters = atob(pdfBase64);
+                                        const byteArray = Uint8Array.from(byteCharacters, char => char.charCodeAt(0));
+                                        const blob = new Blob([byteArray], { type: 'application/pdf' });
+                                        saveAs(blob, `${agreementGenerated.agreementNumber || 'agreement'}.pdf`);
+                                        toast.success("Agreement downloaded successfully!");
+                                      } catch (error) {
+                                        console.error("Error downloading agreement:", error);
+                                        toast.error("Failed to download agreement.");
+                                      }
+                                    }}
+                                    variant="contained"
+                                    style={{
+                                      backgroundColor: '#2b7a8e',
+                                      color: 'white',
+                                      textTransform: 'none',
+                                      padding: '8px 24px'
+                                    }}
+                                  >
+                                    Download Agreement
+                                  </Button>
+                                  <Button
+                                    onClick={handleSendAgreementEmail}
+                                    variant="outlined"
+                                    style={{
+                                      color: '#64748b',
+                                      borderColor: '#cbd5e1',
+                                      textTransform: 'none',
+                                      padding: '8px 24px'
+                                    }}
+                                  >
+                                    Send Email
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <form onSubmit={handleSubmit}>
+                                {/* Member Details Section */}
+                                <div className={styles.section}>
+                                  <h3 className={styles.sectionTitle}>Member Details</h3>
+                                  <div className={styles.formGrid}>
+                                    <TextField
+                                      label="Member Legal Name"
+                                      name="memberLegalName"
+                                      value={formData.memberLegalName}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                    />
+                                    {/* Removed Title field */}
+                                    <TextField
+                                      label="Member CIN"
+                                      name="memberCIN"
+                                      value={formData.memberCIN}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                    />
+                                    <TextField
+                                      label="Member GST Number"
+                                      name="memberGST"
+                                      value={formData.memberGST}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                    />
+                                    <TextField
+                                      label="Member PAN"
+                                      name="memberPAN"
+                                      value={formData.memberPAN}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                    />
+                                    <TextField
+                                      label="Member KYC"
+                                      name="memberKYC"
+                                      value={formData.memberKYC}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                    />
+                                    <TextField
+                                      label="Member Address"
+                                      name="memberAddress"
+                                      value={formData.memberAddress}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                      multiline
+                                      rows={2}
+                                      style={{ gridColumn: '1 / -1' }}
+                                    />
+                                  </div>
+                                </div>
+                  
+                                {/* Client Authorization Details Section */}
+                                <div className={styles.section}>
+                                  <h3 className={styles.sectionTitle}>Client Authorization Details</h3>
+                                  <div className={styles.formGrid}>
+                                    <TextField
+                                      label="Name"
+                                      name="clientAuthorizorName"
+                                      value={formData.clientAuthorizorName}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                    />
+                                    <TextField
+                                      label="Title"
+                                      name="clientAuthorizorTitle"
+                                      value={formData.clientAuthorizorTitle}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                    />
+                                  </div>
+                                </div>
+                  
+                                {/* Agreement Details Section */}
+                                <div className={styles.section}>
+                                  <h3 className={styles.sectionTitle}>Agreement Information</h3>
+                                  <div className={styles.formGrid}>
+                                    <TextField
+                                      label="Agreement Date"
+                                      name="agreementDate"
+                                      type="date"
+                                      value={formData.agreementDate}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                      InputLabelProps={{ shrink: true }}
+                                    />
+                                    <TextField
+                                      label="Agreement Number"
+                                      name="agreementNumber"
+                                      value={formData.agreementNumber}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                      disabled
+                                    />
+                                    <TextField
+                                      label="Start Date"
+                                      name="startDate"
+                                      type="date"
+                                      value={formData.startDate}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                      InputLabelProps={{ shrink: true }}
+                                    />
+                                    <TextField
+                                      label="Length of Agreement"
+                                      name="agreementLength"
+                                      value={formData.agreementLength}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                      select
+                                    >
+                                      {[...Array(11).keys()].map((i) => (
+                                        <MenuItem key={i + 1} value={i + 1}>
+                                          {i + 1} month(s)
+                                        </MenuItem>
+                                      ))}
+                                    </TextField>
+                                    <TextField
+                                      label="End Date"
+                                      name="endDate"
+                                      type="date"
+                                      value={formData.endDate}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                      InputLabelProps={{ shrink: true }}
+                                      disabled
+                                    />
+                                    <TextField
+                                      label="Package"
+                                      name="servicePackage_select"
+                                      value={isOtherPackage ? 'Others' : formData.servicePackage}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                      select
+                                    >
+                                      <MenuItem value="">Select Package</MenuItem>
+                                      <MenuItem value="Dedicated Desk">Dedicated Desk</MenuItem>
+                                      <MenuItem value="Flexible Desk">Flexible Desk</MenuItem>
+                                      <MenuItem value="Private Cabin">Private Cabin</MenuItem>
+                                      <MenuItem value="Virtual Office">Virtual Office</MenuItem>
+                                      <MenuItem value="Meeting Room">Meeting Room</MenuItem>
+                                      <MenuItem value="Others">Others</MenuItem>
+                                    </TextField>
+                                    <TextField
+                                        label="Quantity"
+                                        name="serviceQuantity"
+                                        type="number"
+                                        value={formData.serviceQuantity}
+                                        onChange={handleInputChange}
+                                        fullWidth
+                                        variant="outlined"
+                                        size="small"
+                                        InputProps={{ inputProps: { min: 1 } }}
+                                    />
+                                    {isOtherPackage && (
+                                        <TextField
+                                            label="Other Package"
+                                            name="servicePackage"
+                                            value={formData.servicePackage}
+                                            onChange={handleInputChange}
+                                            fullWidth
+                                            variant="outlined"
+                                            size="small"
+                                            style={{ gridColumn: '1 / -1' }}
+                                        />
+                                    )}
+                                    <TextField
+                                      label="Total Monthly Payment"
+                                      name="totalMonthlyPayment"
+                                      value={formData.totalMonthlyPayment}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                      type="number"
+                                    />
+                  
+                                  </div>
+                                </div>
+                  
+                                <div className={styles.section}>
+                                  <h3 className={styles.sectionTitle}>Authorization Details</h3>
+                                  <div className={styles.formGrid}>
+                                    <TextField
+                                      label="Authorizor Name"
+                                      name="authorizorName"
+                                      value={formData.authorizorName}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                    />
+                                    <TextField
+                                      label="Prepared By"
+                                      name="preparedByNew"
+                                      value={formData.preparedByNew}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                    />
+                                    <TextField
+                                      label="Designation"
+                                      name="designation"
+                                      value={formData.designation}
+                                      onChange={handleInputChange}
+                                      fullWidth
+                                      variant="outlined"
+                                      size="small"
+                                    />
+                                  </div>
+                                </div>
+                  
+                                {/* Action Buttons */}
+                                <div className={styles.modalActions}>
+                                  {hasPermission('edit_agreements') && (
+                                    <Button
+                                      onClick={handleDeleteClick}
+                                      variant="outlined"
+                                      style={{
+                                        color: '#f44336',
+                                        borderColor: '#f44336',
+                                        textTransform: 'none',
+                                        padding: '8px 24px',
+                                        marginRight: 'auto'
+                                      }}
+                                    >
+                                      Delete
+                                    </Button>
+                                  )}
+                                  <Button 
+                                    onClick={handleCloseModal} 
+                                    variant="outlined"
+                                    style={{
+                                      color: '#64748b',
+                                      borderColor: '#cbd5e1',
+                                      textTransform: 'none',
+                                      padding: '8px 24px'
+                                    }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  {hasPermission('edit_agreements') && (
+                                    <Button 
+                                      type="submit" 
+                                      variant="contained"
+                                      style={{
+                                        backgroundColor: '#2b7a8e',
+                                        color: 'white',
+                                        textTransform: 'none',
+                                        padding: '8px 24px'
+                                      }}
+                                    >
+                                      Update Agreement
+                                    </Button>
+                                  )}
+                                </div>
+                              </form>
+                            )}
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    );
+                  }

@@ -220,32 +220,16 @@ export default function EditLead() {
     try {
       const leadRef = doc(db, "leads", id);
 
+      // Always update the lead document with the latest form data and activities
+      await updateDoc(leadRef, {
+        ...formData,
+        activities: newActivities
+      });
+
+      // If the lead was just converted, also create a new agreement
       if (formData.status === 'Converted' && originalLead.status !== 'Converted') {
-        // This is a new conversion
-
-        // 1. Create a new member
-        const memberData = {
-          name: formData.name,
-          email: formData.convertedEmail,
-          whatsapp: formData.convertedWhatsapp,
-          phone: formData.phone,
-          birthday: formatBirthday(formData.birthdayDay, formData.birthdayMonth),
-          package: formData.purposeOfVisit,
-          clientType: formData.clientType,
-          company: formData.clientType === 'Company' ? formData.companyName : '',
-          primary: true,
-          sourceType: formData.sourceType,
-          sourceDetail: formData.sourceDetail,
-          subMembers: [],
-        };
-        const membersCollection = collection(db, 'members');
-        const memberDocRef = await addDoc(membersCollection, memberData);
-        const memberId = memberDocRef.id;
-
-        // 2. Create a new agreement
         const agreementData = {
-          memberId: memberId,
-          // Add any other agreement-specific fields here, initially empty
+          leadId: id, // Link agreement to the lead
           memberLegalName: '',
           memberCIN: '',
           memberGST: '',
@@ -264,17 +248,10 @@ export default function EditLead() {
         const agreementsCollection = collection(db, 'agreements');
         await addDoc(agreementsCollection, agreementData);
 
-        // 3. Delete the lead
-        await deleteDoc(leadRef);
-
+        // Navigate to agreements page to complete the new agreement
         navigate('/agreements');
-
       } else {
-        // Just update the lead
-        await updateDoc(leadRef, {
-          ...formData,
-          activities: newActivities
-        });
+        // For any other update, just go back to the leads list
         navigate('/leads');
       }
     } catch (error) {
