@@ -73,7 +73,8 @@ export default function Agreements() {
     authorizorName: '',
     designation: '',
     preparedByNew: '',
-    title: '',
+    clientAuthorizorName: '',
+    clientAuthorizorTitle: '',
     agreementLength: '',
   });
 
@@ -189,7 +190,8 @@ export default function Agreements() {
       authorizorName: agreement.authorizorName || latestAuthDetails.authorizorName || '',
       designation: agreement.designation || latestAuthDetails.designation || '',
       preparedByNew: agreement.preparedByNew || latestAuthDetails.preparedByNew || '',
-      title: agreement.title || '',
+      clientAuthorizorName: agreement.clientAuthorizorName || '',
+      clientAuthorizorTitle: agreement.clientAuthorizorTitle || '',
       agreementLength: agreement.agreementLength || '',
     });
     setIsOtherPackage(isOtherPkg);
@@ -229,6 +231,8 @@ export default function Agreements() {
     const dataToUpdate = {
         ...formData,
         serviceAgreementType: serviceAgreementType,
+        clientAuthorizorName: formData.clientAuthorizorName,
+        clientAuthorizorTitle: formData.clientAuthorizorTitle,
     };
 
     const agreementRef = doc(db, 'agreements', selectedAgreement.id);
@@ -254,7 +258,7 @@ export default function Agreements() {
             gst: formData.memberGST,
             pan: formData.memberPAN,
             kyc: formData.memberKYC,
-            title: formData.title,
+            // Removed title field
         };
         await updateDoc(memberRef, { legalDetails: legalDetailsToSave });
     }
@@ -380,9 +384,9 @@ export default function Agreements() {
         y -= 12; // Adjust for next line
       }
   
-      // New fields
-      secondPage.drawText(agreementData.memberLegalName, { x: 150, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.title, { x: 150, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      // Client Authorization Details
+      secondPage.drawText(agreementData.clientAuthorizorName, { x: 150, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.clientAuthorizorTitle, { x: 150, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       // secondPage.drawText(formatDate(agreementData.agreementDate), { x: 150, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
   
       secondPage.drawText(agreementData.authorizorName, { x: 370, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
@@ -571,15 +575,7 @@ export default function Agreements() {
                     variant="outlined"
                     size="small"
                   />
-                  <TextField
-                    label="Title"
-                    name="title"
-                    value={formData.title}
-                    onChange={handleInputChange}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                  />
+                  {/* Removed Title field */}
                   <TextField
                     label="Member CIN"
                     name="memberCIN"
@@ -627,6 +623,31 @@ export default function Agreements() {
                     multiline
                     rows={2}
                     style={{ gridColumn: '1 / -1' }}
+                  />
+                </div>
+              </div>
+
+              {/* Client Authorization Details Section */}
+              <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Client Authorization Details</h3>
+                <div className={styles.formGrid}>
+                  <TextField
+                    label="Name"
+                    name="clientAuthorizorName"
+                    value={formData.clientAuthorizorName}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                  />
+                  <TextField
+                    label="Title"
+                    name="clientAuthorizorTitle"
+                    value={formData.clientAuthorizorTitle}
+                    onChange={handleInputChange}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
                   />
                 </div>
               </div>

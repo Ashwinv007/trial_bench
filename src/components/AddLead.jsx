@@ -259,7 +259,11 @@ export default function AddLead() {
       } else if (!/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(data.convertedEmail)) {
         newErrors.convertedEmail = 'Invalid email format';
       }
-      if (!data.convertedWhatsapp.trim()) newErrors.convertedWhatsapp = 'WhatsApp is required';
+      if (!data.convertedWhatsapp.trim()) {
+        newErrors.convertedWhatsapp = 'WhatsApp is required';
+      } else if (!/^\+\d{10,}$/.test(data.convertedWhatsapp)) { // Added country code validation
+        newErrors.convertedWhatsapp = 'WhatsApp number must include country code (e.g., +91XXXXXXXXXX)';
+      }
     }
 
     if (data.status === 'Converted') {
