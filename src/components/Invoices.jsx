@@ -1366,8 +1366,8 @@ export default function Invoices() {
 
             {/* Action Buttons */}
             <div className={styles.modalActions}>
-              <Button 
-                onClick={handleCloseModal} 
+              <Button
+                onClick={handleCloseModal}
                 variant="outlined"
                 style={{
                   color: '#64748b',
@@ -1378,9 +1378,33 @@ export default function Invoices() {
               >
                 Cancel
               </Button>
+              {editingInvoice && (
+                <Button
+                  onClick={async () => {
+                    try {
+                      const pdfBytes = await getInvoicePdfBytes(editingInvoice);
+                      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                      saveAs(blob, `${editingInvoice.invoiceNumber || 'invoice'}.pdf`);
+                      toast.success("Invoice downloaded successfully!");
+                    } catch (error) {
+                      console.error("Error downloading invoice:", error);
+                      toast.error("Failed to download invoice.");
+                    }
+                  }}
+                  variant="outlined"
+                  style={{
+                    color: '#2b7a8e',
+                    borderColor: '#2b7a8e',
+                    textTransform: 'none',
+                    padding: '8px 24px'
+                  }}
+                >
+                  Download Current Invoice
+                </Button>
+              )}
               {((editingInvoice && hasPermission('edit_invoices')) || (!editingInvoice && hasPermission('add_invoices'))) && (
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   variant="contained"
                   style={{
                     backgroundColor: '#2b7a8e',
