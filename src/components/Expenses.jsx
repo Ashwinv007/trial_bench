@@ -72,6 +72,9 @@ export default function Expenses() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [reportTab, setReportTab] = useState(0); // 0 for Monthly, 1 for Yearly
+  const [selectedReportYear, setSelectedReportYear] = useState(new Date().getFullYear().toString());
+  const [selectedMonthlyYear, setSelectedMonthlyYear] = useState(new Date().getFullYear().toString());
+  const [selectedMonthlyMonth, setSelectedMonthlyMonth] = useState('All');
   const [formData, setFormData] = useState({
     category: '',
     amount: '',
@@ -90,6 +93,21 @@ export default function Expenses() {
   useEffect(() => {
     fetchExpenses();
   }, []);
+
+  useEffect(() => {
+    if (isReportsModalOpen) {
+      const availableYears = [...new Set(expenses.map(e => new Date(e.date).getFullYear()))].sort((a, b) => b - a);
+      if (availableYears.length > 0) {
+        setSelectedReportYear(availableYears[0].toString());
+        setSelectedMonthlyYear(availableYears[0].toString());
+      } else {
+        const currentYear = new Date().getFullYear().toString();
+        setSelectedReportYear(currentYear);
+        setSelectedMonthlyYear(currentYear);
+      }
+      setSelectedMonthlyMonth('All');
+    }
+  }, [isReportsModalOpen, expenses]);
 
   const handleOpenExpenseModal = () => {
     setIsExpenseModalOpen(true);
@@ -345,6 +363,18 @@ export default function Expenses() {
     });
     
     return yearlyData;
+  };
+
+  const getAvailableMonthsForYear = (year) => {
+    const months = new Set();
+    expenses.forEach(expense => {
+        const expenseDate = new Date(expense.date);
+        if (expenseDate.getFullYear().toString() === year) {
+            months.add(expenseDate.toLocaleString('default', { month: 'long' }));
+        }
+    });
+    const monthOrder = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    return Array.from(months).sort((a, b) => monthOrder.indexOf(a) - monthOrder.indexOf(b));
   };
 
   const getCategoryChartData = (categoryBreakdown) => {
@@ -892,11 +922,57 @@ export default function Expenses() {
 
           {reportTab === 0 && (
             <div className={styles.reportContent}>
-              <h3 className={styles.reportSectionTitle}>Monthly Expense Breakdown</h3>
-              {Object.keys(getMonthlyReports()).length === 0 ? (
-                <p className={styles.emptyReportMessage}>No expenses data available for monthly reports</p>
-              ) : (
-                Object.entries(getMonthlyReports())
+              <div className={styles.reportCardHeader} style={{ marginBottom: '16px', padding: '0 16px' }}>
+                <h3 className={styles.reportSectionTitle}>Monthly Expense Breakdown</h3>
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  <FormControl variant="outlined" size="small" style={{ minWidth: 120 }}>
+                    <InputLabel>Year</InputLabel>
+                    <Select
+                      value={selectedMonthlyYear}
+                      onChange={(e) => {
+                        setSelectedMonthlyYear(e.target.value);
+                        setSelectedMonthlyMonth('All'); // Reset month when year changes
+                      }}
+                      label="Year"
+                    >
+                      {[...new Set(expenses.map(e => new Date(e.date).getFullYear()))]
+                        .sort((a, b) => b - a)
+                        .map(year => (
+                          <MenuItem key={year} value={year.toString()}>{year}</MenuItem>
+                        ))
+                      }
+                    </Select>
+                  </FormControl>
+                  <FormControl variant="outlined" size="small" style={{ minWidth: 120 }}>
+                    <InputLabel>Month</InputLabel>
+                    <Select
+                      value={selectedMonthlyMonth}
+                      onChange={(e) => setSelectedMonthlyMonth(e.target.value)}
+                      label="Month"
+                    >
+                      <MenuItem value="All">All Months</MenuItem>
+                      {getAvailableMonthsForYear(selectedMonthlyYear).map(month => (
+                        <MenuItem key={month} value={month}>{month}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </div>
+              </div>
+
+              {(() => {
+                const monthlyReports = getMonthlyReports();
+                const filteredReports = Object.entries(monthlyReports).filter(([monthYear]) => {
+                  const [month, year] = monthYear.split(' ');
+                  if (year !== selectedMonthlyYear) return false;
+                  if (selectedMonthlyMonth !== 'All' && month !== selectedMonthlyMonth) return false;
+                  return true;
+                });
+
+                if (filteredReports.length === 0) {
+                  return <p className={styles.emptyReportMessage}>No expenses data available for the selected period.</p>;
+                }
+
+                return filteredReports
                   .sort((a, b) => new Date(b[0]) - new Date(a[0]))
                   .map(([monthYear, data]) => {
                     const chartData = getCategoryChartData(data.categories);
@@ -944,67 +1020,86 @@ export default function Expenses() {
                         </CardContent>
                       </Card>
                     );
-                  })
-              )}
+                  });
+              })()}
             </div>
           )}
 
           {reportTab === 1 && (
             <div className={styles.reportContent}>
-              <h3 className={styles.reportSectionTitle}>Yearly Expense Breakdown</h3>
-              {Object.keys(getYearlyReports()).length === 0 ? (
-                <p className={styles.emptyReportMessage}>No expenses data available for yearly reports</p>
-              ) : (
-                Object.entries(getYearlyReports())
-                  .sort((a, b) => b[0] - a[0])
-                  .map(([year, data]) => {
-                    const chartData = getCategoryChartData(data.categories);
-                    return (
-                      <Card key={year} className={styles.reportCard}>
-                        <CardContent>
-                          <div className={styles.reportCardHeader}>
-                            <h4>{year}</h4>
-                            <span className={styles.reportTotal}>{formatCurrency(data.total)}</span>
-                          </div>
-                          
-                          <div className={styles.chartContainer}>
-                            <ResponsiveContainer width="100%" height={300}>
-                              <BarChart data={chartData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="category" angle={-45} textAnchor="end" height={100} />
-                                <YAxis />
-                                <Tooltip formatter={(value) => formatCurrency(value)} />
-                                <Bar dataKey="amount">
-                                  {chartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                  ))}
-                                </Bar>
-                              </BarChart>
-                            </ResponsiveContainer>
-                          </div>
+              <div className={styles.reportCardHeader} style={{ marginBottom: '16px', padding: '0 16px' }}>
+                <h3 className={styles.reportSectionTitle}>Yearly Expense Breakdown</h3>
+                <FormControl variant="outlined" size="small" style={{ minWidth: 120 }}>
+                  <InputLabel>Year</InputLabel>
+                  <Select
+                    value={selectedReportYear}
+                    onChange={(e) => setSelectedReportYear(e.target.value)}
+                    label="Year"
+                  >
+                    {[...new Set(expenses.map(e => new Date(e.date).getFullYear()))]
+                      .sort((a, b) => b - a)
+                      .map(year => (
+                        <MenuItem key={year} value={year.toString()}>{year}</MenuItem>
+                      ))
+                    }
+                  </Select>
+                </FormControl>
+              </div>
+              
+              {(() => {
+                const yearlyReports = getYearlyReports();
+                const dataForYear = yearlyReports[selectedReportYear];
 
-                          <div className={styles.categoryBreakdown}>
-                            <h5>Category Breakdown</h5>
-                            <div className={styles.categoryList}>
-                              {chartData.map(({ category, amount, color }) => (
-                                <div key={category} className={styles.categoryBreakdownItem}>
-                                  <div className={styles.categoryLabelWithColor}>
-                                    <div className={styles.categoryColorDot} style={{ backgroundColor: color }} />
-                                    <span>{category}</span>
-                                  </div>
-                                  <span className={styles.categoryAmount}>{formatCurrency(amount)}</span>
-                                  <span className={styles.categoryPercentage}>
-                                    ({((amount / data.total) * 100).toFixed(1)}%)
-                                  </span>
-                                </div>
+                if (!dataForYear) {
+                  return <p className={styles.emptyReportMessage}>No expenses data available for {selectedReportYear}</p>;
+                }
+
+                const chartData = getCategoryChartData(dataForYear.categories);
+                return (
+                  <Card key={selectedReportYear} className={styles.reportCard}>
+                    <CardContent>
+                      <div className={styles.reportCardHeader}>
+                        <h4>{selectedReportYear}</h4>
+                        <span className={styles.reportTotal}>{formatCurrency(dataForYear.total)}</span>
+                      </div>
+                      
+                      <div className={styles.chartContainer}>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="category" angle={-45} textAnchor="end" height={100} />
+                            <YAxis />
+                            <Tooltip formatter={(value) => formatCurrency(value)} />
+                            <Bar dataKey="amount">
+                              {chartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
                               ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      <div className={styles.categoryBreakdown}>
+                        <h5>Category Breakdown</h5>
+                        <div className={styles.categoryList}>
+                          {chartData.map(({ category, amount, color }) => (
+                            <div key={category} className={styles.categoryBreakdownItem}>
+                              <div className={styles.categoryLabelWithColor}>
+                                <div className={styles.categoryColorDot} style={{ backgroundColor: color }} />
+                                <span>{category}</span>
+                              </div>
+                              <span className={styles.categoryAmount}>{formatCurrency(amount)}</span>
+                              <span className={styles.categoryPercentage}>
+                                ({((amount / dataForYear.total) * 100).toFixed(1)}%)
+                              </span>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })
-              )}
+                          ))}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
             </div>
           )}
         </DialogContent>
