@@ -504,3 +504,122 @@ exports.adminSetUserPassword = onCall(async (request) => {
     throw new HttpsError("internal", "An unexpected error occurred while setting the password.");
   }
 });
+
+exports.replacePrimaryMember = onCall(async (request) => {
+  console.log("--- replacePrimaryMember ---");
+  if (!request.auth || !request.auth.token.all) {
+    throw new HttpsError("permission-denied", "Only admins can replace members.");
+  }
+
+  const { oldPrimaryMemberId, mode, promotionTarget } = request.data;
+
+  if (!oldPrimaryMemberId || !mode || !promotionTarget) {
+    throw new HttpsError("invalid-argument", "Missing required arguments for replacement.");
+  }
+
+  const db = admin.firestore();
+
+  try {
+    await db.runTransaction(async (transaction) => {
+      // --- ALL READS FIRST ---
+      const oldPrimaryMemberRef = db.collection("members").doc(oldPrimaryMemberId);
+      const subMembersQuery = db.collection("members").where("primaryMemberId", "==", oldPrimaryMemberId);
+
+      const [oldPrimaryMemberDoc, subMembersSnapshot] = await Promise.all([
+        transaction.get(oldPrimaryMemberRef),
+        transaction.get(subMembersQuery)
+      ]);
+
+      // --- VALIDATION AFTER READS ---
+      if (!oldPrimaryMemberDoc.exists) {
+        throw new HttpsError("not-found", "The member to be replaced does not exist.");
+      }
+      const oldPrimaryMemberData = oldPrimaryMemberDoc.data();
+      let newPrimaryMemberId;
+      
+      const originalSubMemberIds = subMembersSnapshot.docs.map(doc => doc.id);
+      const newSubMemberIds = [];
+      
+      if (mode === 'replace') {
+        newSubMemberIds.push(oldPrimaryMemberId);
+      }
+      
+      originalSubMemberIds.forEach(id => {
+        if (id !== promotionTarget.promoteMemberId) {
+            newSubMemberIds.push(id);
+        }
+      });
+
+
+      // --- ALL WRITES AFTER READS ---
+
+      // Determine the new primary member and perform write
+      if (promotionTarget.promoteMemberId) {
+        newPrimaryMemberId = promotionTarget.promoteMemberId;
+        const newPrimaryMemberRef = db.collection("members").doc(newPrimaryMemberId);
+        console.log(`Promoting sub-member ${newPrimaryMemberId} to primary.`);
+        transaction.update(newPrimaryMemberRef, {
+          primary: true,
+          primaryMemberId: null,
+          company: oldPrimaryMemberData.company,
+          package: oldPrimaryMemberData.package,
+          subMembers: newSubMemberIds,
+        });
+      } else if (promotionTarget.newMember) {
+        const newMemberData = promotionTarget.newMember;
+        const newMemberRef = db.collection("members").doc();
+        newPrimaryMemberId = newMemberRef.id;
+        console.log(`Creating new member ${newPrimaryMemberId} as primary.`);
+        transaction.set(newMemberRef, {
+          ...newMemberData,
+          primary: true,
+          primaryMemberId: null,
+          company: oldPrimaryMemberData.company,
+          package: oldPrimaryMemberData.package,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          subMembers: newSubMemberIds,
+        });
+      } else {
+        throw new HttpsError("invalid-argument", "Invalid promotionTarget specified.");
+      }
+
+      // Handle the old primary member
+      if (mode === 'replace') {
+        console.log(`Demoting old primary ${oldPrimaryMemberId} to be a sub-member of ${newPrimaryMemberId}.`);
+        transaction.update(oldPrimaryMemberRef, {
+          primary: false,
+          primaryMemberId: newPrimaryMemberId,
+          subMembers: [],
+        });
+      } else if (mode === 'removeAndReplace') {
+        console.log(`Moving old primary ${oldPrimaryMemberId} to past_members.`);
+        const pastMemberRef = db.collection("past_members").doc(oldPrimaryMemberId);
+        transaction.set(pastMemberRef, {
+          ...oldPrimaryMemberData,
+          movedAt: admin.firestore.FieldValue.serverTimestamp(),
+          reason: `Replaced by new primary member ${newPrimaryMemberId}`,
+        });
+        transaction.delete(oldPrimaryMemberRef);
+      }
+
+      // Re-parent other sub-members
+      console.log(`Re-parenting sub-members of ${oldPrimaryMemberId} to ${newPrimaryMemberId}.`);
+      subMembersSnapshot.docs.forEach((doc) => {
+        if (doc.id !== newPrimaryMemberId) {
+          const subMemberRef = db.collection("members").doc(doc.id);
+          console.log(`Updating sub-member ${doc.id}'s primary member to ${newPrimaryMemberId}.`);
+          transaction.update(subMemberRef, { primaryMemberId: newPrimaryMemberId });
+        }
+      });
+    });
+
+    console.log("Primary member replacement transaction completed successfully.");
+    return { success: true, message: "Primary member replaced successfully." };
+  } catch (error) {
+    console.error("Error in replacePrimaryMember transaction:", error);
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError("internal", "An unexpected error occurred during the replacement process.");
+  }
+});

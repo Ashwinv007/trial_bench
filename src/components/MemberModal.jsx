@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { FirebaseContext, AuthContext } from '../store/Context';
-import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { logActivity } from '../utils/logActivity';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
@@ -39,6 +39,157 @@ const formatBirthday = (day, month) => {
   return `${dayNum}${suffix} ${monthNamesFull[monthNum - 1]}`;
 };
 
+const ReplacementView = ({ subMembers, onCancel, onConfirm, mode, oldPrimaryMember }) => {
+    const [selectedMemberId, setSelectedMemberId] = useState('');
+    const [showNewMemberForm, setShowNewMemberForm] = useState(false);
+    const [newMemberData, setNewMemberData] = useState({ 
+        name: '', 
+        whatsapp: '', 
+        birthdayDay: '', 
+        birthdayMonth: '' 
+    });
+    const [newMemberErrors, setNewMemberErrors] = useState({});
+
+    const validateNewMemberForm = () => {
+        const errors = {};
+        if (!newMemberData.name.trim()) errors.name = 'Name is required';
+        if (!newMemberData.whatsapp.trim()) errors.whatsapp = 'WhatsApp number is required';
+        if (!newMemberData.birthdayDay) errors.birthdayDay = 'Day is required';
+        if (!newMemberData.birthdayMonth) errors.birthdayMonth = 'Month is required';
+        if (newMemberData.birthdayDay && (parseInt(newMemberData.birthdayDay, 10) < 1 || parseInt(newMemberData.birthdayDay, 10) > 31)) {
+            errors.birthdayDay = 'Day must be between 1 and 31';
+        }
+        setNewMemberErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
+    const handleNewMemberChange = (field, value) => {
+        setNewMemberData(prev => {
+            const newState = { ...prev };
+            if (field === 'birthdayDay') {
+                const dayValue = value;
+                if (dayValue === '') {
+                  newState.birthdayDay = dayValue;
+                } else {
+                  const day = parseInt(dayValue, 10);
+                  if (!isNaN(day) && day >= 1 && day <= 31) {
+                    newState.birthdayDay = dayValue;
+                  }
+                }
+            } else {
+                newState[field] = value;
+            }
+            return newState;
+        });
+    };
+
+    const handleConfirm = () => {
+        if (showNewMemberForm) {
+            if (validateNewMemberForm()) {
+                onConfirm({ newMember: newMemberData });
+            }
+        } else {
+            if (!selectedMemberId) {
+                toast.error("Please select a member to promote.");
+                return;
+            }
+            onConfirm({ promoteMemberId: selectedMemberId });
+        }
+    };
+
+    return (
+        <Box>
+            <Typography variant="body1" sx={{mb: 2}}>
+                The current primary member is <strong>{oldPrimaryMember.name}</strong>.
+            </Typography>
+
+            <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Select a sub-member to promote</InputLabel>
+                <Select
+                    value={selectedMemberId}
+                    label="Select a sub-member to promote"
+                    onChange={(e) => {
+                        setSelectedMemberId(e.target.value);
+                        setShowNewMemberForm(false);
+                    }}
+                    disabled={showNewMemberForm}
+                >
+                    <MenuItem value=""><em>None</em></MenuItem>
+                    {subMembers.map(member => (
+                        <MenuItem key={member.id} value={member.id}>{member.name}</MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+
+            <Typography variant="body1" align="center" sx={{mb: 2}}>OR</Typography>
+
+            <Button fullWidth variant="outlined" onClick={() => {
+                setShowNewMemberForm(!showNewMemberForm);
+                setSelectedMemberId('');
+                setNewMemberErrors({}); // Clear errors when toggling
+            }} sx={{mb: 2}}>
+                {showNewMemberForm ? 'Cancel Adding New Member' : 'Add New Member to be Primary'}
+            </Button>
+
+            {showNewMemberForm && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, border: '1px solid #ccc', borderRadius: '8px', p: 2 }}>
+                    <Typography variant="h6" gutterBottom>New Primary Member Details</Typography>
+                    <TextField 
+                        label="Name" 
+                        fullWidth 
+                        value={newMemberData.name} 
+                        onChange={(e) => handleNewMemberChange('name', e.target.value)} 
+                        error={!!newMemberErrors.name} 
+                        helperText={newMemberErrors.name} 
+                    />
+                    <TextField 
+                        label="WhatsApp" 
+                        fullWidth 
+                        value={newMemberData.whatsapp} 
+                        onChange={(e) => handleNewMemberChange('whatsapp', e.target.value)} 
+                        error={!!newMemberErrors.whatsapp} 
+                        helperText={newMemberErrors.whatsapp} 
+                    />
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                        <TextField
+                            label="Birthday Day"
+                            fullWidth
+                            type="number"
+                            value={newMemberData.birthdayDay}
+                            onChange={(e) => handleNewMemberChange('birthdayDay', e.target.value)}
+                            inputProps={{ min: 1, max: 31 }}
+                            error={!!newMemberErrors.birthdayDay}
+                            helperText={newMemberErrors.birthdayDay}
+                        />
+                        <FormControl fullWidth variant="outlined" error={!!newMemberErrors.birthdayMonth}>
+                            <InputLabel id="new-member-birthday-month-label">Birthday Month</InputLabel>
+                            <Select
+                                labelId="new-member-birthday-month-label"
+                                value={newMemberData.birthdayMonth}
+                                onChange={(e) => handleNewMemberChange('birthdayMonth', e.target.value)}
+                                displayEmpty
+                            >
+                                <MenuItem value="" disabled>Select Month</MenuItem>
+                                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((monthName, index) => (
+                                    <MenuItem key={index + 1} value={String(index + 1)}>{monthName}</MenuItem>
+                                ))}
+                            </Select>
+                            {newMemberErrors.birthdayMonth && <FormHelperText>{newMemberErrors.birthdayMonth}</FormHelperText>}
+                        </FormControl>
+                    </Box>
+                </Box>
+            )}
+            
+            <DialogActions sx={{ p: '16px 0 0', gap: 1.5 }}>
+                <Button onClick={onCancel} variant="outlined">Cancel</Button>
+                <Button onClick={handleConfirm} variant="contained" sx={{ bgcolor: '#2b7a8e' }}>
+                    Confirm Replacement
+                </Button>
+            </DialogActions>
+        </Box>
+    );
+};
+
 export default function MemberModal({ open, onClose, onSave, editMember = null, primaryMemberId = null }) {
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
@@ -59,6 +210,10 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
   // State to manage swapping to the profile view
   const [isViewingProfile, setIsViewingProfile] = useState(false);
   const [profileMemberId, setProfileMemberId] = useState(null);
+
+  // State for replacement flow
+  const [replacementAction, setReplacementAction] = useState(null); // null, 'replace', 'removeAndReplace'
+  const [subMembers, setSubMembers] = useState([]);
 
   const functions = getFunctions();
   const sendWelcomeEmailCallable = httpsCallable(functions, 'sendWelcomeEmail');
@@ -90,6 +245,15 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
 
       if (editMember) {
         setupForm(editMember);
+        if (editMember.primary && db) {
+          const fetchSubMembers = async () => {
+            const subMembersQuery = query(collection(db, "members"), where("primaryMemberId", "==", editMember.id));
+            const querySnapshot = await getDocs(subMembersQuery);
+            const members = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setSubMembers(members);
+          };
+          fetchSubMembers();
+        }
       } else {
         const fetchPrimaryMemberDetails = async () => {
           if (primaryMemberId && db) {
@@ -114,6 +278,8 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
       setErrors({});
       setIsViewingProfile(false);
       setProfileMemberId(null);
+      setReplacementAction(null);
+      setSubMembers([]);
     }
   }, [editMember, open, primaryMemberId, db]);
 
@@ -157,16 +323,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     if (!formData.name.trim()) newErrors.name = 'Name is required';
     if (!formData.package) newErrors.package = 'Package is required';
     if (!formData.whatsapp.trim()) newErrors.whatsapp = 'WhatsApp number is required';
-    if (primaryMemberId === null) {
-      if (!formData.email.trim()) {
-        newErrors.email = 'Email is required';
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-        newErrors.email = 'Invalid email format';
-      }
-      if (formData.ccEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.ccEmail)) {
-        newErrors.ccEmail = 'Invalid CC email format';
-      }
-    }
+    // Email fields are not required for primary members and not rendered
     if (!formData.birthdayDay) newErrors.birthdayDay = 'Day is required';
     if (!formData.birthdayMonth) newErrors.birthdayMonth = 'Month is required';
     if (formData.birthdayDay && (parseInt(formData.birthdayDay, 10) < 1 || parseInt(formData.birthdayDay, 10) > 31)) {
@@ -226,6 +383,36 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     onClose(); // Close the main modal wrapper
   };
 
+  const handleReplacementConfirm = async (replacementData) => {
+    const replacePrimaryMemberCallable = httpsCallable(functions, 'replacePrimaryMember');
+
+    const payload = {
+      oldPrimaryMemberId: editMember.id,
+      mode: replacementAction,
+      promotionTarget: replacementData
+    };
+
+    toast.promise(
+        replacePrimaryMemberCallable(payload),
+        {
+            loading: 'Processing replacement...',
+            success: (result) => {
+                onSave({}); // To trigger a refresh in parent component.
+                onClose(); // Close the modal.
+                return result.data.message;
+            },
+            error: (err) => {
+                console.error(err);
+                return err.message || 'Replacement failed.';
+            },
+        }
+    );
+  };
+
+  const handleReplacementCancel = () => {
+      setReplacementAction(null);
+  };
+
   // If viewing profile, render the ClientProfileModal instead.
   if (isViewingProfile) {
     return (
@@ -234,6 +421,30 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         onClose={handleProfileClose}
         clientId={profileMemberId}
       />
+    );
+  }
+
+  if (replacementAction) {
+    return (
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography sx={{ fontSize: '18px', fontWeight: 600, color: '#1a4d5c' }}>
+                    {replacementAction === 'replace' ? 'Replace Primary Member' : 'Remove and Replace Primary Member'}
+                </Typography>
+                <IconButton onClick={onClose} sx={{ color: '#757575', p: 0.5 }}>
+                    <CloseIcon sx={{ fontSize: '20px' }} />
+                </IconButton>
+            </DialogTitle>
+            <DialogContent>
+                <ReplacementView 
+                    subMembers={subMembers}
+                    onCancel={handleReplacementCancel}
+                    onConfirm={handleReplacementConfirm}
+                    mode={replacementAction}
+                    oldPrimaryMember={editMember}
+                />
+            </DialogContent>
+        </Dialog>
     );
   }
 
@@ -315,12 +526,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
               </FormControl>
             </Box>
             <TextField label="WhatsApp" fullWidth value={formData.whatsapp} onChange={(e) => handleChange('whatsapp', e.target.value)} error={!!errors.whatsapp} helperText={errors.whatsapp} />
-            {primaryMemberId === null && (
-              <>
-                <TextField label="Email" fullWidth value={formData.email} onChange={(e) => handleChange('email', e.target.value)} error={!!errors.email} helperText={errors.email} />
-                <TextField label="CC Email (optional)" fullWidth value={formData.ccEmail} onChange={(e) => handleChange('ccEmail', e.target.value)} error={!!errors.ccEmail} helperText={errors.ccEmail} />
-              </>
-            )}
+
           </Box>
 
           {/* Right Panel - Actions */}
@@ -341,19 +547,40 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ p: '16px 24px 24px', gap: 1.5 }}>
-        {editMember && editMember.primary && (
-          <Button
-            onClick={() => handleViewProfile(editMember)}
-            variant="outlined"
-          >
-            View Lead Profile
-          </Button>
-        )}
-        <Button onClick={onClose} variant="outlined">Cancel</Button>
-        <Button onClick={handleSubmit} variant="contained" sx={{ bgcolor: '#2b7a8e' }}>
-          {editMember ? 'Update Member' : 'Add Member'}
-        </Button>
+      <DialogActions sx={{ p: '16px 24px 24px', justifyContent: 'space-between' }}>
+        <Box sx={{ display: 'flex', gap: 1.5 }}>
+            {editMember && editMember.primary && (
+            <>
+                <Button
+                    onClick={() => setReplacementAction('replace')}
+                    variant="outlined"
+                >
+                    Replace
+                </Button>
+                <Button
+                    onClick={() => setReplacementAction('removeAndReplace')}
+                    variant="outlined"
+                    color="error"
+                >
+                    Remove and Replace
+                </Button>
+            </>
+            )}
+        </Box>
+        <Box sx={{ display: 'flex', gap: 1.5 }}>
+            {editMember && editMember.primary && (
+            <Button
+                onClick={() => handleViewProfile(editMember)}
+                variant="outlined"
+            >
+                View Lead Profile
+            </Button>
+            )}
+            <Button onClick={onClose} variant="outlined">Cancel</Button>
+            <Button onClick={handleSubmit} variant="contained" sx={{ bgcolor: '#2b7a8e' }}>
+            {editMember ? 'Update Member' : 'Add Member'}
+            </Button>
+        </Box>
       </DialogActions>
     </Dialog>
   );
