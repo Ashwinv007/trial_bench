@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Typography, Box, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 
 export default function ConversionModal({ open, onClose, leadData, onConvert }) {
@@ -11,9 +11,24 @@ export default function ConversionModal({ open, onClose, leadData, onConvert }) 
     birthdayMonth: '',
     whatsapp: '',
     email: '',
-    ccEmail: '',
   });
   const [isOtherPackage, setIsOtherPackage] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setStep('initial');
+      setPrimaryMemberData({
+        name: '',
+        package: '',
+        company: '',
+        birthdayDay: '',
+        birthdayMonth: '',
+        whatsapp: '',
+        email: '',
+      });
+      setIsOtherPackage(false);
+    }
+  }, [open]);
 
   const handleYes = () => {
     const memberData = {
@@ -24,12 +39,26 @@ export default function ConversionModal({ open, onClose, leadData, onConvert }) 
       birthdayMonth: leadData.birthdayMonth,
       whatsapp: leadData.convertedWhatsapp,
       email: leadData.convertedEmail,
-      ccEmail: '', // No ccEmail from lead data
     };
     onConvert(memberData);
   };
 
   const handleNo = () => {
+    const standardPackages = ["Dedicated Desk", "Flexible Desk", "Cabin", "Virtual Office", "Meeting Room"];
+    const leadPackage = leadData.purposeOfVisit || '';
+
+    if (leadPackage && !standardPackages.includes(leadPackage)) {
+      setIsOtherPackage(true);
+    } else {
+      setIsOtherPackage(false);
+    }
+
+    setPrimaryMemberData(prev => ({
+      ...prev,
+      package: leadPackage,
+      company: leadData.companyName || '',
+      email: leadData.convertedEmail || '',
+    }));
     setStep('form');
   };
 
@@ -137,14 +166,7 @@ export default function ConversionModal({ open, onClose, leadData, onConvert }) 
               fullWidth
               value={primaryMemberData.email}
               onChange={handleInputChange}
-            />
-            <TextField
-              name="ccEmail"
-              label="CC Email (optional)"
-              type="email"
-              fullWidth
-              value={primaryMemberData.ccEmail}
-              onChange={handleInputChange}
+              disabled
             />
           </Box>
         )}

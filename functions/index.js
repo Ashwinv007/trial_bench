@@ -608,7 +608,7 @@ exports.replacePrimaryMember = onCall(async (request) => {
           primaryMemberId: newPrimaryMemberId,
           subMembers: [],
           leadId: null,
-          movedAt: admin.firestore.FieldValue.serverTimestamp(),
+          removedAt: admin.firestore.FieldValue.serverTimestamp(),
           reason: `Replaced by new primary member ${newPrimaryMemberId}`,
         };
 
