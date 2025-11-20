@@ -206,6 +206,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
 
   const [errors, setErrors] = useState({});
   const [isOtherPackage, setIsOtherPackage] = useState(false);
+  const [leadEmail, setLeadEmail] = useState('');
   
   // State to manage swapping to the profile view
   const [isViewingProfile, setIsViewingProfile] = useState(false);
@@ -221,6 +222,16 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
   useEffect(() => {
     // When the modal is opened/re-opened, reset everything
     if (open) {
+      // Reset all state at the beginning
+      setFormData({ name: '', package: '', company: '', birthdayDay: '', birthdayMonth: '', whatsapp: '', email: '', ccEmail: '' });
+      setErrors({});
+      setIsOtherPackage(false);
+      setLeadEmail('');
+      setIsViewingProfile(false);
+      setProfileMemberId(null);
+      setReplacementAction(null);
+      setSubMembers([]);
+
       const standardPackages = ["Dedicated Desk", "Flexible Desk", "Cabin", "Virtual Office", "Meeting Room"];
       
       const setupForm = (memberData) => {
@@ -253,6 +264,17 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
             setSubMembers(members);
           };
           fetchSubMembers();
+
+          if (editMember.leadId) {
+            const fetchLeadEmail = async () => {
+              const leadDocRef = doc(db, "leads", editMember.leadId);
+              const leadDocSnap = await getDoc(leadDocRef);
+              if (leadDocSnap.exists()) {
+                setLeadEmail(leadDocSnap.data().email);
+              }
+            };
+            fetchLeadEmail();
+          }
         }
       } else {
         const fetchPrimaryMemberDetails = async () => {
@@ -269,17 +291,8 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
             }
           }
         };
-        // Reset form for new member before fetching details
-        setFormData({ name: '', package: '', company: '', birthdayDay: '', birthdayMonth: '', whatsapp: '', email: '', ccEmail: '' });
-        setIsOtherPackage(false);
         fetchPrimaryMemberDetails();
       }
-      
-      setErrors({});
-      setIsViewingProfile(false);
-      setProfileMemberId(null);
-      setReplacementAction(null);
-      setSubMembers([]);
     }
   }, [editMember, open, primaryMemberId, db]);
 
@@ -323,7 +336,6 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     if (!formData.name.trim()) newErrors.name = 'Name is required';
     if (!formData.package) newErrors.package = 'Package is required';
     if (!formData.whatsapp.trim()) newErrors.whatsapp = 'WhatsApp number is required';
-    // Email fields are not required for primary members and not rendered
     if (!formData.birthdayDay) newErrors.birthdayDay = 'Day is required';
     if (!formData.birthdayMonth) newErrors.birthdayMonth = 'Month is required';
     if (formData.birthdayDay && (parseInt(formData.birthdayDay, 10) < 1 || parseInt(formData.birthdayDay, 10) > 31)) {
@@ -334,22 +346,25 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
   };
 
   const handleSendWelcomeEmail = async () => {
-    if (!formData.email.trim()) {
-      toast.error('Member email is required to send a welcome email.');
+    const emailToSend = editMember && editMember.primary ? leadEmail : formData.email;
+    if (!emailToSend || !emailToSend.trim()) {
+      toast.error('Member does not have an email to send to.');
       return;
     }
 
     try {
       await sendWelcomeEmailCallable({
-        toEmail: formData.email, username: formData.name, ccEmail: formData.ccEmail.trim() ? formData.ccEmail.trim() : null,
+        toEmail: emailToSend, 
+        username: formData.name, 
+        ccEmail: null, // CC email is no longer collected
       });
       toast.success('Welcome email sent successfully!');
       logActivity(
         db,
         user,
         'email_sent',
-        `Welcome email sent to ${formData.name} (${formData.email}).`,
-        { memberName: formData.name, email: formData.email, memberId: editMember?.id }
+        `Welcome email sent to ${formData.name} (${emailToSend}).`,
+        { memberName: formData.name, email: emailToSend, memberId: editMember?.id }
       );
     } catch (error) {
       console.error("Error sending welcome email:", error);
@@ -364,9 +379,12 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         company: formData.company.trim() ? formData.company.trim() : 'NA',
         birthday: formatBirthday(formData.birthdayDay, formData.birthdayMonth),
         primaryMemberId: primaryMemberId,
-        ccEmail: formData.ccEmail.trim() ? formData.ccEmail.trim() : '',
       };
-      // The onSave function (defined in the parent) will now handle the logging
+      
+      // Email fields are not editable, so they are not part of the save data from the form
+      delete memberData.email; 
+      delete memberData.ccEmail;
+
       onSave(memberData);
       onClose();
     }
@@ -526,14 +544,21 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
               </FormControl>
             </Box>
             <TextField label="WhatsApp" fullWidth value={formData.whatsapp} onChange={(e) => handleChange('whatsapp', e.target.value)} error={!!errors.whatsapp} helperText={errors.whatsapp} />
-
+            {editMember && editMember.primary && (
+              <TextField
+                label="Email (from Lead)"
+                fullWidth
+                value={leadEmail}
+                disabled
+              />
+            )}
           </Box>
 
           {/* Right Panel - Actions */}
           <div className={styles.rightPanel} style={{paddingLeft: '10px'}}>
             <div className={styles.timelineCard}>
               <h2 className={styles.sectionTitle}>Actions</h2>
-              {primaryMemberId === null && editMember && (
+              {editMember && editMember.primary && (
                 <button className={styles.welcomeButton} onClick={handleSendWelcomeEmail} style={{marginBottom: '15px'}}>
                     <EmailIcon className={styles.buttonIcon} />
                     Send Welcome Email

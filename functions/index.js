@@ -537,6 +537,17 @@ exports.replacePrimaryMember = onCall(async (request) => {
       const oldPrimaryMemberData = oldPrimaryMemberDoc.data();
       let newPrimaryMemberId;
       
+      // --- NEW: Read Lead Info ---
+      const leadId = oldPrimaryMemberData.leadId;
+      let leadEmail = '';
+      if (leadId) {
+          const leadRef = db.collection("leads").doc(leadId);
+          const leadDoc = await transaction.get(leadRef);
+          if (leadDoc.exists) {
+              leadEmail = leadDoc.data().email || '';
+          }
+      }
+
       const originalSubMemberIds = subMembersSnapshot.docs.map(doc => doc.id);
       const newSubMemberIds = [];
       
@@ -549,7 +560,6 @@ exports.replacePrimaryMember = onCall(async (request) => {
             newSubMemberIds.push(id);
         }
       });
-
 
       // --- ALL WRITES AFTER READS ---
 
@@ -564,6 +574,8 @@ exports.replacePrimaryMember = onCall(async (request) => {
           company: oldPrimaryMemberData.company,
           package: oldPrimaryMemberData.package,
           subMembers: newSubMemberIds,
+          leadId: leadId,
+          email: leadEmail,
         });
       } else if (promotionTarget.newMember) {
         const newMemberData = promotionTarget.newMember;
@@ -578,6 +590,8 @@ exports.replacePrimaryMember = onCall(async (request) => {
           package: oldPrimaryMemberData.package,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           subMembers: newSubMemberIds,
+          leadId: leadId,
+          email: leadEmail,
         });
       } else {
         throw new HttpsError("invalid-argument", "Invalid promotionTarget specified.");
@@ -590,6 +604,7 @@ exports.replacePrimaryMember = onCall(async (request) => {
           primary: false,
           primaryMemberId: newPrimaryMemberId,
           subMembers: [],
+          leadId: null, // or admin.firestore.FieldValue.delete()
         });
       } else if (mode === 'removeAndReplace') {
         console.log(`Moving old primary ${oldPrimaryMemberId} to past_members.`);
