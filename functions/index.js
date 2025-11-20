@@ -537,16 +537,8 @@ exports.replacePrimaryMember = onCall(async (request) => {
       const oldPrimaryMemberData = oldPrimaryMemberDoc.data();
       let newPrimaryMemberId;
       
-      // --- NEW: Read Lead Info ---
+      const emailToTransfer = oldPrimaryMemberData.email || "";
       const leadId = oldPrimaryMemberData.leadId;
-      let leadEmail = '';
-      if (leadId) {
-          const leadRef = db.collection("leads").doc(leadId);
-          const leadDoc = await transaction.get(leadRef);
-          if (leadDoc.exists) {
-              leadEmail = leadDoc.data().email || '';
-          }
-      }
 
       const originalSubMemberIds = subMembersSnapshot.docs.map(doc => doc.id);
       const newSubMemberIds = [];
@@ -575,7 +567,7 @@ exports.replacePrimaryMember = onCall(async (request) => {
           package: oldPrimaryMemberData.package,
           subMembers: newSubMemberIds,
           leadId: leadId,
-          email: leadEmail,
+          email: emailToTransfer,
         });
       } else if (promotionTarget.newMember) {
         const newMemberData = promotionTarget.newMember;
@@ -591,7 +583,7 @@ exports.replacePrimaryMember = onCall(async (request) => {
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           subMembers: newSubMemberIds,
           leadId: leadId,
-          email: leadEmail,
+          email: emailToTransfer,
         });
       } else {
         throw new HttpsError("invalid-argument", "Invalid promotionTarget specified.");
@@ -604,7 +596,8 @@ exports.replacePrimaryMember = onCall(async (request) => {
           primary: false,
           primaryMemberId: newPrimaryMemberId,
           subMembers: [],
-          leadId: null, // or admin.firestore.FieldValue.delete()
+          leadId: null,
+          email: "", // Email is moved to the new primary member
         });
       } else if (mode === 'removeAndReplace') {
         console.log(`Demoting and moving old primary ${oldPrimaryMemberId} to past_members.`);
