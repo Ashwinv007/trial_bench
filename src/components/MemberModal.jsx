@@ -546,9 +546,9 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
             <TextField label="WhatsApp" fullWidth value={formData.whatsapp} onChange={(e) => handleChange('whatsapp', e.target.value)} error={!!errors.whatsapp} helperText={errors.whatsapp} />
             {editMember && editMember.primary && (
               <TextField
-                label="Email (from Lead)"
+                label=""
                 fullWidth
-                value={leadEmail}
+                value={formData.email}
                 disabled
               />
             )}
