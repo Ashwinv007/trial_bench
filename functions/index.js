@@ -505,6 +505,112 @@ exports.adminSetUserPassword = onCall(async (request) => {
   }
 });
 
+exports.earlyExitAgreement = onCall(async (request) => {
+  console.log("--- earlyExitAgreement ---");
+  if (!request.auth || !request.auth.token.all) {
+    throw new HttpsError("permission-denied", "Only admins can perform an early exit on an agreement.");
+  }
+
+  const { agreementId } = request.data;
+  if (!agreementId) {
+    throw new HttpsError("invalid-argument", "The function must be called with an 'agreementId'.");
+  }
+
+  const db = admin.firestore();
+  const batch = db.batch();
+
+  try {
+    const agreementRef = db.collection("agreements").doc(agreementId);
+    const agreementDoc = await agreementRef.get();
+
+    if (!agreementDoc.exists) {
+      throw new HttpsError("not-found", "Agreement not found.");
+    }
+
+    const agreementData = agreementDoc.data();
+    const leadId = agreementData.leadId;
+
+    if (!leadId) {
+      // This case should ideally not happen if data integrity is maintained.
+      // If there's no leadId, we can't find members. Just update the agreement.
+      console.log(`Agreement ${agreementId} has no leadId. Terminating agreement.`);
+      batch.update(agreementRef, {
+        status: "terminated",
+        endDate: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      await batch.commit();
+      return { message: "Agreement terminated. No lead was linked to this agreement." };
+    }
+
+    // Find the primary member
+    const primaryMemberQuery = db.collection("members").where("leadId", "==", leadId).limit(1);
+    const primaryMemberSnapshot = await primaryMemberQuery.get();
+
+    if (primaryMemberSnapshot.empty) {
+      // If no primary member, just update the agreement and exit
+      console.log(`No primary member found for leadId ${leadId}. Terminating agreement.`);
+      batch.update(agreementRef, {
+        status: "terminated",
+        endDate: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      await batch.commit();
+      return { message: "Agreement terminated. No active members were found for the linked lead." };
+    }
+
+    const primaryMemberDoc = primaryMemberSnapshot.docs[0];
+    const primaryMemberId = primaryMemberDoc.id;
+    const primaryMemberData = primaryMemberDoc.data();
+
+    // Move primary member to past_members
+    const pastPrimaryMemberRef = db.collection("past_members").doc(primaryMemberId);
+    batch.set(pastPrimaryMemberRef, {
+      ...primaryMemberData,
+      removedAt: admin.firestore.FieldValue.serverTimestamp(),
+      reason: "Early agreement exit.",
+    });
+    batch.delete(primaryMemberDoc.ref);
+    console.log(`Marked primary member ${primaryMemberId} for move to past_members.`);
+
+    // Find and move sub-members
+    const subMembersQuery = db.collection("members").where("primaryMemberId", "==", primaryMemberId);
+    const subMembersSnapshot = await subMembersQuery.get();
+
+    if (!subMembersSnapshot.empty) {
+      subMembersSnapshot.docs.forEach((doc) => {
+        const subMemberData = doc.data();
+        const pastSubMemberRef = db.collection("past_members").doc(doc.id);
+        batch.set(pastSubMemberRef, {
+          ...subMemberData,
+          removedAt: admin.firestore.FieldValue.serverTimestamp(),
+          reason: "Early agreement exit.",
+        });
+        batch.delete(doc.ref);
+        console.log(`Marked sub-member ${doc.id} for move to past_members.`);
+      });
+    }
+
+    // Update agreement status and end date
+    batch.update(agreementRef, {
+      status: "terminated",
+      endDate: admin.firestore.FieldValue.serverTimestamp(), // Using endDate to mark termination date
+    });
+    console.log(`Marked agreement ${agreementId} as terminated.`);
+
+    await batch.commit();
+
+    const numSubMembers = subMembersSnapshot.size;
+    console.log("Early exit transaction completed successfully.");
+    return { message: `Agreement terminated. Moved 1 primary member and ${numSubMembers} sub-member(s) to past members.` };
+
+  } catch (error) {
+    console.error("Error during early agreement exit:", error);
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError("internal", "An unexpected error occurred during the early exit process.");
+  }
+});
+
 exports.replacePrimaryMember = onCall(async (request) => {
   console.log("--- replacePrimaryMember ---");
   if (!request.auth || !request.auth.token.all) {

@@ -160,6 +160,39 @@ export default function AddLead() {
         status: 'Converted',
       });
 
+      // Create agreement document
+      const agreementsCollection = collection(db, 'agreements');
+      await addDoc(agreementsCollection, {
+        leadId: newlyCreatedLeadId,
+        name: memberData.name,
+        memberLegalName: memberData.name,
+        memberAddress: "", 
+        memberCIN: "Not Applicable", 
+        memberGST: "Not Applicable", 
+        memberPAN: "Not Applicable", 
+        memberKYC: "Not Applicable", 
+        agreementDate: new Date().toISOString().split('T')[0], 
+        agreementNumber: "", 
+        startDate: new Date().toISOString().split('T')[0], 
+        endDate: "", 
+        servicePackage: memberData.package, 
+        serviceQuantity: 1, 
+        totalMonthlyPayment: "", 
+        authorizorName: "", 
+        designation: "", 
+        preparedByNew: "", 
+        clientAuthorizorName: "", 
+        clientAuthorizorTitle: "", 
+        agreementLength: "", 
+        convertedEmail: memberData.email, 
+        phone: memberData.whatsapp, 
+        purposeOfVisit: memberData.package, 
+        birthdayDay: memberData.birthdayDay,
+        birthdayMonth: memberData.birthdayMonth,
+        status: "active", 
+        createdAt: new Date().toISOString(),
+      });
+
       setIsConversionModalOpen(false);
       navigate('/members');
     } catch (error) {

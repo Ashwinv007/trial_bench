@@ -86,6 +86,7 @@ export default function Agreements() {
 
   const functions = getFunctions();
   const sendAgreementEmailCallable = httpsCallable(functions, 'sendAgreementEmail');
+const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement');
 
   useEffect(() => {
     if (db) {
@@ -94,18 +95,18 @@ export default function Agreements() {
         const agreementsSnapshot = await getDocs(agreementsCollection);
         const agreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        // Filter for agreements that have the new leadId
-        const validAgreements = agreementsData.filter(agreement => agreement.leadId);
+        // Filter for agreements that have a leadId and are not terminated
+        const activeAgreements = agreementsData.filter(agreement => agreement.leadId && agreement.status !== 'terminated');
 
         // Fetch the corresponding lead for each agreement
-        const leadPromises = validAgreements.map(agreement => {
+        const leadPromises = activeAgreements.map(agreement => {
           const leadDocRef = doc(db, 'leads', agreement.leadId);
           return getDoc(leadDocRef);
         });
 
         const leadSnapshots = await Promise.all(leadPromises);
 
-        const combinedData = validAgreements.map((agreement, index) => {
+        const combinedData = activeAgreements.map((agreement, index) => {
           const leadData = leadSnapshots[index].data();
           // Ensure leadData exists before combining
           return leadData ? { ...agreement, ...leadData } : null;
@@ -411,6 +412,33 @@ export default function Agreements() {
     }
     return btoa(binary);
   };
+  const handleEarlyExit = async () => {
+    if (!selectedAgreement || !hasPermission('edit_agreements')) return;
+
+    if (window.confirm(`Are you sure you want to perform an early exit for the agreement with ${selectedAgreement.name}? This will move the primary member and all sub-members to past members and mark the agreement as terminated.`)) {
+      try {
+        // Call the Firebase Cloud Function
+        const result = await earlyExitAgreementCallable({ agreementId: selectedAgreement.id });
+        toast.success(result.data.message);
+
+        // Update local state: remove the terminated agreement
+        setAgreements(prev => prev.filter(a => a.id !== selectedAgreement.id));
+        
+        logActivity(
+          db,
+          user,
+          'agreement_early_exit',
+          `Agreement "${selectedAgreement.agreementNumber}" for "${selectedAgreement.name}" was terminated early.`,
+          { agreementId: selectedAgreement.id, agreementNumber: selectedAgreement.agreementNumber, memberName: selectedAgreement.name }
+        );
+        handleCloseModal();
+      } catch (error) {
+        console.error("Error performing early exit:", error);
+        toast.error(error.message || "Failed to perform early exit.");
+      }
+    }
+  };
+
   const handleSendAgreementEmail = async () => {
     if (!agreementGenerated || !agreementGenerated.convertedEmail || !agreementGenerated.name || !agreementGenerated.agreementNumber) {
       toast.error("Missing agreement details to send email.");
@@ -814,19 +842,34 @@ export default function Agreements() {
                                 {/* Action Buttons */}
                                 <div className={styles.modalActions}>
                                   {hasPermission('edit_agreements') && (
-                                    <Button
-                                      onClick={handleDeleteClick}
-                                      variant="outlined"
-                                      style={{
-                                        color: '#f44336',
-                                        borderColor: '#f44336',
-                                        textTransform: 'none',
-                                        padding: '8px 24px',
-                                        marginRight: 'auto'
-                                      }}
-                                    >
-                                      Delete
-                                    </Button>
+                                    <>
+                                      <Button
+                                        onClick={handleDeleteClick}
+                                        variant="outlined"
+                                        style={{
+                                          color: '#f44336',
+                                          borderColor: '#f44336',
+                                          textTransform: 'none',
+                                          padding: '8px 24px',
+                                          marginRight: '12px' 
+                                        }}
+                                      >
+                                        Delete
+                                      </Button>
+                                      <Button
+                                        onClick={handleEarlyExit}
+                                        variant="outlined"
+                                        style={{
+                                          color: '#ff9800', // Orange color for early exit
+                                          borderColor: '#ff9800',
+                                          textTransform: 'none',
+                                          padding: '8px 24px',
+                                          marginRight: 'auto'
+                                        }}
+                                      >
+                                        Early Exit
+                                      </Button>
+                                    </>
                                   )}
                                   <Button 
                                     onClick={handleCloseModal} 
