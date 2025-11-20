@@ -607,13 +607,21 @@ exports.replacePrimaryMember = onCall(async (request) => {
           leadId: null, // or admin.firestore.FieldValue.delete()
         });
       } else if (mode === 'removeAndReplace') {
-        console.log(`Moving old primary ${oldPrimaryMemberId} to past_members.`);
-        const pastMemberRef = db.collection("past_members").doc(oldPrimaryMemberId);
-        transaction.set(pastMemberRef, {
+        console.log(`Demoting and moving old primary ${oldPrimaryMemberId} to past_members.`);
+        
+        const pastMemberData = {
           ...oldPrimaryMemberData,
+          primary: false,
+          primaryMemberId: newPrimaryMemberId,
+          subMembers: [],
+          leadId: null,
           movedAt: admin.firestore.FieldValue.serverTimestamp(),
           reason: `Replaced by new primary member ${newPrimaryMemberId}`,
-        });
+        };
+
+        const pastMemberRef = db.collection("past_members").doc(oldPrimaryMemberId);
+        
+        transaction.set(pastMemberRef, pastMemberData);
         transaction.delete(oldPrimaryMemberRef);
       }
 
