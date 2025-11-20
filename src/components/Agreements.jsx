@@ -53,6 +53,7 @@ export default function Agreements() {
   const { db } = useContext(FirebaseContext);
   const { user, hasPermission } = useContext(AuthContext);
   const [agreements, setAgreements] = useState([]);
+  const [terminatedAgreements, setTerminatedAgreements] = useState([]);
   const [selectedAgreement, setSelectedAgreement] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isOtherPackage, setIsOtherPackage] = useState(false);
@@ -95,28 +96,36 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
         const agreementsSnapshot = await getDocs(agreementsCollection);
         const agreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        // Filter for agreements that have a leadId and are not terminated
-        const activeAgreements = agreementsData.filter(agreement => agreement.leadId && agreement.status !== 'terminated');
+        const activeAgreementsRaw = agreementsData.filter(agreement => agreement.leadId && agreement.status !== 'terminated');
+        const terminatedAgreementsRaw = agreementsData.filter(agreement => agreement.leadId && agreement.status === 'terminated');
 
-        // Fetch the corresponding lead for each agreement
-        const leadPromises = activeAgreements.map(agreement => {
+        // Fetch corresponding leads for active agreements
+        const activeLeadPromises = activeAgreementsRaw.map(agreement => {
           const leadDocRef = doc(db, 'leads', agreement.leadId);
           return getDoc(leadDocRef);
         });
-
-        const leadSnapshots = await Promise.all(leadPromises);
-
-        const combinedData = activeAgreements.map((agreement, index) => {
-          const leadData = leadSnapshots[index].data();
-          // Ensure leadData exists before combining
+        const activeLeadSnapshots = await Promise.all(activeLeadPromises);
+        const combinedActiveData = activeAgreementsRaw.map((agreement, index) => {
+          const leadData = activeLeadSnapshots[index].data();
           return leadData ? { ...agreement, ...leadData } : null;
-        }).filter(Boolean); // Filter out any nulls if a lead was not found
+        }).filter(Boolean);
+        setAgreements(combinedActiveData);
 
-        setAgreements(combinedData);
+        // Fetch corresponding leads for terminated agreements
+        const terminatedLeadPromises = terminatedAgreementsRaw.map(agreement => {
+          const leadDocRef = doc(db, 'leads', agreement.leadId);
+          return getDoc(leadDocRef);
+        });
+        const terminatedLeadSnapshots = await Promise.all(terminatedLeadPromises);
+        const combinedTerminatedData = terminatedAgreementsRaw.map((agreement, index) => {
+          const leadData = terminatedLeadSnapshots[index].data();
+          return leadData ? { ...agreement, ...leadData } : null;
+        }).filter(Boolean);
+        setTerminatedAgreements(combinedTerminatedData);
 
-        // Find the latest agreement by taking the last one in the array
-        if (combinedData.length > 0) {
-          const latest = combinedData[combinedData.length - 1]; // Get the last agreement
+        // Find the latest agreement by taking the last one in the active agreements array
+        if (combinedActiveData.length > 0) {
+          const latest = combinedActiveData[combinedActiveData.length - 1];
           setLatestAuthDetails({
             authorizorName: latest.authorizorName || '',
             designation: latest.designation || '',
@@ -421,8 +430,12 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
         const result = await earlyExitAgreementCallable({ agreementId: selectedAgreement.id });
         toast.success(result.data.message);
 
-        // Update local state: remove the terminated agreement
+        // Update local state: move the terminated agreement from active to terminated list
         setAgreements(prev => prev.filter(a => a.id !== selectedAgreement.id));
+        setTerminatedAgreements(prev => {
+          const updatedSelectedAgreement = { ...selectedAgreement, status: 'terminated' };
+          return [...prev, updatedSelectedAgreement];
+        });
         
         logActivity(
           db,
@@ -506,6 +519,42 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
                             </table>
                           </div>
                         </div>
+
+                        {/* Terminated Agreements Table */}
+                        {terminatedAgreements.length > 0 && (
+                          <div className={styles.tableCard} style={{ marginTop: '30px' }}>
+                            <h2 className={styles.sectionTitle} style={{ marginBottom: '15px' }}>Terminated Agreements</h2>
+                            <table className={styles.table}>
+                              <thead>
+                                <tr>
+                                  <th>Name</th>
+                                  <th>Package</th>
+                                  <th>Birthday</th>
+                                  <th>Email</th>
+                                  <th>Phone</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {terminatedAgreements.map((agreement) => (
+                                  <tr
+                                    key={agreement.id}
+                                    className={styles.disabledRow} // Apply a disabled style
+                                  >
+                                    <td>
+                                      <span className={styles.nameText}>{agreement.name}</span>
+                                    </td>
+                                    <td>
+                                      {agreement.purposeOfVisit}
+                                    </td>
+                                    <td>{agreement.birthdayDay && agreement.birthdayMonth ? formatBirthday(agreement.birthdayDay, agreement.birthdayMonth) : '-'}</td>
+                                    <td>{agreement.convertedEmail}</td>
+                                    <td>{agreement.phone}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                   
                         {/* Agreement Details Modal */}
                         <Dialog 

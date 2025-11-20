@@ -185,10 +185,10 @@ exports.createUser = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Only admins can create new users.");
   }
 
-  const { email, password, otp } = request.data;
+  const { email, password, otp, username } = request.data;
 
-  if (!email || !password || !otp) {
-    throw new HttpsError("invalid-argument", "The function must be called with 'email', 'password', and 'otp'.");
+  if (!email || !password || !otp || !username) {
+    throw new HttpsError("invalid-argument", "The function must be called with 'email', 'password', 'otp', and 'username'.");
   }
 
   try {
@@ -210,7 +210,11 @@ exports.createUser = onCall(async (request) => {
       throw new HttpsError("invalid-argument", "Invalid OTP.");
     }
 
-    const userRecord = await admin.auth().createUser({ email, password });
+    const userRecord = await admin.auth().createUser({
+      email,
+      password,
+      displayName: username,
+    });
     await otpDocRef.delete(); // Delete OTP after successful user creation
 
     return { message: `Success! New user created with UID: ${userRecord.uid}` };
