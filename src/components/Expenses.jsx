@@ -24,6 +24,10 @@ import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase
 import { AuthContext } from '../store/Context';
 import * as XLSX from 'xlsx';
 import { usePermissions } from '../auth/usePermissions';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 
 const initialCategories = [
   'Rent',
@@ -297,15 +301,30 @@ export default function Expenses() {
   };
 
   // Filter expenses based on category and date range
+  const handleDateChange = (name, newValue) => {
+    const formattedDate = newValue ? dayjs(newValue).format('YYYY-MM-DD') : '';
+    if (name === 'dateFrom') {
+      setDateFrom(formattedDate);
+    } else if (name === 'dateTo') {
+      setDateTo(formattedDate);
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: formattedDate,
+      }));
+    }
+  };
+
+  // Filter expenses based on category and date range
   const getFilteredExpenses = () => {
     return expenses.filter(expense => {
       const categoryMatch = filterCategory === 'All' || expense.category === filterCategory;
       
-      const expenseDate = new Date(expense.date);
-      const fromDate = dateFrom ? new Date(dateFrom) : null;
-      const toDate = dateTo ? new Date(dateTo) : null;
+      const expenseDate = dayjs(expense.date);
+      const fromDate = dateFrom ? dayjs(dateFrom) : null;
+      const toDate = dateTo ? dayjs(dateTo) : null;
       
-      const dateMatch = (!fromDate || expenseDate >= fromDate) && (!toDate || expenseDate <= toDate);
+      const dateMatch = (!fromDate || expenseDate.isSameOrAfter(fromDate, 'day')) && (!toDate || expenseDate.isSameOrBefore(toDate, 'day'));
       
       return categoryMatch && dateMatch;
     });
@@ -396,15 +415,10 @@ export default function Expenses() {
 
   // Grouping Functions - Relative time grouping like transaction history
   const getRelativeTimeGroup = (dateString) => {
-    const expenseDate = new Date(dateString);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const expenseDate = dayjs(dateString);
+    const today = dayjs().startOf('day');
     
-    const expenseDateOnly = new Date(expenseDate);
-    expenseDateOnly.setHours(0, 0, 0, 0);
-    
-    const diffTime = today - expenseDateOnly;
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = today.diff(expenseDate, 'day');
     
     // Today
     if (diffDays === 0) {
@@ -427,32 +441,30 @@ export default function Expenses() {
     }
     
     // This Month (within current month but older than 2 weeks)
-    const expenseMonth = expenseDate.getMonth();
-    const expenseYear = expenseDate.getFullYear();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
+    const expenseMonth = expenseDate.month();
+    const expenseYear = expenseDate.year();
+    const currentMonth = today.month();
+    const currentYear = today.year();
     
     if (expenseYear === currentYear && expenseMonth === currentMonth && diffDays >= 14) {
       return { key: 'thisMonth', label: 'This Month', order: 4 };
     }
     
     // Last Month
-    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const lastMonthYear = lastMonth.getFullYear();
-    const lastMonthMonth = lastMonth.getMonth();
+    const lastMonth = dayjs().subtract(1, 'month').startOf('month');
     
-    if (expenseYear === lastMonthYear && expenseMonth === lastMonthMonth) {
+    if (expenseDate.year() === lastMonth.year() && expenseDate.month() === lastMonth.month()) {
       return { key: 'lastMonth', label: 'Last Month', order: 5 };
     }
     
     // Earlier - group by month/year
-    const monthYear = `${expenseDate.toLocaleString('default', { month: 'long' })} ${expenseYear}`;
+    const monthYear = expenseDate.format('MMMM YYYY');
     return { key: `earlier-${monthYear}`, label: monthYear, order: 6 };
   };
 
   const getGroupedExpensesByTime = () => {
     const grouped = {};
-    const sorted = [...filteredExpenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const sorted = [...filteredExpenses].sort((a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf());
 
     sorted.forEach(expense => {
       const groupInfo = getRelativeTimeGroup(expense.date);
@@ -549,6 +561,7 @@ export default function Expenses() {
       </div>
 
       {/* Filters */}
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
       <div className={styles.filtersContainer}>
         <FormControl className={styles.filterControl}>
           <InputLabel>Category</InputLabel>
@@ -566,22 +579,22 @@ export default function Expenses() {
           </Select>
         </FormControl>
 
-        <TextField
+        <DatePicker
           label="From Date"
-          type="date"
-          value={dateFrom}
-          onChange={(e) => setDateFrom(e.target.value)}
-          InputLabelProps={{ shrink: true }}
+          value={dateFrom ? dayjs(dateFrom) : null}
+          onChange={(newValue) => handleDateChange('dateFrom', newValue)}
+          format="DD/MM/YYYY"
           className={styles.filterControl}
+          slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small' } }}
         />
 
-        <TextField
+        <DatePicker
           label="To Date"
-          type="date"
-          value={dateTo}
-          onChange={(e) => setDateTo(e.target.value)}
-          InputLabelProps={{ shrink: true }}
+          value={dateTo ? dayjs(dateTo) : null}
+          onChange={(newValue) => handleDateChange('dateTo', newValue)}
+          format="DD/MM/YYYY"
           className={styles.filterControl}
+          slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small' } }}
         />
 
         {(filterCategory !== 'All' || dateFrom || dateTo) && (
@@ -594,6 +607,7 @@ export default function Expenses() {
           </Button>
         )}
       </div>
+      </LocalizationProvider>
 
       <div className={styles.tableContainer}>
         <table className={styles.table}>
@@ -772,15 +786,15 @@ export default function Expenses() {
               inputProps={{ min: 0, step: 0.01 }}
             />
 
-            <TextField
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DatePicker
               label="Date"
-              type="date"
-              fullWidth
-              required
-              value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              InputLabelProps={{ shrink: true }}
+              value={formData.date ? dayjs(formData.date) : null}
+              onChange={(newValue) => handleDateChange('date', newValue)}
+              format="DD/MM/YYYY"
+              slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small', required: true } }}
             />
+            </LocalizationProvider>
 
             <TextField
               label="Bill Number"
