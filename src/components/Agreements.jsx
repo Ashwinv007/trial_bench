@@ -10,6 +10,10 @@ import { saveAs } from 'file-saver';
 import { toast } from 'sonner';
 import { logActivity } from '../utils/logActivity';
 import { usePermissions } from '../auth/usePermissions';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 
 const generateAgreementNumber = (memberPackageName, allAgreements) => {
   if (!memberPackageName) {
@@ -244,6 +248,14 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
     }));
   };
 
+  const handleDateChange = (name, newValue) => {
+    const formattedDate = newValue ? dayjs(newValue).format('YYYY-MM-DD') : '';
+    setFormData((prev) => ({
+      ...prev,
+      [name]: formattedDate,
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!hasPermission('agreements:edit')) {
@@ -318,13 +330,12 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
+const formatDate = (dateString) => {
+    if (!dateString) return '-';
     const date = new Date(dateString);
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const year = date.getUTCFullYear();
-    return `${day}/${month}/${year}`;
+    const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+    const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+    return adjustedDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const splitTextIntoLines = (text, font, fontSize, maxWidth) => {
@@ -679,6 +690,7 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
                                 </div>
                               </div>
                             ) : (
+                              <LocalizationProvider dateAdapter={AdapterDayjs}>
                               <form onSubmit={handleSubmit}>
                                 {/* Member Details Section */}
                                 <div className={styles.section}>
@@ -774,16 +786,12 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
                                 <div className={styles.section}>
                                   <h3 className={styles.sectionTitle}>Agreement Information</h3>
                                   <div className={styles.formGrid}>
-                                    <TextField
+                                  <DatePicker
                                       label="Agreement Date"
-                                      name="agreementDate"
-                                      type="date"
-                                      value={formData.agreementDate}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      InputLabelProps={{ shrink: true }}
+                                      value={formData.agreementDate ? dayjs(formData.agreementDate) : null}
+                                      onChange={(newValue) => handleDateChange('agreementDate', newValue)}
+                                      format="DD/MM/YYYY"
+                                      slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small' } }}
                                     />
                                     <TextField
                                       label="Agreement Number"
@@ -795,16 +803,12 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
                                       size="small"
                                       disabled
                                     />
-                                    <TextField
+                                    <DatePicker
                                       label="Start Date"
-                                      name="startDate"
-                                      type="date"
-                                      value={formData.startDate}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      InputLabelProps={{ shrink: true }}
+                                      value={formData.startDate ? dayjs(formData.startDate) : null}
+                                      onChange={(newValue) => handleDateChange('startDate', newValue)}
+                                      format="DD/MM/YYYY"
+                                      slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small' } }}
                                     />
                                     <TextField
                                       label="Length of Agreement"
@@ -822,17 +826,12 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
                                         </MenuItem>
                                       ))}
                                     </TextField>
-                                    <TextField
+                                    <DatePicker
                                       label="End Date"
-                                      name="endDate"
-                                      type="date"
-                                      value={formData.endDate}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      InputLabelProps={{ shrink: true }}
-                                      disabled
+                                      value={formData.endDate ? dayjs(formData.endDate) : null}
+                                      onChange={(newValue) => handleDateChange('endDate', newValue)}
+                                      format="DD/MM/YYYY"
+                                      slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small', disabled: true } }}
                                     />
                                     <TextField
                                       label="Package"
@@ -982,6 +981,7 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
                                   )}
                                 </div>
                               </form>
+                              </LocalizationProvider>
                             )}
                           </DialogContent>
                         </Dialog>
