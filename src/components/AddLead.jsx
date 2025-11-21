@@ -24,6 +24,8 @@ import {
 } from '@mui/material';
 import styles from './AddLead.module.css';
 import ConversionModal from './ConversionModal'; // Import the new modal
+import { usePermissions } from '../auth/usePermissions'; // Import usePermissions
+import { toast } from 'sonner';
 
 // Helper function to format birthday
 const formatBirthday = (day, month) => {
@@ -105,6 +107,7 @@ export default function AddLead() {
 
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
+  const { hasPermission } = usePermissions(); // Use the new usePermissions hook
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -118,6 +121,10 @@ export default function AddLead() {
   }, [user]);
 
   const handleSaveLead = async () => {
+    if (!hasPermission('leads:add')) {
+      toast.error("You don't have permission to add leads.");
+      return;
+    }
     setIsSubmitted(true);
     const newErrors = validateForm(formData);
     setErrors(newErrors);

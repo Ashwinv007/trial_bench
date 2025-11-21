@@ -2,53 +2,78 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isAllowed(permission) {
-      return request.auth.token[permission] == true || request.auth.token.all == true;
+    // --- Helper Functions ---
+    // Safely checks if a user is an admin. An admin's role document must contain 'all' in its permissions list.
+    function isAdmin() {
+      return request.auth != null && request.auth.token.role != null
+        && get(/databases/$(database)/documents/roles/$(request.auth.token.role)).data.permissions.hasAny(['all']);
     }
 
+    // Safely checks if a non-admin user has a specific permission.
+    function hasPermission(permission) {
+      return request.auth != null && request.auth.token.role != null
+        && permission in get(/databases/$(database)/documents/roles/$(request.auth.token.role)).data.permissions;
+    }
+
+    function hasAnyPermission(permissionsList) {
+        return request.auth != null && request.auth.token.role != null
+        && get(/databases/$(database)/documents/roles/$(request.auth.token.role)).data.permissions.hasAny(permissionsList);
+    }
+    
+    // --- Collection Rules ---
+
     match /leads/{leadId} {
-      allow read: if isAllowed('view_leads');
-      allow write: if isAllowed('add_leads') || isAllowed('edit_leads') || isAllowed('delete_leads');
+      allow read: if hasPermission('leads:view') || isAdmin();
+      allow write: if hasAnyPermission(['leads:add', 'leads:edit', 'leads:delete']) || isAdmin();
     }
 
     match /members/{memberId} {
-      allow read: if isAllowed('view_members');
-      allow write: if isAllowed('add_members') || isAllowed('edit_members') || isAllowed('delete_members') || isAllowed('edit_agreements') || isAllowed('add_invoices');
+      allow read: if hasPermission('members:view') || isAdmin();
+      allow write: if hasAnyPermission(['members:add', 'members:edit', 'members:delete']) || isAdmin();
     }
 
     match /past_members/{memberId} {
-      allow read: if isAllowed('view_members');
-      allow create: if isAllowed('delete_members');
+      allow read: if hasPermission('members:view') || isAdmin();
+      allow create: if hasAnyPermission(['members:delete', 'agreements:edit']) || isAdmin();
+      allow delete: if hasPermission('settings:manage_users') || isAdmin();
       allow update: if false;
-      allow delete: if isAllowed('manage_settings');
     }
 
     match /logs/{logId} {
-      allow read: if isAllowed('view_members');
-      allow write: if isAllowed('add_members') || isAllowed('edit_members') || isAllowed('delete_members');
+      allow read: if hasPermission('logs:view') || isAdmin();
+      allow create: if request.auth != null; // Any authenticated user can write to logs
+      allow update, delete: if false; // Logs are immutable
     }
 
     match /agreements/{agreementId} {
-      allow read: if isAllowed('view_agreements');
-      allow write: if isAllowed('add_agreements') || isAllowed('edit_agreements') || isAllowed('delete_agreements');
+      allow read: if hasPermission('agreements:view') || isAdmin();
+      allow write: if hasAnyPermission(['agreements:add', 'agreements:edit', 'agreements:delete']) || isAdmin();
     }
 
     match /invoices/{invoiceId} {
-      allow read: if isAllowed('view_invoices');
-      allow write: if isAllowed('add_invoices') || isAllowed('edit_invoices') || isAllowed('delete_invoices');
+      allow read: if hasPermission('invoices:view') || isAdmin();
+      allow write: if hasAnyPermission(['invoices:add', 'invoices:edit', 'invoices:delete']) || isAdmin();
     }
 
     match /expenses/{expenseId} {
-      allow read: if isAllowed('view_expenses');
-      allow write: if isAllowed('add_expenses') || isAllowed('edit_expenses') || isAllowed('delete_expenses');
+      allow read: if hasPermission('expenses:view') || isAdmin();
+      allow write: if hasAnyPermission(['expenses:add', 'expenses:edit', 'expenses:delete']) || isAdmin();
     }
 
+    // Roles should be readable by any authenticated user, but only managed by admins/role managers
     match /roles/{roleId} {
-      allow read, write: if isAllowed('manage_settings');
+      allow read: if request.auth != null;
+      allow write: if hasPermission('settings:manage_roles') || isAdmin();
     }
 
     match /email_templates/{templateId} {
-      allow read, write: if isAllowed('manage_settings');
+      allow read: if request.auth != null;
+      allow write: if hasPermission('settings:manage_templates') || isAdmin();
+    }
+    
+    // OTPs should not be client-accessible
+    match /otps/{otpId} {
+        allow read, write: if false;
     }
   }
 }

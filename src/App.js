@@ -31,17 +31,17 @@ function App() {
         <Route path="/" element={user ? <HomePage /> : <Navigate to="/login" />} />
         
         {/* Protected Routes */}
-        <Route path="/leads" element={<ProtectedRoute permission="view_leads"><LeadsPage /></ProtectedRoute>} />
-        <Route path="/add-lead" element={<ProtectedRoute permission="add_leads"><AddLeadPage /></ProtectedRoute>} />
-        <Route path="/lead/:id" element={<ProtectedRoute permission="edit_leads"><EditLeadPage /></ProtectedRoute>} />
-        <Route path="/members" element={<ProtectedRoute permission="view_members"><MembersPage /></ProtectedRoute>} />
-        <Route path="/member/:id" element={<ProtectedRoute permission="view_members"><ClientProfilePage /></ProtectedRoute>} />
-        <Route path="/past-members" element={<ProtectedRoute permission="view_members"><PastMembersPage /></ProtectedRoute>} />
-        <Route path="/agreements" element={<ProtectedRoute permission="view_agreements"><AgreementsPage /></ProtectedRoute>} />
-        <Route path="/invoices" element={<ProtectedRoute permission="view_invoices"><InvoicesPage /></ProtectedRoute>} />
-        <Route path="/expenses" element={<ProtectedRoute permission="view_expenses"><ExpensesPage /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute permission="manage_settings"><SettingsPage /></ProtectedRoute>} />
-        <Route path="/logs" element={<ProtectedRoute permission="view_logs"><LogsPage /></ProtectedRoute>} />
+        <Route path="/leads" element={<ProtectedRoute permission="leads:view"><LeadsPage /></ProtectedRoute>} />
+        <Route path="/add-lead" element={<ProtectedRoute permission="leads:add"><AddLeadPage /></ProtectedRoute>} />
+        <Route path="/lead/:id" element={<ProtectedRoute permission="leads:edit"><EditLeadPage /></ProtectedRoute>} />
+        <Route path="/members" element={<ProtectedRoute permission="members:view"><MembersPage /></ProtectedRoute>} />
+        <Route path="/member/:id" element={<ProtectedRoute permission="members:view"><ClientProfilePage /></ProtectedRoute>} />
+        <Route path="/past-members" element={<ProtectedRoute permission="members:view"><PastMembersPage /></ProtectedRoute>} />
+        <Route path="/agreements" element={<ProtectedRoute permission="agreements:view"><AgreementsPage /></ProtectedRoute>} />
+        <Route path="/invoices" element={<ProtectedRoute permission="invoices:view"><InvoicesPage /></ProtectedRoute>} />
+        <Route path="/expenses" element={<ProtectedRoute permission="expenses:view"><ExpensesPage /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute permission="settings:manage_users"><SettingsPage /></ProtectedRoute>} />
+        <Route path="/logs" element={<ProtectedRoute permission="logs:view"><LogsPage /></ProtectedRoute>} />
       </Routes>
     </Router>
   );

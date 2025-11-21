@@ -9,6 +9,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { toast } from 'sonner';
 import { logActivity } from '../utils/logActivity';
+import { usePermissions } from '../auth/usePermissions';
 
 const generateAgreementNumber = (memberPackageName, allAgreements) => {
   if (!memberPackageName) {
@@ -51,7 +52,8 @@ const formatBirthday = (day, month) => {
 
 export default function Agreements() {
   const { db } = useContext(FirebaseContext);
-  const { user, hasPermission } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
+  const { hasPermission } = usePermissions();
   const [agreements, setAgreements] = useState([]);
   const [terminatedAgreements, setTerminatedAgreements] = useState([]);
   const [selectedAgreement, setSelectedAgreement] = useState(null);
@@ -90,6 +92,7 @@ export default function Agreements() {
 const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement');
 
   useEffect(() => {
+    if (!hasPermission('agreements:view')) return;
     if (db) {
       const fetchAgreements = async () => {
         const agreementsCollection = collection(db, 'agreements');
@@ -135,7 +138,7 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
       };
       fetchAgreements();
     }
-  }, [db]);
+  }, [db, hasPermission]);
 
   useEffect(() => {
     if (formData.startDate && formData.agreementLength) {
@@ -164,7 +167,7 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
 
 
   const handleRowClick = (agreement) => {
-    if (!hasPermission('edit_agreements')) return;
+    if (!hasPermission('agreements:edit')) return;
     setAgreementGenerated(null);
     setSelectedAgreement(agreement);
 
@@ -243,6 +246,10 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!hasPermission('agreements:edit')) {
+        toast.error("You don't have permission to update agreements.");
+        return;
+    }
     
     if (!selectedAgreement) return;
 
@@ -291,7 +298,11 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
   };
 
   const handleDeleteClick = async () => {
-    if (!selectedAgreement || !hasPermission('edit_agreements')) return;
+    if (!hasPermission('agreements:delete')) {
+        toast.error("You don't have permission to delete agreements.");
+        return;
+    }
+    if (!selectedAgreement) return;
 
     if (window.confirm(`Are you sure you want to delete the agreement for ${selectedAgreement.name}? This action cannot be undone.`)) {
       try {
@@ -422,7 +433,11 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
     return btoa(binary);
   };
   const handleEarlyExit = async () => {
-    if (!selectedAgreement || !hasPermission('edit_agreements')) return;
+    if (!hasPermission('agreements:edit')) {
+        toast.error("You don't have permission to terminate agreements.");
+        return;
+    }
+    if (!selectedAgreement) return;
 
     if (window.confirm(`Are you sure you want to perform an early exit for the agreement with ${selectedAgreement.name}? This will move the primary member and all sub-members to past members and mark the agreement as terminated.`)) {
       try {
@@ -453,6 +468,10 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
   };
 
   const handleSendAgreementEmail = async () => {
+    if (!hasPermission('agreements:edit')) {
+        toast.error("You don't have permission to send agreement emails.");
+        return;
+    }
     if (!agreementGenerated || !agreementGenerated.convertedEmail || !agreementGenerated.name || !agreementGenerated.agreementNumber) {
       toast.error("Missing agreement details to send email.");
       return;
@@ -473,6 +492,21 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
       toast.error(error.message || "Failed to send agreement email.");
     }
   };
+
+  if (!hasPermission('agreements:view')) {
+    return (
+        <div className={styles.container}>
+            <div className={styles.content}>
+                <div className={styles.header}>
+                    <div className={styles.headerText}>
+                        <h1 className={styles.title}>Permission Denied</h1>
+                        <p className={styles.subtitle}>You do not have permission to view this page.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -502,7 +536,7 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
                 <tr 
                   key={agreement.id} 
                   onClick={() => handleRowClick(agreement)}
-                  className={hasPermission('edit_agreements') ? styles.clickableRow : ''}
+                  className={hasPermission('agreements:edit') ? styles.clickableRow : ''}
                 >
                                     <td>
                                       <span className={styles.nameText}>{agreement.name}</span>
@@ -890,7 +924,7 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
                   
                                 {/* Action Buttons */}
                                 <div className={styles.modalActions}>
-                                  {hasPermission('edit_agreements') && (
+                                  {hasPermission('agreements:delete') && (
                                     <>
                                       <Button
                                         onClick={handleDeleteClick}
@@ -932,7 +966,7 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
                                   >
                                     Cancel
                                   </Button>
-                                  {hasPermission('edit_agreements') && (
+                                  {hasPermission('agreements:edit') && (
                                     <Button 
                                       type="submit" 
                                       variant="contained"

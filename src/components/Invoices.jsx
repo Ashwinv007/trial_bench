@@ -11,6 +11,7 @@ import { saveAs } from 'file-saver';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { usePermissions } from '../auth/usePermissions';
 import dayjs from 'dayjs';
 import { toast } from 'sonner';
 
@@ -140,7 +141,8 @@ const getInvoicePdfBytes = async (invoiceData) => {
 
 export default function Invoices() {
   const { db } = useContext(FirebaseContext);
-  const { user, hasPermission } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
+  const { hasPermission } = usePermissions();
   const [invoices, setInvoices] = useState([]);
   const [clients, setClients] = useState([]);
   const [agreements, setAgreements] = useState([]);
@@ -179,7 +181,7 @@ export default function Invoices() {
   const sendInvoiceEmailCallable = httpsCallable(functions, 'sendInvoiceEmail');
 
   useEffect(() => {
-    if (!db) return;
+    if (!db || !hasPermission('invoices:view')) return;
 
     const fetchInvoices = async () => {
       const invoicesCollection = collection(db, 'invoices');
@@ -218,7 +220,7 @@ export default function Invoices() {
 
     fetchInvoices();
     fetchAgreementsAndClients();
-  }, [db]);
+  }, [db, hasPermission]);
 
   const invoicesWithClientData = useMemo(() => {
     if (!invoices.length || !clients.length) return [];
@@ -261,7 +263,7 @@ export default function Invoices() {
   };
 
   const handleEditInvoice = (invoice, e) => {
-    if (!hasPermission('edit_invoices')) return;
+    if (!hasPermission('invoices:edit')) return;
     if (e.target.closest(`.${styles.statusBadge}`)) return;
 
     setEditingInvoice(invoice);
@@ -464,7 +466,7 @@ export default function Invoices() {
 
   const togglePaymentStatus = async (invoice, e) => {
     e.stopPropagation();
-    if (!hasPermission('edit_invoices')) return;
+    if (!hasPermission('invoices:edit')) return;
     if (invoice.paymentStatus === 'Paid') return;
     setSelectedInvoiceForPayment(invoice);
     setPaymentDate('');
@@ -526,7 +528,7 @@ export default function Invoices() {
 
   const handleGenerateInvoiceForMember = useCallback((leadId, e) => {
     e.stopPropagation();
-    if (!hasPermission('add_invoices')) return;
+    if (!hasPermission('invoices:add')) return;
 
     const client = clients.find(c => c.id === leadId);
     if (client) {
@@ -610,6 +612,21 @@ export default function Invoices() {
     }
   };
 
+  if (!hasPermission('invoices:view')) {
+    return (
+        <div className={styles.container}>
+            <div className={styles.content}>
+                <div className={styles.header}>
+                    <div className={styles.headerText}>
+                        <h1 className={styles.title}>Permission Denied</h1>
+                        <p className={styles.subtitle}>You do not have permission to view this page.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+  }
+
   return (
     <div className={styles.container}>
       <div className={styles.content}>
@@ -618,7 +635,7 @@ export default function Invoices() {
             <h1 className={styles.title}>Invoices</h1>
             <p className={styles.subtitle}>Manage and generate client invoices.</p>
           </div>
-          {hasPermission('add_invoices') && (
+          {hasPermission('invoices:add') && (
             <button className={styles.addButton} onClick={handleOpenModal}>
               <AddCircleOutline className={styles.addIcon} />
               Generate Invoice
@@ -683,7 +700,7 @@ export default function Invoices() {
             </thead>
             <tbody>
               {filteredInvoices.map((invoice) => (
-                <tr key={invoice.id} onClick={(e) => handleEditInvoice(invoice, e)} className={hasPermission('edit_invoices') ? styles.clickableRow : ''}>
+                <tr key={invoice.id} onClick={(e) => handleEditInvoice(invoice, e)} className={hasPermission('invoices:edit') ? styles.clickableRow : ''}>
                   <td>
                     <span className={`${styles.statusBadge} ${styles[invoice.paymentStatus ? invoice.paymentStatus.toLowerCase().replace(' ', '') : 'unpaid']}`} onClick={(e) => togglePaymentStatus(invoice, e)}>
                       {invoice.paymentStatus || 'Unpaid'}
@@ -694,7 +711,7 @@ export default function Invoices() {
                   <td>{invoice.email}</td>
                   <td>{invoice.paymentStatus === 'Paid' ? formatDate(invoice.dateOfPayment) : '-'}</td>
                   <td>
-                    {hasPermission('add_invoices') && (
+                    {hasPermission('invoices:add') && (
                       <IconButton onClick={(e) => handleGenerateInvoiceForMember(invoice.leadId, e)} size="small" color="primary" aria-label="generate invoice">
                         <Description />
                       </IconButton>
@@ -790,7 +807,7 @@ export default function Invoices() {
             <div className={styles.modalActions}>
               <Button onClick={handleCloseModal} variant="outlined" sx={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', p: '8px 24px' }}>Cancel</Button>
               {editingInvoice && <Button onClick={async () => { try { const pdfBytes = await getInvoicePdfBytes(editingInvoice); const blob = new Blob([pdfBytes], { type: 'application/pdf' }); saveAs(blob, `${editingInvoice.invoiceNumber || 'invoice'}.pdf`); toast.success("Invoice downloaded successfully!"); } catch (error) { console.error("Error downloading invoice:", error); toast.error("Failed to download invoice."); } }} variant="outlined" sx={{ color: '#2b7a8e', borderColor: '#2b7a8e', textTransform: 'none', p: '8px 24px' }}>Download Current Invoice</Button>}
-              {((editingInvoice && hasPermission('edit_invoices')) || (!editingInvoice && hasPermission('add_invoices'))) && <Button type="submit" variant="contained" sx={{ bgcolor: '#2b7a8e', color: 'white', textTransform: 'none', p: '8px 24px' }}>{editingInvoice ? 'Update Invoice' : 'Generate Invoice'}</Button>}
+              {((editingInvoice && hasPermission('invoices:edit')) || (!editingInvoice && hasPermission('invoices:add'))) && <Button type="submit" variant="contained" sx={{ bgcolor: '#2b7a8e', color: 'white', textTransform: 'none', p: '8px 24px' }}>{editingInvoice ? 'Update Invoice' : 'Generate Invoice'}</Button>}
             </div>
           </form>
           </LocalizationProvider>

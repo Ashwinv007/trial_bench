@@ -23,6 +23,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { Email as EmailIcon } from '@mui/icons-material';
 import styles from './AddLead.module.css';
+import { usePermissions } from '../auth/usePermissions';
 import ClientProfileModal from './ClientProfileModal';
 
 // Helper function to format birthday
@@ -193,6 +194,7 @@ const ReplacementView = ({ subMembers, onCancel, onConfirm, mode, oldPrimaryMemb
 export default function MemberModal({ open, onClose, onSave, editMember = null, primaryMemberId = null }) {
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
+  const { hasPermission } = usePermissions();
   const [formData, setFormData] = useState({
     name: '',
     package: '',
@@ -346,6 +348,10 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
   };
 
   const handleSendWelcomeEmail = async () => {
+    if (!hasPermission('members:edit')) {
+        toast.error("You don't have permission to send welcome emails.");
+        return;
+    }
     const emailToSend = editMember && editMember.primary ? leadEmail : formData.email;
     if (!emailToSend || !emailToSend.trim()) {
       toast.error('Member does not have an email to send to.');
@@ -373,6 +379,18 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
   };
 
   const handleSubmit = () => {
+    if (editMember) {
+        if (!hasPermission('members:edit')) {
+            toast.error("You don't have permission to edit members.");
+            return;
+        }
+    } else {
+        if (!hasPermission('members:add')) {
+            toast.error("You don't have permission to add members.");
+            return;
+        }
+    }
+
     if (validateForm()) {
       const memberData = {
         ...formData,
@@ -402,6 +420,10 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
   };
 
   const handleReplacementConfirm = async (replacementData) => {
+    if (!hasPermission('members:edit')) {
+        toast.error("You don't have permission to replace members.");
+        return;
+    }
     const replacePrimaryMemberCallable = httpsCallable(functions, 'replacePrimaryMember');
 
     const payload = {
@@ -574,7 +596,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
 
       <DialogActions sx={{ p: '16px 24px 24px', justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', gap: 1.5 }}>
-            {editMember && editMember.primary && (
+            {editMember && editMember.primary && hasPermission('members:edit') && (
             <>
                 <Button
                     onClick={() => setReplacementAction('replace')}

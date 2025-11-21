@@ -13,6 +13,7 @@ import {
   Chip,
 } from '@mui/material';
 import { AccessTime, Person, InfoOutlined } from '@mui/icons-material';
+import { usePermissions } from '../auth/usePermissions';
 
 // Helper to format the action key into a readable title
 const formatActionTitle = (action) => {
@@ -25,12 +26,14 @@ const formatActionTitle = (action) => {
 
 export default function Logs() {
   const { db } = useContext(FirebaseContext);
+  const { hasPermission } = usePermissions();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchLogs = async () => {
+      if (!hasPermission('logs:view')) return;
       try {
         setLoading(true);
         setError(null);
@@ -63,7 +66,18 @@ export default function Logs() {
     if (db) {
       fetchLogs();
     }
-  }, [db]);
+  }, [db, hasPermission]);
+
+  if (!hasPermission('logs:view')) {
+    return (
+        <Box sx={{ p: 3, flex: 1, overflowY: 'auto' }}>
+            <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 4, fontWeight: 'bold', color: '#333' }}>
+                Permission Denied
+            </Typography>
+            <Typography>You do not have permission to view this page.</Typography>
+        </Box>
+    );
+  }
 
   if (loading) {
     return (

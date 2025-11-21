@@ -3,12 +3,17 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { FirebaseContext } from '../store/Context';
 import { FileDownload } from '@mui/icons-material';
 import styles from './Clients.module.css';
+import { usePermissions } from '../auth/usePermissions';
+import { useNavigate } from 'react-router-dom';
 
 export default function Clients() {
   const { db } = useContext(FirebaseContext);
+  const { hasPermission } = usePermissions();
+  const navigate = useNavigate();
   const [clients, setClients] = useState([]);
 
   useEffect(() => {
+    if (!hasPermission('members:view')) return;
     if (db) {
       const fetchClients = async () => {
         const leadsCollection = collection(db, 'leads');
@@ -22,12 +27,33 @@ export default function Clients() {
       };
       fetchClients();
     }
-  }, [db]);
+  }, [db, hasPermission]);
 
   const handleExport = () => {
     console.log('Exporting clients data...');
     alert('Export functionality will download client data as CSV/Excel');
   };
+
+  const handleRowClick = (clientId) => {
+    if (hasPermission('members:edit')) {
+      navigate(`/client/${clientId}`);
+    }
+  };
+
+  if (!hasPermission('members:view')) {
+    return (
+        <div className={styles.container}>
+            <div className={styles.content}>
+                <div className={styles.header}>
+                    <div className={styles.headerText}>
+                        <h1 className={styles.title}>Permission Denied</h1>
+                        <p className={styles.subtitle}>You do not have permission to view this page.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -38,10 +64,12 @@ export default function Clients() {
             <h1 className={styles.title}>Clients</h1>
             <p className={styles.subtitle}>Manage your converted clients.</p>
           </div>
-          <button className={styles.exportButton} onClick={handleExport}>
-            <FileDownload className={styles.exportIcon} />
-            Export
-          </button>
+          {hasPermission('members:export') && (
+            <button className={styles.exportButton} onClick={handleExport}>
+              <FileDownload className={styles.exportIcon} />
+              Export
+            </button>
+          )}
         </div>
 
         {/* Table */}
@@ -57,7 +85,7 @@ export default function Clients() {
             </thead>
             <tbody>
               {clients.map((client) => (
-                <tr key={client.id}>
+                <tr key={client.id} onClick={() => handleRowClick(client.id)} style={{ cursor: hasPermission('members:edit') ? 'pointer' : 'default' }}>
                   <td>
                     <div className={styles.nameCell}>
                       <span className={styles.nameText}>{client.name}</span>

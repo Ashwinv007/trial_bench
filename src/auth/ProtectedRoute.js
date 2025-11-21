@@ -1,9 +1,15 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { AuthContext } from '../store/Context';
+import { usePermissions } from './usePermissions'; // Updated import
 
 const ProtectedRoute = ({ children, permission }) => {
-  const { user, hasPermission } = useContext(AuthContext);
+  const { user, hasPermission, loadingPermissions } = usePermissions(); // Use the hook
+
+  if (loadingPermissions) {
+    // Optional: Render a loading spinner or a blank screen while permissions are being checked.
+    // This prevents a flash of the redirect before permissions are loaded.
+    return null; // or <LoadingSpinner />
+  }
 
   if (!user) {
     // User is not logged in, redirect to login page

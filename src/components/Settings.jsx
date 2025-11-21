@@ -1,24 +1,27 @@
 import React, { useState, useEffect, useContext } from 'react';
 import styles from './Settings.module.css';
-import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Checkbox, FormControlLabel, Chip, Tooltip, Select, MenuItem, DialogContentText, CircularProgress } from '@mui/material';
+import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Checkbox, FormControlLabel, Chip, Tooltip, Select, MenuItem, DialogContentText, CircularProgress, Typography, Box } from '@mui/material';
 import { AddCircleOutline, Edit, Delete, Close, LockReset } from '@mui/icons-material';
 import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { logActivity } from '../utils/logActivity';
 import { AuthContext } from '../store/Context';
+import { usePermissions } from '../auth/usePermissions';
 
-const allPermissions = [
-    'all',
-    'view_leads', 'add_leads', 'edit_leads', 'delete_leads',
-    'view_members', 'add_members', 'edit_members', 'delete_members', 'export_members',
-    'view_agreements', 'add_agreements', 'edit_agreements', 'delete_agreements',
-    'view_invoices', 'add_invoices', 'edit_invoices', 'delete_invoices',
-    'view_expenses', 'add_expenses', 'edit_expenses', 'delete_expenses', 'view_expense_reports', 'export_expenses',
-    'manage_settings'
-];
+const permissionGroups = {
+    'Leads': ['leads:view', 'leads:add', 'leads:edit', 'leads:delete'],
+    'Clients & Members': ['members:view', 'members:add', 'members:edit', 'members:delete', 'members:export'],
+    'Agreements': ['agreements:view', 'agreements:add', 'agreements:edit', 'agreements:delete'],
+    'Invoices': ['invoices:view', 'invoices:add', 'invoices:edit', 'invoices:delete'],
+    'Expenses': ['expenses:view', 'expenses:add', 'expenses:edit', 'expenses:delete', 'expenses:export', 'expenses:view_reports', 'expenses:manage_categories'],
+    'Logs': ['logs:view'],
+    'Settings': ['settings:manage_roles', 'settings:manage_users', 'settings:manage_templates'],
+};
+
+const allPermissions = ['all', ...Object.values(permissionGroups).flat()];
 
 const emailTemplateTypes = [
     { id: 'welcome_email', name: 'Welcome Email', defaultSubject: 'Welcome to Our Platform!', defaultBody: 'Hi {{username}},\n\nWelcome! We are excited to have you on board.' },
@@ -28,21 +31,23 @@ const emailTemplateTypes = [
 ];
 
 const PermissionChips = ({ permissions }) => {
+    // Defensively ensure that permissions is an array before trying to use array methods.
+    const perms = Array.isArray(permissions) ? permissions : [];
     const visibleCount = 3;
-    const displayedPermissions = permissions.slice(0, visibleCount);
-    const hiddenCount = permissions.length - visibleCount;
+    const displayedPermissions = perms.slice(0, visibleCount);
+    const hiddenCount = perms.length - visibleCount;
   
     return (
       <div className={styles.permissionChipsContainer}>
         {displayedPermissions.map(p => <Chip key={p} label={p.replace(/_/g, ' ')} size="small" />)}
         {hiddenCount > 0 && (
-          <Tooltip title={permissions.slice(visibleCount).join(', ')}>
+          <Tooltip title={perms.slice(visibleCount).join(', ')}>
             <Chip label={`+${hiddenCount} more`} size="small" />
           </Tooltip>
         )}
       </div>
     );
-  };
+};
 
 export default function Settings() {
   const [roles, setRoles] = useState([]);
@@ -77,6 +82,7 @@ export default function Settings() {
   const [newPasswordForReset, setNewPasswordForReset] = useState('');
   
   const { user } = useContext(AuthContext);
+  const { hasPermission } = usePermissions();
   const functions = getFunctions();
   const auth = getAuth();
   const listUsers = httpsCallable(functions, 'listUsers');
@@ -202,7 +208,7 @@ export default function Settings() {
 
   const handlePermissionChange = (permission) => {
     if (permission === 'all') {
-      setSelectedPermissions(prev => prev.includes('all') ? [] : allPermissions);
+      setSelectedPermissions(prev => prev.includes('all') ? [] : allPermissions.filter(p => p !== 'all'));
     } else {
       setSelectedPermissions(prev => 
         prev.includes(permission) 
@@ -405,11 +411,12 @@ export default function Settings() {
             <p className={styles.subtitle}>Manage user roles, permissions, and assignments.</p>
         </div>
         <div className={styles.headerButtons}>
-            <Button className={styles.addButton} variant="contained" startIcon={<AddCircleOutline />} onClick={() => handleOpenModal()} sx={{ mr: 1 }}>Add Role</Button>
-            <Button className={styles.addButton} variant="contained" startIcon={<AddCircleOutline />} onClick={handleOpenAddUserModal}>Add User</Button>
+            {hasPermission('settings:manage_roles') && <Button className={styles.addButton} variant="contained" startIcon={<AddCircleOutline />} onClick={() => handleOpenModal()} sx={{ mr: 1 }}>Add Role</Button>}
+            {hasPermission('settings:manage_users') && <Button className={styles.addButton} variant="contained" startIcon={<AddCircleOutline />} onClick={handleOpenAddUserModal}>Add User</Button>}
         </div>
       </div>
       
+      {hasPermission('settings:manage_roles') && (
       <div className={styles.rolesSection}>
         <h2>Role Management</h2>
         <div className={styles.tableContainer}>
@@ -440,9 +447,11 @@ export default function Settings() {
           </table>
         </div>
       </div>
+      )}
 
       <div style={{ height: '24px' }} />
 
+      {hasPermission('settings:manage_users') && (
       <div className={styles.rolesSection}>
         <h2>User Management</h2>
         <div className={styles.tableContainer}>
@@ -481,9 +490,11 @@ export default function Settings() {
           </table>
         </div>
       </div>
+      )}
 
       <div style={{ height: '24px' }} />
 
+      {hasPermission('settings:manage_templates') && (
       <div className={styles.rolesSection}>
         <h2>Email Templates</h2>
         {loading ? <p>Loading templates...</p> : emailTemplates.map((template, index) => (
@@ -511,7 +522,7 @@ export default function Settings() {
             </div>
         ))}
       </div>
-
+      )}
 
       {/* Role Management Dialog */}
       <Dialog open={isModalOpen} onClose={handleCloseModal} maxWidth="sm" fullWidth>
@@ -521,11 +532,30 @@ export default function Settings() {
         </DialogTitle>
         <DialogContent>
           <TextField autoFocus margin="dense" label="Role Name" type="text" fullWidth variant="outlined" value={roleName} onChange={(e) => setRoleName(e.target.value)} />
-          <div className={styles.permissionsGrid}>
-            {allPermissions.map(permission => (
-              <FormControlLabel key={permission} control={<Checkbox checked={selectedPermissions.includes(permission)} onChange={() => handlePermissionChange(permission)} disabled={selectedPermissions.includes('all') && permission !== 'all'} />} label={permission.replace(/_/g, ' ')} />
-            ))}
-          </div>
+          <FormControlLabel
+            control={<Checkbox checked={selectedPermissions.includes('all')} onChange={() => handlePermissionChange('all')} />}
+            label="All Permissions"
+          />
+          {Object.entries(permissionGroups).map(([groupName, permissions]) => (
+            <Box key={groupName} sx={{ border: '1px solid #ccc', borderRadius: '4px', p: 2, my: 2 }}>
+              <Typography variant="h6" gutterBottom>{groupName}</Typography>
+              <div className={styles.permissionsGrid}>
+                {permissions.map(permission => (
+                  <FormControlLabel
+                    key={permission}
+                    control={
+                      <Checkbox
+                        checked={selectedPermissions.includes(permission) || selectedPermissions.includes('all')}
+                        onChange={() => handlePermissionChange(permission)}
+                        disabled={selectedPermissions.includes('all')}
+                      />
+                    }
+                    label={permission.split(':')[1].replace(/_/g, ' ')}
+                  />
+                ))}
+              </div>
+            </Box>
+          ))}
         </DialogContent>
         <DialogActions>
             <div className={styles.modalActions}>

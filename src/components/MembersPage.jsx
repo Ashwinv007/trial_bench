@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useContext, useEffect } from 'react';
-import { AuthContext, FirebaseContext } from '../store/Context';
+import { FirebaseContext } from '../store/Context';
 import { collection, getDocs, addDoc, doc, updateDoc, getDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { logActivity } from '../utils/logActivity';
 import {
@@ -29,6 +29,8 @@ import { KeyboardArrowDown, KeyboardArrowRight } from '@mui/icons-material';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
+import { usePermissions } from '../auth/usePermissions';
+import { AuthContext } from '../store/Context';
 
 // Helper function to format birthday for display
 const formatBirthdayDisplay = (day, month) => {
@@ -69,6 +71,7 @@ export default function MembersPage() {
 
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
+  const { hasPermission } = usePermissions();
   const [allMembers, setAllMembers] = useState([]);
   const navigate = useNavigate();
 
@@ -90,12 +93,20 @@ export default function MembersPage() {
   }, [db]);
 
   const handleOpenAddModal = (primaryId = null) => {
+    if (!hasPermission('members:add')) {
+        toast.error("You don't have permission to add members.");
+        return;
+    }
     setEditingMember(null);
     setPrimaryMemberId(primaryId);
     setModalOpen(true);
   };
 
   const handleOpenEditModal = (member) => {
+    if (!hasPermission('members:edit')) {
+        toast.error("You don't have permission to edit members.");
+        return;
+    }
     setEditingMember(member);
     setPrimaryMemberId(member.primaryMemberId || null);
     setModalOpen(true);
@@ -109,6 +120,18 @@ export default function MembersPage() {
 
   const handleSaveMember = async (memberData) => {
     const isEditing = !!editingMember;
+    if (isEditing) {
+        if (!hasPermission('members:edit')) {
+            toast.error("You don't have permission to edit members.");
+            return;
+        }
+    } else {
+        if (!hasPermission('members:add')) {
+            toast.error("You don't have permission to add members.");
+            return;
+        }
+    }
+
     try {
       if (isEditing) {
         const memberDoc = doc(db, "members", editingMember.id);
@@ -153,6 +176,10 @@ export default function MembersPage() {
   };
 
   const handleRemove = async (memberId) => {
+    if (!hasPermission('members:delete')) {
+        toast.error("You don't have permission to delete members.");
+        return;
+    }
     if (window.confirm('Are you sure you want to remove this member? They will be moved to Past Members.')) {
       try {
         const memberDocRef = doc(db, "members", memberId);
@@ -249,6 +276,10 @@ export default function MembersPage() {
   };
 
   const handleExport = () => {
+    if (!hasPermission('members:export')) {
+        toast.error("You don't have permission to export members.");
+        return;
+    }
     const dataToExport = filteredMembers.map(member => ({
       Name: member.name,
       Package: member.package,
@@ -280,7 +311,7 @@ export default function MembersPage() {
         <TableCell>{member.whatsapp}</TableCell>
         <TableCell>{member.email}</TableCell>
         <TableCell colSpan={2}>
-          <Button size="small" onClick={(e) => { e.stopPropagation(); handleRemove(member.id); }}>Remove</Button>
+            {hasPermission('members:delete') && <Button size="small" onClick={(e) => { e.stopPropagation(); handleRemove(member.id); }}>Remove</Button>}
         </TableCell>
       </TableRow>
     ))
@@ -311,12 +342,12 @@ export default function MembersPage() {
             <TableCell onClick={() => handleOpenEditModal(member)}>{member.whatsapp}</TableCell>
             <TableCell onClick={() => handleOpenEditModal(member)}>{member.email}</TableCell>
             <TableCell>
-              <IconButton onClick={(e) => { e.stopPropagation(); handleOpenAddModal(member.id); }} title="Add sub-member" sx={{ color: '#2b7a8e' }}>
+              {hasPermission('members:add') && <IconButton onClick={(e) => { e.stopPropagation(); handleOpenAddModal(member.id); }} title="Add sub-member" sx={{ color: '#2b7a8e' }}>
                 <AddIcon />
-              </IconButton>
+              </IconButton>}
             </TableCell>
             <TableCell>
-              <Button onClick={(e) => { e.stopPropagation(); handleRemove(member.id); }}>Remove</Button>
+              {hasPermission('members:delete') && <Button onClick={(e) => { e.stopPropagation(); handleRemove(member.id); }}>Remove</Button>}
             </TableCell>
           </TableRow>
           {isExpanded && subMembers.map((subMember) => (
@@ -334,7 +365,7 @@ export default function MembersPage() {
               <TableCell>{subMember.whatsapp}</TableCell>
               <TableCell>{subMember.email}</TableCell>
               <TableCell colSpan={3}>
-                <Button size="small" onClick={(e) => { e.stopPropagation(); handleRemove(subMember.id); }}>Remove</Button>
+                {hasPermission('members:delete') && <Button size="small" onClick={(e) => { e.stopPropagation(); handleRemove(subMember.id); }}>Remove</Button>}
               </TableCell>
             </TableRow>
           ))}
@@ -398,14 +429,22 @@ export default function MembersPage() {
             <MenuItem value="All Members">All Members</MenuItem>
             <MenuItem value="Primary Members">Primary Members</MenuItem>
           </Select>
-          <Button
-            variant="contained"
-            startIcon={<UploadFile />}
-            sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
-            onClick={handleExport}
-          >
-            Export
-          </Button>
+            {hasPermission('members:export') && <Button
+                variant="contained"
+                startIcon={<UploadFile />}
+                sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
+                onClick={handleExport}
+            >
+                Export
+            </Button>}
+            {hasPermission('members:add') && <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
+                onClick={() => handleOpenAddModal()}
+            >
+                Add Member
+            </Button>}
         </Box>
 
         <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid #e0e0e0', borderRadius: '8px' }}>

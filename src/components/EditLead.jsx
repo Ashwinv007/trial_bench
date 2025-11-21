@@ -24,6 +24,8 @@ import {
 } from '@mui/material';
 import styles from './AddLead.module.css'; // Reusing styles
 import ConversionModal from './ConversionModal'; // Import the new modal
+import { usePermissions } from '../auth/usePermissions'; // Import usePermissions
+import { toast } from 'sonner';
 
 // Helper function to format birthday
 const formatBirthday = (day, month) => {
@@ -81,6 +83,7 @@ export default function EditLead() {
 
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
+  const { hasPermission } = usePermissions(); // Use the new usePermissions hook
   const navigate = useNavigate();
   const { id } = useParams();
 
@@ -171,6 +174,11 @@ export default function EditLead() {
   };
 
   const handleUpdateLead = async () => {
+    if (!hasPermission('leads:edit')) {
+      toast.error("You don't have permission to edit leads.");
+      return;
+    }
+
     setIsSubmitted(true);
     const newErrors = validateForm(formData);
     setErrors(newErrors);
@@ -227,6 +235,11 @@ export default function EditLead() {
   };
 
   const handleConvert = async (memberData) => {
+    if (!hasPermission('leads:edit') || !hasPermission('members:add') || !hasPermission('agreements:add')) {
+      toast.error("You don't have sufficient permissions to convert this lead.");
+      return;
+    }
+
     try {
       const membersCollection = collection(db, 'members');
       await addDoc(membersCollection, {
@@ -250,6 +263,10 @@ export default function EditLead() {
   };
 
   const handleAddNote = () => {
+    if (!hasPermission('leads:edit')) { // Assuming adding notes is part of editing a lead
+      toast.error("You don't have permission to add notes to leads.");
+      return;
+    }
     if (!note.trim()) return;
 
     const newActivity = {

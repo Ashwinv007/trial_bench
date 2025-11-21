@@ -1,17 +1,19 @@
-import { AddCircleOutline, Person } from '@mui/icons-material';
+import { AddCircleOutline, Person, Delete } from '@mui/icons-material';
 import styles from './Leads.module.css';
 import { useContext, useEffect, useState } from 'react';
-import { FirebaseContext, AuthContext } from '../store/Context';
+import { FirebaseContext } from '../store/Context';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
+import { usePermissions } from '../auth/usePermissions';
 
 export default function Leads() {
   const { db } = useContext(FirebaseContext);
-  const { hasPermission } = useContext(AuthContext);
+  const { hasPermission } = usePermissions();
   const [leads, setLeads] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!hasPermission('leads:view')) return;
     if (db) {
       console.log('Database reference is available:', db);
       const fetchLeads = async () => {
@@ -27,7 +29,7 @@ export default function Leads() {
       };
       fetchLeads();
     }
-  }, [db]);
+  }, [db, hasPermission]);
 
   const getStatusClass = (status) => {
     if (!status) return '';
@@ -47,10 +49,25 @@ export default function Leads() {
   };
 
   const handleRowClick = (leadId) => {
-    if (hasPermission('edit_leads')) {
+    if (hasPermission('leads:edit')) {
       navigate(`/lead/${leadId}`);
     }
   };
+
+  if (!hasPermission('leads:view')) {
+    return (
+        <div className={styles.container}>
+            <div className={styles.content}>
+                <div className={styles.header}>
+                    <div className={styles.headerText}>
+                        <h1 className={styles.title}>Permission Denied</h1>
+                        <p className={styles.subtitle}>You do not have permission to view this page.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -61,7 +78,7 @@ export default function Leads() {
             <h1 className={styles.title}>Leads</h1>
             <p className={styles.subtitle}>Manage your Leads and followUps.</p>
           </div>
-          {hasPermission('add_leads') && (
+          {hasPermission('leads:add') && (
             <button className={styles.addButton} onClick={() => navigate('/add-lead')}>
               <AddCircleOutline className={styles.addIcon} />
               Add Lead
@@ -87,32 +104,32 @@ export default function Leads() {
             <tbody>
               {leads.map((lead) => (
                 <tr key={lead.id}>
-                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('edit_leads') ? 'pointer' : 'default' }}>
+                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('leads:edit') ? 'pointer' : 'default' }}>
                     <span className={styles.nameText}>{lead.name}</span>
                   </td>
-                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('edit_leads') ? 'pointer' : 'default' }}>
+                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('leads:edit') ? 'pointer' : 'default' }}>
                     <span className={`${styles.statusBadge} ${styles[getStatusClass(lead.status)]}`}>
                       {lead.status}
                     </span>
                   </td>
-                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('edit_leads') ? 'pointer' : 'default' }}>
+                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('leads:edit') ? 'pointer' : 'default' }}>
                     <div className={styles.purposeCell}>
                       <Person className={styles.purposeIcon} />
                       <span>{lead.purposeOfVisit}</span>
                     </div>
                   </td>
-                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('edit_leads') ? 'pointer' : 'default' }}>{lead.phone}</td>
-                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('edit_leads') ? 'pointer' : 'default' }}>{lead.convertedWhatsapp}</td>
-                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('edit_leads') ? 'pointer' : 'default' }}>{lead.convertedEmail}</td>
-                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('edit_leads') ? 'pointer' : 'default' }}>
+                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('leads:edit') ? 'pointer' : 'default' }}>{lead.phone}</td>
+                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('leads:edit') ? 'pointer' : 'default' }}>{lead.convertedWhatsapp}</td>
+                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('leads:edit') ? 'pointer' : 'default' }}>{lead.convertedEmail}</td>
+                  <td onClick={() => handleRowClick(lead.id)} style={{ cursor: hasPermission('leads:edit') ? 'pointer' : 'default' }}>
                     <div className={styles.sourceCell}>
                       <span className={styles.sourceType}>{lead.sourceType}</span>
                       <span className={styles.sourceDetail}>{lead.sourceDetail}</span>
                     </div>
                   </td>
                   <td>
-                    {hasPermission('delete_leads') && (
-                      <button onClick={() => handleDelete(lead.id)}>Delete</button>
+                    {hasPermission('leads:delete') && (
+                      <button className={styles.deleteButton} onClick={() => handleDelete(lead.id)}><Delete/></button>
                     )}
                   </td>
                 </tr>
@@ -124,3 +141,4 @@ export default function Leads() {
     </div>
   );
 }
+

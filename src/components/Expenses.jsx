@@ -23,6 +23,7 @@ import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { AuthContext } from '../store/Context';
 import * as XLSX from 'xlsx';
+import { usePermissions } from '../auth/usePermissions';
 
 const initialCategories = [
   'Rent',
@@ -59,7 +60,8 @@ const getCategoryColor = (category) => {
 };
 
 export default function Expenses() {
-  const { user, hasPermission } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
+  const { hasPermission } = usePermissions();
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState(initialCategories);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -84,6 +86,7 @@ export default function Expenses() {
   });
 
   const fetchExpenses = async () => {
+    if (!hasPermission('expenses:view')) return;
     const expensesCollection = collection(db, 'expenses');
     const expensesSnapshot = await getDocs(expensesCollection);
     const expensesList = expensesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -92,7 +95,7 @@ export default function Expenses() {
 
   useEffect(() => {
     fetchExpenses();
-  }, []);
+  }, [hasPermission]);
 
   useEffect(() => {
     if (isReportsModalOpen) {
@@ -134,6 +137,10 @@ export default function Expenses() {
   };
 
   const handleDeleteExpense = async (id) => {
+    if (!hasPermission('expenses:delete')) {
+      toast.error("You don't have permission to delete expenses.");
+      return;
+    }
     if (window.confirm('Are you sure you want to delete this expense?')) {
       await deleteDoc(doc(db, 'expenses', id));
       fetchExpenses();
@@ -374,7 +381,7 @@ export default function Expenses() {
         }
     });
     const monthOrder = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    return Array.from(months).sort((a, b) => monthOrder.indexOf(a) - monthOrder.indexOf(b));
+    return Array.from(months).sort((a, b) => monthOrder.indexOf(a) - b.indexOf(a));
   };
 
   const getCategoryChartData = (categoryBreakdown) => {
@@ -471,6 +478,19 @@ export default function Expenses() {
   const calculateGroupTotal = (expenseGroup) => {
     return expenseGroup.reduce((sum, expense) => sum + parseFloat(expense.amount || 0), 0);
   };
+  
+  if (!hasPermission('expenses:view')) {
+    return (
+        <div className={styles.container}>
+            <div className={styles.header}>
+                <div>
+                    <h1>Permission Denied</h1>
+                    <p className={styles.subtitle}>You do not have permission to view this page.</p>
+                </div>
+            </div>
+        </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -485,7 +505,7 @@ export default function Expenses() {
           </p>
         </div>
         <div className={styles.headerButtons}>
-          {hasPermission('view_expense_reports') && (
+          {hasPermission('expenses:view_reports') && (
             <Button
               variant="outlined"
               startIcon={<Assessment />}
@@ -495,7 +515,7 @@ export default function Expenses() {
               Reports
             </Button>
           )}
-          {hasPermission('export_expenses') && (
+          {hasPermission('expenses:export') && (
             <Button
               variant="outlined"
               startIcon={<FileDownload />}
@@ -505,7 +525,7 @@ export default function Expenses() {
               Export
             </Button>
           )}
-          {hasPermission('manage_settings') && (
+          {hasPermission('expenses:manage_categories') && (
             <Button
               variant="outlined"
               startIcon={<Settings />}
@@ -515,7 +535,7 @@ export default function Expenses() {
               Manage Categories
             </Button>
           )}
-          {hasPermission('add_expenses') && (
+          {hasPermission('expenses:add') && (
             <Button
               variant="contained"
               startIcon={<AddCircleOutline />}
@@ -632,7 +652,7 @@ export default function Expenses() {
                       <td>{expense.addedBy || 'N/A'}</td>
                       <td>
                         <div className={styles.actions}>
-                          {hasPermission('edit_expenses') && (
+                          {hasPermission('expenses:edit') && (
                             <IconButton 
                               size="small" 
                               onClick={() => handleEditExpense(expense)}
@@ -641,7 +661,7 @@ export default function Expenses() {
                               <Edit fontSize="small" />
                             </IconButton>
                           )}
-                          {hasPermission('delete_expenses') && (
+                          {hasPermission('expenses:delete') && (
                             <IconButton 
                               size="small" 
                               onClick={() => handleDeleteExpense(expense.id)}
@@ -679,7 +699,7 @@ export default function Expenses() {
                   <td>{expense.addedBy || 'N/A'}</td>
                   <td>
                     <div className={styles.actions}>
-                      {hasPermission('edit_expenses') && (
+                      {hasPermission('expenses:edit') && (
                         <IconButton 
                           size="small" 
                           onClick={() => handleEditExpense(expense)}
@@ -688,7 +708,7 @@ export default function Expenses() {
                           <Edit fontSize="small" />
                         </IconButton>
                       )}
-                      {hasPermission('delete_expenses') && (
+                      {hasPermission('expenses:delete') && (
                         <IconButton 
                           size="small" 
                           onClick={() => handleDeleteExpense(expense.id)}
@@ -787,7 +807,7 @@ export default function Expenses() {
               >
                 Cancel
               </Button>
-              {((editingExpense && hasPermission('edit_expenses')) || (!editingExpense && hasPermission('add_expenses'))) && (
+              {((editingExpense && hasPermission('expenses:edit')) || (!editingExpense && hasPermission('expenses:add'))) && (
                 <Button 
                   onClick={handleSaveExpense}
                   variant="contained"

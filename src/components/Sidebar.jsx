@@ -16,21 +16,23 @@ import styles from './Sidebar.module.css';
 import { AuthContext } from '../store/Context';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
+import { usePermissions } from '../auth/usePermissions';
 
 const navItems = [
-    { label: 'Dashboard', icon: Dashboard, path: '/', permission: 'view_dashboard' },
-    { label: 'Leads', icon: ContactPage, path: '/leads', permission: 'view_leads' },
-    { label: 'Agreements', icon: Description, path: '/agreements', permission: 'view_agreements' },
-    { label: 'Invoices', icon: MonetizationOn, path: '/invoices', permission: 'view_invoices' },
-    { label: 'Members', icon: People, path: '/members', permission: 'view_members' },
-    { label: 'Past Members', icon: Assignment, path: '/past-members', permission: 'view_members' },
-    { label: 'Expenses', icon: Receipt, path: '/expenses', permission: 'view_expenses' },
-    { label: 'Settings', icon: Settings, path: '/settings', permission: 'manage_settings' },
-    { label: 'Logs', icon: History, path: '/logs', permission: 'view_logs' }
+    { label: 'Dashboard', icon: Dashboard, path: '/' },
+    { label: 'Leads', icon: ContactPage, path: '/leads', permission: 'leads:view' },
+    { label: 'Agreements', icon: Description, path: '/agreements', permission: 'agreements:view' },
+    { label: 'Invoices', icon: MonetizationOn, path: '/invoices', permission: 'invoices:view' },
+    { label: 'Members', icon: People, path: '/members', permission: 'members:view' },
+    { label: 'Past Members', icon: Assignment, path: '/past-members', permission: 'members:view' },
+    { label: 'Expenses', icon: Receipt, path: '/expenses', permission: 'expenses:view' },
+    { label: 'Settings', icon: Settings, path: '/settings', permissions: ['settings:manage_roles', 'settings:manage_users', 'settings:manage_templates'] },
+    { label: 'Logs', icon: History, path: '/logs', permission: 'logs:view' }
 ];
 
 export default function Sidebar() {
-  const { user, hasPermission } = useContext(AuthContext); // Get hasPermission
+  const { user } = useContext(AuthContext);
+  const { hasPermission, hasAtLeastOnePermission } = usePermissions();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -58,8 +60,7 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className={styles.nav}>
         {navItems.map((item) => {
-          // Always show Dashboard, for others check permission
-          const showItem = item.path === '/' ? true : hasPermission(item.permission);
+          const showItem = item.path === '/' ? true : (item.permission ? hasPermission(item.permission) : (item.permissions ? hasAtLeastOnePermission(item.permissions) : false));
           return (
             showItem && (
               <NavLink
