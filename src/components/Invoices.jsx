@@ -539,7 +539,7 @@ export default function Invoices() {
         leadId: client.id,
         legalName: client.memberLegalName || (client.companyName && client.companyName !== 'NA' ? client.companyName : client.name) || '',
         address: client.memberAddress || '',
-        invoiceNumber: '',
+        invoiceNumber: generateInvoiceNumber(invoices),
         date: new Date().toISOString().split('T')[0],
         month: '',
         year: new Date().getFullYear().toString(),
@@ -579,7 +579,7 @@ export default function Invoices() {
       setFormData(updateCalculationsAndDescription(initialData, clients));
       setIsModalOpen(true);
     }
-  }, [clients, hasPermission]);
+  }, [clients, hasPermission, invoices]);
 
   const handleSendInvoiceEmail = async () => {
     if (!invoiceGenerated) {
