@@ -1,28 +1,37 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { usePermissions } from './usePermissions'; // Updated import
+import { usePermissions } from './usePermissions';
 
 const ProtectedRoute = ({ children, permission }) => {
-  const { user, hasPermission, loadingPermissions } = usePermissions(); // Use the hook
+  const { user, hasPermission, hasAtLeastOnePermission, loadingPermissions } = usePermissions();
 
   if (loadingPermissions) {
-    // Optional: Render a loading spinner or a blank screen while permissions are being checked.
-    // This prevents a flash of the redirect before permissions are loaded.
-    return null; // or <LoadingSpinner />
+    // Render nothing while permissions are loading to prevent flashes of incorrect content.
+    return null;
   }
 
   if (!user) {
-    // User is not logged in, redirect to login page
+    // User is not logged in, redirect to login page.
     return <Navigate to="/login" replace />;
   }
 
-  if (!hasPermission(permission)) {
-    // User is logged in but does not have the required permission,
-    // redirect to home or a "not authorized" page.
+  // Determine if the user is allowed to access the route.
+  let isAllowed = false;
+  if (Array.isArray(permission)) {
+    // If permission is an array, check if the user has at least one of them.
+    isAllowed = hasAtLeastOnePermission(permission);
+  } else if (typeof permission === 'string') {
+    // If permission is a string, check for that specific permission.
+    isAllowed = hasPermission(permission);
+  }
+
+  if (!isAllowed) {
+    // User is logged in but does not have the required permission(s).
     return <Navigate to="/" replace />;
   }
 
-  return children; // User has the required permission, render the children
+  // User has the required permission, render the requested component.
+  return children;
 };
 
 export default ProtectedRoute;

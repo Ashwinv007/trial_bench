@@ -27,12 +27,12 @@ const emailTemplateTypes = [
     { id: 'welcome_email', name: 'Welcome Email', defaultSubject: 'Welcome to Our Platform!', defaultBody: `Hi {{username}},
 
 Welcome! We are excited to have you on board.` },
-    { id: 'invoice_email', name: 'Invoice Email', defaultSubject: 'Your Invoice [{{invoice_number}}] is ready', defaultBody: `Hi {{customerName}},
+    { id: 'invoice_email', name: 'Invoice Email', defaultSubject: 'Your Invoice [{{invoice_number}}] is ready', defaultBody: 'Hi {{customerName}},
 
-Please find your invoice attached. You can view it online here: {{invoice_link}}` },
-    { id: 'agreement_email', name: 'Agreement Email', defaultSubject: 'Your Agreement [{{agreement_name}}] is ready', defaultBody: `Hi {{clientName}},
+Please find your invoice attached. You can view it online here: {{invoice_link}}' },
+    { id: 'agreement_email', name: 'Agreement Email', defaultSubject: 'Your Agreement [{{agreement_name}}] is ready', defaultBody: 'Hi {{clientName}},
 
-Please find your agreement attached. You can view it online here: {{agreement_link}}` },
+Please find your agreement attached. You can view it online here: {{agreement_link}}' },
     { id: 'otp_email', name: 'OTP Email', defaultSubject: 'Your One-Time Password', defaultBody: 'Your OTP is: {{otp}}' },
 ];
 
@@ -368,7 +368,7 @@ export default function Settings() {
           logActivity(db, user, 'user_deleted', `User "${userToDelete.email}" was deleted.`, { userId: uid, userEmail: userToDelete.email });
         }
       } catch (error) {
-        toast.error('Failed to delete user.');
+        toast.error(error.message || "Failed to delete user.");
       }
     }
   };
@@ -430,20 +430,19 @@ export default function Settings() {
         </div>
         <div className={styles.headerButtons}>
             {hasPermission('settings:manage_roles') && <Button className={styles.addButton} variant="contained" startIcon={<AddCircleOutline />} onClick={() => handleOpenModal()} sx={{ mr: 1 }}>Add Role</Button>}
-            {hasPermission('settings:manage_users') && <Button className={styles.addButton} variant="contained" startIcon={<AddCircleOutline />} onClick={() => handleOpenAddUserModal()}>Add User</Button>}
+            {hasPermission('settings:manage_users') && <Button className={styles.addButton} variant="contained" startIcon={<AddCircleOutline />} onClick={handleOpenAddUserModal}>Add User</Button>}
         </div>
       </div>
       
       {hasPermission('settings:manage_roles') && (
       <div className={styles.rolesSection}>
-        <h2>User Management</h2>
+        <h2>Role Management</h2>
         <div className={styles.tableContainer}>
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Username</th>
-                <th>User Email</th>
-                <th>Assigned Role</th>
+                <th>Role Name</th>
+                <th>Permissions</th>
                 <th>Actions</th>
               </tr>
             </thead>

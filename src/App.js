@@ -40,7 +40,7 @@ function App() {
         <Route path="/agreements" element={<ProtectedRoute permission="agreements:view"><AgreementsPage /></ProtectedRoute>} />
         <Route path="/invoices" element={<ProtectedRoute permission="invoices:view"><InvoicesPage /></ProtectedRoute>} />
         <Route path="/expenses" element={<ProtectedRoute permission="expenses:view"><ExpensesPage /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute permission="settings:manage_users"><SettingsPage /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute permission={['settings:manage_roles', 'settings:manage_users', 'settings:manage_templates']}><SettingsPage /></ProtectedRoute>} />
         <Route path="/logs" element={<ProtectedRoute permission="logs:view"><LogsPage /></ProtectedRoute>} />
       </Routes>
     </Router>
