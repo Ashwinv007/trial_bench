@@ -436,15 +436,15 @@ export default function Settings() {
       
       {hasPermission('settings:manage_roles') && (
       <div className={styles.rolesSection}>
-        <h2>User Management</h2>
+        <h2>Roles Management</h2>
         <div className={styles.tableContainer}>
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Username</th>
-                <th>User Email</th>
-                <th>Assigned Role</th>
+                <th>Role</th>
+                <th>Permissions</th>
                 <th>Actions</th>
+                
               </tr>
             </thead>
             <tbody>

@@ -200,7 +200,7 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
     }
 
     setFormData({
-      memberLegalName: agreement.memberLegalName || agreement.name || '', // Auto-fill from member name
+      memberLegalName: agreement.name || '',
       memberCIN: agreement.memberCIN || 'Not Applicable',
       memberGST: agreement.memberGST || 'Not Applicable',
       memberPAN: agreement.memberPAN || 'Not Applicable',
