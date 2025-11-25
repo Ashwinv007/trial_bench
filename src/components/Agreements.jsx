@@ -370,7 +370,7 @@ const formatDate = (dateString) => {
     const secondPage = pages[1];
   
     // Prepared By - Page 1
-    firstPage.drawText(agreementData.preparedByNew, {
+    firstPage.drawText(agreementData.preparedByNew || '', {
       x: 60,
       y: 52,
       font: helveticaFont,
@@ -380,7 +380,7 @@ const formatDate = (dateString) => {
   
     // Top Agreement Number - All pages from 2 onwards
     for (let i = 1; i < pages.length; i++) {
-      pages[i].drawText(agreementData.agreementNumber, {
+      pages[i].drawText(agreementData.agreementNumber || '', {
         x: 480,
         y: 729,
         font: helveticaFont,
@@ -388,7 +388,7 @@ const formatDate = (dateString) => {
         color: rgb(0.466, 0.466, 0.466),
       });
       // Client signatory - Page 2 onwards
-      pages[i].drawText(`(${agreementData.memberLegalName})`, {
+      pages[i].drawText(`(${agreementData.memberLegalName || ''})`, {
         x: 89,
         y: 105,
         font: helveticaFont,
@@ -400,22 +400,22 @@ const formatDate = (dateString) => {
     // Page 2 Details
     if (secondPage) {
       // Agreement Details
-      secondPage.drawText(agreementData.serviceAgreementType, { x: 185, y: 394, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(`${agreementData.totalMonthlyPayment} /-`, { x: 275, y: 380, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(agreementData.endDate), { x: 350, y: 408, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(agreementData.startDate), { x: 175, y: 408, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.agreementNumber, { x: 160, y: 437, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(agreementData.agreementDate), { x: 145, y: 451, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.serviceAgreementType || '', { x: 185, y: 394, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(`${agreementData.totalMonthlyPayment || ''} /-`, { x: 275, y: 380, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(agreementData.endDate) || '', { x: 350, y: 408, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(agreementData.startDate) || '', { x: 175, y: 408, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.agreementNumber || '', { x: 160, y: 437, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(agreementData.agreementDate) || '', { x: 145, y: 451, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
   
       // Member Details
-      secondPage.drawText(agreementData.memberLegalName, { x: 170, y: 608, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.memberCIN, { x: 130, y: 594, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.memberGST, { x: 174, y: 579, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.memberPAN, { x: 133, y: 565, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.memberKYC, { x: 133, y: 551, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.memberLegalName || '', { x: 170, y: 608, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.memberCIN || '', { x: 130, y: 594, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.memberGST || '', { x: 174, y: 579, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.memberPAN || '', { x: 133, y: 565, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.memberKYC || '', { x: 133, y: 551, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
   
       // Address (with line wrapping)
-      const address = agreementData.memberAddress.replace(/\n/g, ' ');
+      const address = (agreementData.memberAddress || '').replace(/\n/g, ' ');
       const addressLines = splitTextIntoLines(address, helveticaFont, 9.5, 300);
       let y = 536.5;
       for (const line of addressLines) {
@@ -424,12 +424,12 @@ const formatDate = (dateString) => {
       }
   
       // Client Authorization Details
-      secondPage.drawText(agreementData.clientAuthorizorName, { x: 150, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.clientAuthorizorTitle, { x: 150, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.clientAuthorizorName || '', { x: 150, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.clientAuthorizorTitle || '', { x: 150, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       // secondPage.drawText(formatDate(agreementData.agreementDate), { x: 150, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
   
-      secondPage.drawText(agreementData.authorizorName, { x: 370, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.designation, { x: 370, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.authorizorName || '', { x: 370, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.designation || '', { x: 370, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       const currentDate = new Date();
       secondPage.drawText(formatDate(currentDate), { x: 415, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(formatDate(currentDate), { x: 150, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
@@ -954,6 +954,32 @@ const formatDate = (dateString) => {
                                         Early Exit
                                       </Button>
                                     
+                                  )}
+                                  {selectedAgreement && (
+                                    <Button
+                                      onClick={async () => {
+                                        try {
+                                          const pdfBase64 = await getAgreementPdfBase64(formData);
+                                          const byteCharacters = atob(pdfBase64);
+                                          const byteArray = Uint8Array.from(byteCharacters, char => char.charCodeAt(0));
+                                          const blob = new Blob([byteArray], { type: 'application/pdf' });
+                                          saveAs(blob, `${formData.agreementNumber || 'agreement'}.pdf`);
+                                          toast.success("Agreement downloaded successfully!");
+                                        } catch (error) {
+                                          console.error("Error downloading agreement:", error);
+                                          toast.error("Failed to download agreement.");
+                                        }
+                                      }}
+                                      variant="outlined"
+                                      style={{
+                                        color: '#2b7a8e',
+                                        borderColor: '#2b7a8e',
+                                        textTransform: 'none',
+                                        padding: '8px 24px'
+                                      }}
+                                    >
+                                      Download Current Agreement
+                                    </Button>
                                   )}
                                   <Button 
                                     onClick={handleCloseModal} 
