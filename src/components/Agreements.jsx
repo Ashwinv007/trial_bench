@@ -118,6 +118,13 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
           const leadData = activeLeadSnapshots[index].data();
           return leadData ? { ...agreement, ...leadData } : null;
         }).filter(Boolean);
+
+        combinedActiveData.sort((a, b) => {
+          if (!b.agreementDate) return -1;
+          if (!a.agreementDate) return 1;
+          return new Date(b.agreementDate) - new Date(a.agreementDate);
+        });
+
         setAgreements(combinedActiveData);
 
         // Fetch corresponding leads for terminated agreements
@@ -130,6 +137,13 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
           const leadData = terminatedLeadSnapshots[index].data();
           return leadData ? { ...agreement, ...leadData } : null;
         }).filter(Boolean);
+
+        combinedTerminatedData.sort((a, b) => {
+          if (!b.agreementDate) return -1;
+          if (!a.agreementDate) return 1;
+          return new Date(b.agreementDate) - new Date(a.agreementDate);
+        });
+        
         setTerminatedAgreements(combinedTerminatedData);
 
         // Find the latest agreement by taking the last one in the active agreements array
@@ -202,7 +216,7 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
     }
 
     setFormData({
-      memberLegalName: agreement.name || '',
+      memberLegalName: agreement.memberLegalName || '',
       memberCIN: agreement.memberCIN || 'Not Applicable',
       memberGST: agreement.memberGST || 'Not Applicable',
       memberPAN: agreement.memberPAN || 'Not Applicable',
@@ -556,7 +570,7 @@ const formatDate = (dateString) => {
                   className={hasPermission('agreements:view') ? styles.clickableRow : ''}
                 >
                                     <td>
-                                      <span className={styles.nameText}>{agreement.name}</span>
+                                      <span className={styles.nameText}>{agreement.memberLegalName || agreement.name}</span>
                                     </td>
                                     <td>
                                       {agreement.purposeOfVisit}
@@ -592,7 +606,7 @@ const formatDate = (dateString) => {
                                     className={styles.disabledRow} // Apply a disabled style
                                   >
                                     <td>
-                                      <span className={styles.nameText}>{agreement.name}</span>
+                                      <span className={styles.nameText}>{agreement.memberLegalName || agreement.name}</span>
                                     </td>
                                     <td>
                                       {agreement.purposeOfVisit}
@@ -642,7 +656,7 @@ const formatDate = (dateString) => {
                                 fontSize: '14px',
                                 fontWeight: 400
                               }}>
-                                {agreementGenerated ? 'The agreement has been saved.' : selectedAgreement?.name}
+                                {agreementGenerated ? 'The agreement has been saved.' : (formData.memberLegalName || selectedAgreement?.name)}
                               </p>
                             </div>
                             <IconButton onClick={handleCloseModal} size="small">
