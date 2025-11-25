@@ -3,7 +3,7 @@ import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, Menu
 import { Close } from '@mui/icons-material';
 import styles from './Agreements.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
-import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'; // Added serverTimestamp
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
@@ -120,9 +120,37 @@ export default function Agreements() {
         }).filter(Boolean);
 
         combinedData.sort((a, b) => {
-          if (!b.agreementDate) return -1;
-          if (!a.agreementDate) return 1;
-          return new Date(b.agreementDate) - new Date(a.agreementDate);
+          const getDate = (field) => {
+            if (field) {
+              if (typeof field.toDate === 'function') { // Check if it's a Firestore Timestamp
+                return field.toDate();
+              }
+              if (typeof field === 'string') { // Check if it's an ISO date string
+                return new Date(field);
+              }
+            }
+            return null;
+          };
+
+          const dateA = getDate(a.lastEditedAt || a.createdAt);
+          const dateB = getDate(b.lastEditedAt || b.createdAt);
+
+          if (dateA && dateB) {
+            return dateB.getTime() - dateA.getTime(); // Descending sort
+          }
+          if (dateA) return -1; // a comes first if b has no date
+          if (dateB) return 1;  // b comes first if a has no date
+
+          // Fallback to agreementDate if both lastEditedAt and createdAt are missing or invalid
+          const agreementDateA = a.agreementDate ? new Date(a.agreementDate) : null;
+          const agreementDateB = b.agreementDate ? new Date(b.agreementDate) : null;
+
+          if (agreementDateA && agreementDateB) {
+            return agreementDateB.getTime() - agreementDateA.getTime();
+          }
+          if (agreementDateA) return -1;
+          if (agreementDateB) return 1;
+          return 0;
         });
 
         setAllAgreements(combinedData);
@@ -286,6 +314,7 @@ export default function Agreements() {
         serviceAgreementType: serviceAgreementType,
         clientAuthorizorName: formData.clientAuthorizorName,
         clientAuthorizorTitle: formData.clientAuthorizorTitle,
+        lastEditedAt: serverTimestamp(), // Update last edited timestamp
     };
 
     const agreementRef = doc(db, 'agreements', selectedAgreement.id);
@@ -310,6 +339,7 @@ export default function Agreements() {
             memberGST: formData.memberGST,
             memberPAN: formData.memberPAN,
             memberKYC: formData.memberKYC,
+            lastEditedAt: serverTimestamp(), // Update last edited timestamp for the lead as well
         });
     }
 
@@ -465,7 +495,7 @@ export default function Agreements() {
       setAllAgreements(prev => 
         prev.map(a => 
             a.id === selectedAgreement.id 
-            ? { ...a, status: 'terminated', exitDate: exitDate } 
+            ? { ...a, status: 'terminated', exitDate: exitDate, lastEditedAt: serverTimestamp() } // Assuming callable updates lastEditedAt
             : a
         )
       );
@@ -765,3 +795,4 @@ export default function Agreements() {
     </div>
   );
 }
+

@@ -4,7 +4,7 @@ import { Close, AddCircleOutline, Search as SearchIcon, FilterList as FilterList
 import styles from './Invoices.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
 import { logActivity } from '../utils/logActivity';
-import { collection, getDocs, addDoc, doc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, query, where, serverTimestamp } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
@@ -412,7 +412,7 @@ export default function Invoices() {
 
     if (editingInvoice) {
       const invoiceRef = doc(db, "invoices", editingInvoice.id);
-      await updateDoc(invoiceRef, invoicePayload);
+      await updateDoc(invoiceRef, { ...invoicePayload, lastEditedAt: serverTimestamp() });
       const updatedInvoice = { ...editingInvoice, ...invoicePayload, name: clientName, email: clientEmail };
       setInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? updatedInvoice : inv));
       setInvoiceGenerated(updatedInvoice);
@@ -425,7 +425,7 @@ export default function Invoices() {
       );
     } else {
       try {
-        const docRef = await addDoc(collection(db, "invoices"), invoicePayload);
+        const docRef = await addDoc(collection(db, "invoices"), { ...invoicePayload, createdAt: serverTimestamp(), lastEditedAt: serverTimestamp() });
         const newInvoice = { id: docRef.id, ...invoicePayload, name: clientName, email: clientEmail };
         setInvoices(prev => [...prev, newInvoice]);
         setInvoiceGenerated(newInvoice);
@@ -476,7 +476,7 @@ export default function Invoices() {
   const handlePaymentDateSubmit = async () => {
     if (paymentDate && selectedInvoiceForPayment) {
       const invoiceRef = doc(db, "invoices", selectedInvoiceForPayment.id);
-      await updateDoc(invoiceRef, { paymentStatus: 'Paid', dateOfPayment: paymentDate });
+      await updateDoc(invoiceRef, { paymentStatus: 'Paid', dateOfPayment: paymentDate, lastEditedAt: serverTimestamp() });
       setInvoices(prev => prev.map(inv => inv.id === selectedInvoiceForPayment.id ? { ...inv, paymentStatus: 'Paid', dateOfPayment: paymentDate } : inv));
       setIsPaymentDateModalOpen(false);
       setSelectedInvoiceForPayment(null);
@@ -522,6 +522,32 @@ export default function Invoices() {
     if (yearFilter !== 'All Years') {
       currentInvoices = currentInvoices.filter((invoice) => invoice.year === yearFilter);
     }
+
+    // Sorting logic
+    currentInvoices.sort((a, b) => {
+      const getDate = (field) => {
+        if (field) {
+          if (typeof field.toDate === 'function') { // Check if it's a Firestore Timestamp
+            return field.toDate();
+          }
+          if (typeof field === 'string') { // Check if it's an ISO date string
+            return new Date(field);
+          }
+        }
+        return null;
+      };
+
+      const dateA = getDate(a.lastEditedAt || a.createdAt);
+      const dateB = getDate(b.lastEditedAt || b.createdAt);
+
+      if (dateA && dateB) {
+        return dateB.getTime() - dateA.getTime(); // Descending sort
+      }
+      if (dateA) return -1; // a comes first if b has no date
+      if (dateB) return 1;  // b comes first if a has no date
+      
+      return 0; // No date information to sort by
+    });
 
     return currentInvoices;
   }, [invoicesWithClientData, filterStatus, searchQuery, packageFilter, monthFilter, yearFilter, clients]);

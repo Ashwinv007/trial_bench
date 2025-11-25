@@ -56,8 +56,20 @@ export default function Leads() {
     }
 
     return currentLeads.sort((a, b) => {
-      const dateA = (a.lastEditedAt || a.createdAt)?.toDate();
-      const dateB = (b.lastEditedAt || b.createdAt)?.toDate();
+      const getDate = (field) => {
+        if (field) {
+          if (typeof field.toDate === 'function') { // Check if it's a Firestore Timestamp
+            return field.toDate();
+          }
+          if (typeof field === 'string') { // Check if it's an ISO date string
+            return new Date(field);
+          }
+        }
+        return null;
+      };
+
+      const dateA = getDate(a.lastEditedAt || a.createdAt);
+      const dateB = getDate(b.lastEditedAt || b.createdAt);
 
       if (dateA && dateB) {
         return dateB.getTime() - dateA.getTime();

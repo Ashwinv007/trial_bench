@@ -204,7 +204,8 @@ export default function AddLead() {
         birthdayDay: memberData.birthdayDay,
         birthdayMonth: memberData.birthdayMonth,
         status: "active", 
-        createdAt: new Date().toISOString(),
+        createdAt: serverTimestamp(), // Use serverTimestamp for createdAt
+        lastEditedAt: serverTimestamp(), // Set lastEditedAt on creation
       });
 
       setIsConversionModalOpen(false);
