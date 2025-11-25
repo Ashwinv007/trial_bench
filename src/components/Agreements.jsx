@@ -171,7 +171,7 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
 
 
   const handleRowClick = (agreement) => {
-    if (!hasPermission('agreements:edit')) return;
+    if (!hasPermission('agreements:view')) return;
     setAgreementGenerated(null);
     setSelectedAgreement(agreement);
 
@@ -547,7 +547,7 @@ const formatDate = (dateString) => {
                 <tr 
                   key={agreement.id} 
                   onClick={() => handleRowClick(agreement)}
-                  className={hasPermission('agreements:edit') ? styles.clickableRow : ''}
+                  className={hasPermission('agreements:view') ? styles.clickableRow : ''}
                 >
                                     <td>
                                       <span className={styles.nameText}>{agreement.name}</span>
@@ -704,6 +704,7 @@ const formatDate = (dateString) => {
                                       fullWidth
                                       variant="outlined"
                                       size="small"
+                                      disabled={!hasPermission('agreements:edit')}
                                     />
                                     {/* Removed Title field */}
                                     <TextField
@@ -714,6 +715,7 @@ const formatDate = (dateString) => {
                                       fullWidth
                                       variant="outlined"
                                       size="small"
+                                      disabled={!hasPermission('agreements:edit')}
                                     />
                                     <TextField
                                       label="Member GST Number"
@@ -723,6 +725,7 @@ const formatDate = (dateString) => {
                                       fullWidth
                                       variant="outlined"
                                       size="small"
+                                      disabled={!hasPermission('agreements:edit')}
                                     />
                                     <TextField
                                       label="Member PAN"
@@ -732,6 +735,7 @@ const formatDate = (dateString) => {
                                       fullWidth
                                       variant="outlined"
                                       size="small"
+                                      disabled={!hasPermission('agreements:edit')}
                                     />
                                     <TextField
                                       label="Member KYC"
@@ -741,6 +745,7 @@ const formatDate = (dateString) => {
                                       fullWidth
                                       variant="outlined"
                                       size="small"
+                                      disabled={!hasPermission('agreements:edit')}
                                     />
                                     <TextField
                                       label="Member Address"
@@ -753,6 +758,7 @@ const formatDate = (dateString) => {
                                       multiline
                                       rows={2}
                                       style={{ gridColumn: '1 / -1' }}
+                                      disabled={!hasPermission('agreements:edit')}
                                     />
                                   </div>
                                 </div>
@@ -769,6 +775,7 @@ const formatDate = (dateString) => {
                                       fullWidth
                                       variant="outlined"
                                       size="small"
+                                      disabled={!hasPermission('agreements:edit')}
                                     />
                                     <TextField
                                       label="Title"
@@ -778,6 +785,7 @@ const formatDate = (dateString) => {
                                       fullWidth
                                       variant="outlined"
                                       size="small"
+                                      disabled={!hasPermission('agreements:edit')}
                                     />
                                   </div>
                                 </div>
@@ -792,6 +800,7 @@ const formatDate = (dateString) => {
                                       onChange={(newValue) => handleDateChange('agreementDate', newValue)}
                                       format="DD/MM/YYYY"
                                       slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small' } }}
+                                      disabled={!hasPermission('agreements:edit')}
                                     />
                                     <TextField
                                       label="Agreement Number"
@@ -809,6 +818,7 @@ const formatDate = (dateString) => {
                                       onChange={(newValue) => handleDateChange('startDate', newValue)}
                                       format="DD/MM/YYYY"
                                       slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small' } }}
+                                      disabled={!hasPermission('agreements:edit')}
                                     />
                                     <TextField
                                       label="Length of Agreement"
@@ -819,6 +829,7 @@ const formatDate = (dateString) => {
                                       variant="outlined"
                                       size="small"
                                       select
+                                      disabled={!hasPermission('agreements:edit')}
                                     >
                                       {[...Array(11).keys()].map((i) => (
                                         <MenuItem key={i + 1} value={i + 1}>
@@ -832,6 +843,7 @@ const formatDate = (dateString) => {
                                       onChange={(newValue) => handleDateChange('endDate', newValue)}
                                       format="DD/MM/YYYY"
                                       slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small', disabled: true } }}
+                                      disabled={!hasPermission('agreements:edit')}
                                     />
                                     <TextField
                                       label="Package"
@@ -842,6 +854,7 @@ const formatDate = (dateString) => {
                                       variant="outlined"
                                       size="small"
                                       select
+                                      disabled={!hasPermission('agreements:edit')}
                                     >
                                       <MenuItem value="">Select Package</MenuItem>
                                       <MenuItem value="Dedicated Desk">Dedicated Desk</MenuItem>
@@ -861,6 +874,7 @@ const formatDate = (dateString) => {
                                         variant="outlined"
                                         size="small"
                                         InputProps={{ inputProps: { min: 1 } }}
+                                        disabled={!hasPermission('agreements:edit')}
                                     />
                                     {isOtherPackage && (
                                         <TextField
@@ -872,6 +886,7 @@ const formatDate = (dateString) => {
                                             variant="outlined"
                                             size="small"
                                             style={{ gridColumn: '1 / -1' }}
+                                            disabled={!hasPermission('agreements:edit')}
                                         />
                                     )}
                                     <TextField
@@ -883,6 +898,7 @@ const formatDate = (dateString) => {
                                       variant="outlined"
                                       size="small"
                                       type="number"
+                                      disabled={!hasPermission('agreements:edit')}
                                     />
                   
                                   </div>
@@ -899,6 +915,7 @@ const formatDate = (dateString) => {
                                       fullWidth
                                       variant="outlined"
                                       size="small"
+                                      disabled={!hasPermission('agreements:edit')}
                                     />
                                     <TextField
                                       label="Prepared By"
@@ -908,6 +925,7 @@ const formatDate = (dateString) => {
                                       fullWidth
                                       variant="outlined"
                                       size="small"
+                                      disabled={!hasPermission('agreements:edit')}
                                     />
                                     <TextField
                                       label="Designation"
@@ -917,6 +935,7 @@ const formatDate = (dateString) => {
                                       fullWidth
                                       variant="outlined"
                                       size="small"
+                                      disabled={!hasPermission('agreements:edit')}
                                     />
                                   </div>
                                 </div>
