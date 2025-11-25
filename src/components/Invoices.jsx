@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, Autocomplete, Select, MenuItem, InputAdornment } from '@mui/material';
-import { Close, AddCircleOutline, Description, Search as SearchIcon, FilterList as FilterListIcon, RemoveCircleOutline } from '@mui/icons-material';
+import { Close, AddCircleOutline, Search as SearchIcon, FilterList as FilterListIcon, RemoveCircleOutline } from '@mui/icons-material';
 import styles from './Invoices.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
 import { logActivity } from '../utils/logActivity';
@@ -713,7 +713,7 @@ export default function Invoices() {
                   <td>
                     {hasPermission('invoices:add') && (
                       <IconButton onClick={(e) => handleGenerateInvoiceForMember(invoice.leadId, e)} size="small" color="primary" aria-label="generate invoice">
-                        <Description />
+                        <AddCircleOutline />
                       </IconButton>
                     )}
                   </td>

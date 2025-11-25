@@ -600,7 +600,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
 
       <DialogActions sx={{ p: '16px 24px 24px', justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', gap: 1.5 }}>
-            {editMember && editMember.primary && hasPermission('members:edit') && (
+            {editMember && editMember.primary && hasPermission('members:replace') && (
             <>
                 <Button
                     onClick={() => setReplacementAction('replace')}

@@ -13,7 +13,7 @@ import { usePermissions } from '../auth/usePermissions';
 
 const permissionGroups = {
     'Leads': ['leads:view', 'leads:add', 'leads:edit', 'leads:delete'],
-    'Clients & Members': ['members:view', 'members:add', 'members:edit', 'members:delete', 'members:export'],
+    'Clients & Members': ['members:view', 'members:add', 'members:edit', 'members:delete', 'members:export', 'members:replace'],
     'Agreements': ['agreements:view', 'agreements:add', 'agreements:edit', 'agreements:delete', 'agreements:early_exit'],
     'Invoices': ['invoices:view', 'invoices:add', 'invoices:edit', 'invoices:delete'],
     'Expenses': ['expenses:view', 'expenses:add', 'expenses:edit', 'expenses:delete', 'expenses:export', 'expenses:view_reports', 'expenses:manage_categories'],
@@ -177,7 +177,13 @@ export default function Settings() {
     if (role) {
       setEditingRole(role);
       setRoleName(role.name);
-      setSelectedPermissions(role.permissions || []);
+      let permissions = role.permissions || [];
+      if (permissions.includes('leads:add') || permissions.includes('leads:edit')) {
+        if (!permissions.includes('members:add')) {
+          permissions = [...permissions, 'members:add'];
+        }
+      }
+      setSelectedPermissions(permissions);
     } else {
       setEditingRole(null);
       setRoleName('');
@@ -190,7 +196,15 @@ export default function Settings() {
 
   const handleSaveRole = async () => {
     if (!roleName) return toast.error('Role name cannot be empty');
-    const permissionsToSave = [...new Set([...selectedPermissions, 'agreements:add'])];
+    
+    let permissionsToSave = [...selectedPermissions];
+    if (permissionsToSave.includes('leads:add') || permissionsToSave.includes('leads:edit')) {
+        if (!permissionsToSave.includes('members:add')) {
+            permissionsToSave.push('members:add');
+        }
+    }
+    permissionsToSave = [...new Set([...permissionsToSave, 'agreements:add'])];
+
     const roleData = { name: roleName, permissions: permissionsToSave };
     try {
       if (editingRole) {
@@ -227,13 +241,27 @@ export default function Settings() {
 
   const handlePermissionChange = (permission) => {
     if (permission === 'all') {
-      setSelectedPermissions(prev => prev.includes('all') ? [] : allPermissions.filter(p => p !== 'all'));
+      setSelectedPermissions(prev => prev.includes('all') ? ['agreements:add'] : allPermissions.filter(p => p !== 'all'));
     } else {
-      setSelectedPermissions(prev => 
-        prev.includes(permission) 
-          ? prev.filter(p => p !== permission && p !== 'all') 
-          : [...prev, permission]
-      );
+      setSelectedPermissions(prev => {
+        let newPerms;
+        if (prev.includes(permission)) {
+          newPerms = prev.filter(p => p !== permission && p !== 'all');
+        } else {
+          newPerms = [...prev, permission];
+        }
+
+        // if leads:add or leads:edit is enabled, also enable members:add
+        if (permission === 'leads:add' || permission === 'leads:edit') {
+          if (newPerms.includes('leads:add') || newPerms.includes('leads:edit')) {
+            if (!newPerms.includes('members:add')) {
+              newPerms.push('members:add');
+            }
+          }
+        }
+        
+        return newPerms;
+      });
     }
   };
 
@@ -591,14 +619,18 @@ export default function Settings() {
                     <div className={styles.permissionsGrid} style={{ paddingLeft: '2rem' }}>
                         {otherPermissions.map(permission => {
                             const isAddAgreement = permission === 'agreements:add';
+                            const isAddMember = permission === 'members:add';
+                            const leadsAddOrEditEnabled = selectedPermissions.includes('leads:add') || selectedPermissions.includes('leads:edit');
+                            const isAddMemberLocked = isAddMember && leadsAddOrEditEnabled;
+
                             return (
                                 <FormControlLabel
                                     key={permission}
                                     control={
                                     <Checkbox
-                                        checked={selectedPermissions.includes(permission) || selectedPermissions.includes('all') || isAddAgreement}
+                                        checked={selectedPermissions.includes(permission) || selectedPermissions.includes('all') || isAddAgreement || isAddMemberLocked}
                                         onChange={() => handlePermissionChange(permission)}
-                                        disabled={!isViewEnabled || selectedPermissions.includes('all') || isAddAgreement}
+                                        disabled={!isViewEnabled || selectedPermissions.includes('all') || isAddAgreement || isAddMemberLocked}
                                     />
                                     }
                                     label={permission.split(':')[1].replace(/_/g, ' ')}
