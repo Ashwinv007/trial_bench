@@ -274,7 +274,16 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
                     {members.map((member) => (
                       <Card key={member.id} className={styles.agreementCard}>
                         <CardContent>
-                          <Typography variant="h6" sx={{ mb: 1 }}>{member.name}</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                            <Typography variant="h6">{member.name}</Typography>
+                            {member.primary && (
+                              <Chip
+                                label="Primary Member"
+                                size="small"
+                                sx={{ ml: 1, backgroundColor: '#2b7a8e', color: 'white', fontWeight: 600 }}
+                              />
+                            )}
+                          </Box>
                           {member.package && <Chip label={member.package} size="small" sx={{ mb: 1 }} />}
                           <Typography variant="body2" color="text.secondary">Email: {member.email || '-'}</Typography>
                           <Typography variant="body2" color="text.secondary">WhatsApp: {member.whatsapp || '-'}</Typography>

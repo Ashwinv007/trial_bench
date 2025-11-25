@@ -617,7 +617,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
                 onClick={() => handleViewProfile(editMember)}
                 variant="outlined"
             >
-                View Lead Profile
+                View Client Profile
             </Button>
             )}
             <Button onClick={onClose} variant="outlined">Cancel</Button>
