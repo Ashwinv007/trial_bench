@@ -241,6 +241,7 @@ export default function EditLead() {
     }
 
     try {
+      // Create Member
       const membersCollection = collection(db, 'members');
       await addDoc(membersCollection, {
         ...memberData,
@@ -249,10 +250,44 @@ export default function EditLead() {
         createdAt: new Date().toISOString(),
       });
 
+      // Update Lead Status
       const leadRef = doc(db, "leads", id);
       await updateDoc(leadRef, {
         ...formData,
         status: 'Converted',
+      });
+
+      // Create Agreement Document
+      const agreementsCollection = collection(db, 'agreements');
+      await addDoc(agreementsCollection, {
+        leadId: id,
+        name: formData.name, // Use lead's name
+        memberLegalName: "",
+        memberAddress: "", 
+        memberCIN: "Not Applicable", 
+        memberGST: "Not Applicable", 
+        memberPAN: "Not Applicable", 
+        memberKYC: "Not Applicable", 
+        agreementDate: new Date().toISOString().split('T')[0], 
+        agreementNumber: "", 
+        startDate: new Date().toISOString().split('T')[0], 
+        endDate: "", 
+        servicePackage: memberData.package, 
+        serviceQuantity: 1, 
+        totalMonthlyPayment: "", 
+        authorizorName: "", 
+        designation: "", 
+        preparedByNew: "", 
+        clientAuthorizorName: "", 
+        clientAuthorizorTitle: "", 
+        agreementLength: "", 
+        convertedEmail: memberData.email, 
+        phone: memberData.whatsapp, 
+        purposeOfVisit: memberData.package, 
+        birthdayDay: memberData.birthdayDay,
+        birthdayMonth: memberData.birthdayMonth,
+        status: "active", 
+        createdAt: new Date().toISOString(),
       });
 
       setIsConversionModalOpen(false);

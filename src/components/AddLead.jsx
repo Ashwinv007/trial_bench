@@ -171,8 +171,8 @@ export default function AddLead() {
       const agreementsCollection = collection(db, 'agreements');
       await addDoc(agreementsCollection, {
         leadId: newlyCreatedLeadId,
-        name: memberData.name,
-        memberLegalName: memberData.name,
+        name: formData.name, // Use lead's name
+        memberLegalName: "",
         memberAddress: "", 
         memberCIN: "Not Applicable", 
         memberGST: "Not Applicable", 

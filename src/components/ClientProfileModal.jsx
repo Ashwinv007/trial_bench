@@ -3,13 +3,14 @@ import { Dialog, DialogContent, IconButton, Tabs, Tab, Card, CardContent, Button
 import { Close, Email, Phone, Cake, Business } from '@mui/icons-material';
 import styles from './ClientProfile.module.css';
 import { FirebaseContext } from '../store/Context';
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, where, documentId } from 'firebase/firestore';
 
 export default function ClientProfileModal({ open, onClose, clientId }) {
   const { db } = useContext(FirebaseContext);
   const [client, setClient] = useState(null);
   const [agreements, setAgreements] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
 
@@ -52,6 +53,40 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
         } else {
           setInvoices([]);
         }
+        
+        // 4. Fetch members related to the lead (primary and sub-members)
+        const primaryMembersQuery = query(collection(db, 'members'), where('leadId', '==', clientId));
+        const primaryMembersSnapshot = await getDocs(primaryMembersQuery);
+        const primaryMembers = primaryMembersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        const subMemberIds = primaryMembers.flatMap(member => member.subMembers || []);
+        let subMembers = [];
+
+        if (subMemberIds.length > 0) {
+            const chunks = [];
+            for (let i = 0; i < subMemberIds.length; i += 30) {
+                chunks.push(subMemberIds.slice(i, i + 30));
+            }
+            
+            const subMemberPromises = chunks.map(chunk => {
+                const subMembersQuery = query(collection(db, 'members'), where(documentId(), 'in', chunk));
+                return getDocs(subMembersQuery);
+            });
+
+            const subMemberSnapshots = await Promise.all(subMemberPromises);
+            subMembers = subMemberSnapshots.flatMap(snapshot => snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        }
+
+        const allRelatedMembers = [...primaryMembers, ...subMembers];
+        const uniqueMembers = Array.from(new Map(allRelatedMembers.map(m => [m.id, m])).values());
+        
+        uniqueMembers.sort((a, b) => {
+            if (a.primary && !b.primary) return -1;
+            if (!a.primary && b.primary) return 1;
+            return (a.name || '').localeCompare(b.name || '');
+        });
+
+        setMembers(uniqueMembers);
 
       } catch (error) {
         console.error("Error fetching client data:", error);
@@ -71,6 +106,7 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
       setClient(null);
       setAgreements([]);
       setInvoices([]);
+      setMembers([]);
       setLoading(true);
       setActiveTab(0);
     }
@@ -124,6 +160,9 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
       );
     }
 
+    const displayName = client.memberLegalName || client.name;
+    const secondaryText = client.memberLegalName ? client.name : client.companyName;
+
     return (
       <div className={styles.container}>
         <div className={styles.header}>
@@ -139,10 +178,10 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
           <div className={styles.profileSection}>
             <div className={styles.profileHeader}>
               <div className={styles.avatarSection}>
-                <div className={styles.avatar}>{getInitials(client.name)}</div>
+                <div className={styles.avatar}>{getInitials(displayName)}</div>
                 <div className={styles.basicInfo}>
-                  <h3 className={styles.clientName}>{client.name}</h3>
-                  {client.companyName && <Typography variant="body2" color="text.secondary">{client.companyName}</Typography>}
+                  <h3 className={styles.clientName}>{displayName}</h3>
+                  {secondaryText && <Typography variant="body2" color="text.secondary">{secondaryText}</Typography>}
                 </div>
               </div>
             </div>
@@ -158,6 +197,7 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
             <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} className={styles.tabs}>
               <Tab label="AGREEMENTS" />
               <Tab label="INVOICES" />
+              <Tab label="MEMBERS" />
             </Tabs>
 
             {activeTab === 0 && (
@@ -216,6 +256,28 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
                             {invoice.description && <div className={styles.invoiceDetailRow}><span className={styles.invoiceLabel}>Description:</span><span className={styles.invoiceValue}>{invoice.description}</span></div>}
                             {invoice.dateOfPayment && <div className={styles.invoiceDetailRow}><span className={styles.invoiceLabel}>Payment Date:</span><span className={styles.invoiceValue}>{formatDate(invoice.dateOfPayment)}</span></div>}
                           </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {activeTab === 2 && (
+              <div className={styles.tabContent}>
+                <h4 className={styles.tabSectionTitle}>Associated Members</h4>
+                {members.length === 0 ? (
+                  <div className={styles.emptyState}><p>No members found for this client</p></div>
+                ) : (
+                  <div className={styles.agreementsList}>
+                    {members.map((member) => (
+                      <Card key={member.id} className={styles.agreementCard}>
+                        <CardContent>
+                          <Typography variant="h6" sx={{ mb: 1 }}>{member.name}</Typography>
+                          {member.package && <Chip label={member.package} size="small" sx={{ mb: 1 }} />}
+                          <Typography variant="body2" color="text.secondary">Email: {member.email || '-'}</Typography>
+                          <Typography variant="body2" color="text.secondary">WhatsApp: {member.whatsapp || '-'}</Typography>
                         </CardContent>
                       </Card>
                     ))}
