@@ -14,6 +14,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
+import ExitDateModal from './ExitDateModal';
 
 const generateAgreementNumber = (memberPackageName, allAgreements) => {
   if (!memberPackageName) {
@@ -64,6 +65,7 @@ export default function Agreements() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isOtherPackage, setIsOtherPackage] = useState(false);
   const [agreementGenerated, setAgreementGenerated] = useState(null);
+  const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [latestAuthDetails, setLatestAuthDetails] = useState({ // New state for latest auth details
     authorizorName: '',
     designation: '',
@@ -444,37 +446,41 @@ const formatDate = (dateString) => {
     return btoa(binary);
   };
   const handleEarlyExit = async () => {
-    if (!hasPermission('agreements:edit')) {
-        toast.error("You don't have permission to terminate agreements.");
-        return;
+    if (!hasPermission('agreements:early_exit')) {
+      toast.error("You don't have permission to terminate agreements.");
+      return;
     }
     if (!selectedAgreement) return;
+    setIsExitModalOpen(true);
+  };
 
-    if (window.confirm(`Are you sure you want to perform an early exit for the agreement with ${selectedAgreement.name}? This will move the primary member and all sub-members to past members and mark the agreement as terminated.`)) {
-      try {
-        // Call the Firebase Cloud Function
-        const result = await earlyExitAgreementCallable({ agreementId: selectedAgreement.id });
-        toast.success(result.data.message);
+  const handleEarlyExitConfirm = async (exitDate) => {
+    if (!selectedAgreement) return;
+    try {
+      // Call the Firebase Cloud Function
+      const result = await earlyExitAgreementCallable({ agreementId: selectedAgreement.id, exitDate: exitDate });
+      toast.success(result.data.message);
 
-        // Update local state: move the terminated agreement from active to terminated list
-        setAgreements(prev => prev.filter(a => a.id !== selectedAgreement.id));
-        setTerminatedAgreements(prev => {
-          const updatedSelectedAgreement = { ...selectedAgreement, status: 'terminated' };
-          return [...prev, updatedSelectedAgreement];
-        });
-        
-        logActivity(
-          db,
-          user,
-          'agreement_early_exit',
-          `Agreement "${selectedAgreement.agreementNumber}" for "${selectedAgreement.name}" was terminated early.`,
-          { agreementId: selectedAgreement.id, agreementNumber: selectedAgreement.agreementNumber, memberName: selectedAgreement.name }
-        );
-        handleCloseModal();
-      } catch (error) {
-        console.error("Error performing early exit:", error);
-        toast.error(error.message || "Failed to perform early exit.");
-      }
+      // Update local state: move the terminated agreement from active to terminated list
+      setAgreements(prev => prev.filter(a => a.id !== selectedAgreement.id));
+      setTerminatedAgreements(prev => {
+        const updatedSelectedAgreement = { ...selectedAgreement, status: 'terminated' };
+        return [...prev, updatedSelectedAgreement];
+      });
+      
+      logActivity(
+        db,
+        user,
+        'agreement_early_exit',
+        `Agreement "${selectedAgreement.agreementNumber}" for "${selectedAgreement.name}" was terminated early.`,
+        { agreementId: selectedAgreement.id, agreementNumber: selectedAgreement.agreementNumber, memberName: selectedAgreement.name }
+      );
+      handleCloseModal();
+    } catch (error) {
+      console.error("Error performing early exit:", error);
+      toast.error(error.message || "Failed to perform early exit.");
+    } finally {
+      setIsExitModalOpen(false);
     }
   };
 
@@ -1032,6 +1038,14 @@ const formatDate = (dateString) => {
                             )}
                           </DialogContent>
                         </Dialog>
+                        {isExitModalOpen && (
+                          <ExitDateModal
+                            open={isExitModalOpen}
+                            onClose={() => setIsExitModalOpen(false)}
+                            onConfirm={handleEarlyExitConfirm}
+                            memberName={selectedAgreement?.name}
+                          />
+                        )}
                       </div>
                     );
                   }

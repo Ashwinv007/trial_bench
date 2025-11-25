@@ -25,6 +25,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import AddIcon from '@mui/icons-material/Add';
 import UploadFile from '@mui/icons-material/UploadFile';
 import MemberModal from './MemberModal';
+import ExitDateModal from './ExitDateModal';
 import { KeyboardArrowDown, KeyboardArrowRight } from '@mui/icons-material';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -69,6 +70,8 @@ export default function MembersPage() {
   const [primaryMemberId, setPrimaryMemberId] = useState(null);
   const [expandedRows, setExpandedRows] = useState({});
   const [initialModalAction, setInitialModalAction] = useState(null);
+  const [isExitModalOpen, setIsExitModalOpen] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState(null);
 
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
@@ -177,46 +180,45 @@ export default function MembersPage() {
     }
   };
 
-  const handleRemove = async (memberId) => {
-    if (!hasPermission('members:delete')) {
-        toast.error("You don't have permission to delete members.");
-        return;
-    }
-    if (window.confirm('Are you sure you want to remove this member? They will be moved to Past Members.')) {
-      try {
-        const memberDocRef = doc(db, "members", memberId);
-        const memberDoc = await getDoc(memberDocRef);
+  const handleRemoveConfirm = async (exitDate) => {
+    if (!memberToRemove) return;
+    const memberId = memberToRemove.id;
+    try {
+      const memberDocRef = doc(db, "members", memberId);
+      const memberDoc = await getDoc(memberDocRef);
 
-        if (memberDoc.exists()) {
-          const memberData = memberDoc.data();
-          await addDoc(collection(db, "past_members"), { ...memberData, removedAt: new Date() });
+      if (memberDoc.exists()) {
+        const memberData = memberDoc.data();
+        await addDoc(collection(db, "past_members"), { ...memberData, removedAt: exitDate });
 
-          const allDocs = await getDocs(collection(db, "members"));
-          for (const d of allDocs.docs) {
-            const data = d.data();
-            if (data.subMembers && data.subMembers.includes(memberId)) {
-              const updatedSubMembers = data.subMembers.filter(id => id !== memberId);
-              await updateDoc(d.ref, { subMembers: updatedSubMembers });
-            }
+        const allDocs = await getDocs(collection(db, "members"));
+        for (const d of allDocs.docs) {
+          const data = d.data();
+          if (data.subMembers && data.subMembers.includes(memberId)) {
+            const updatedSubMembers = data.subMembers.filter(id => id !== memberId);
+            await updateDoc(d.ref, { subMembers: updatedSubMembers });
           }
-          
-          await deleteDoc(doc(db, "members", memberId));
-          setAllMembers(allMembers.filter(member => member.id !== memberId));
-          toast.success("Member moved to Past Members successfully!");
-          logActivity(
-            db,
-            user,
-            'member_removed',
-            `Member "${memberData.name}" was removed and moved to Past Members.`,
-            { memberId: memberId, memberName: memberData.name }
-          );
-        } else {
-          toast.error("Member not found.");
         }
-      } catch (error) {
-        console.error("Error removing member: ", error);
-        toast.error("Failed to remove member.");
+        
+        await deleteDoc(doc(db, "members", memberId));
+        setAllMembers(allMembers.filter(member => member.id !== memberId));
+        toast.success("Member moved to Past Members successfully!");
+        logActivity(
+          db,
+          user,
+          'member_removed',
+          `Member "${memberData.name}" was removed and moved to Past Members.`,
+          { memberId: memberId, memberName: memberData.name }
+        );
+      } else {
+        toast.error("Member not found.");
       }
+    } catch (error) {
+      console.error("Error removing member: ", error);
+      toast.error("Failed to remove member.");
+    } finally {
+      setIsExitModalOpen(false);
+      setMemberToRemove(null);
     }
   };
 
@@ -230,7 +232,12 @@ export default function MembersPage() {
         setInitialModalAction('removeAndReplace');
         setModalOpen(true);
     } else {
-        handleRemove(member.id);
+        if (!hasPermission('members:delete')) {
+            toast.error("You don't have permission to delete members.");
+            return;
+        }
+        setMemberToRemove(member);
+        setIsExitModalOpen(true);
     }
   };
 
@@ -504,6 +511,14 @@ export default function MembersPage() {
           onSave={handleSaveMember}
           primaryMemberId={primaryMemberId}
           initialAction={initialModalAction}
+        />
+      )}
+      {isExitModalOpen && (
+        <ExitDateModal
+            open={isExitModalOpen}
+            onClose={() => setIsExitModalOpen(false)}
+            onConfirm={handleRemoveConfirm}
+            memberName={memberToRemove?.name}
         />
       )}
     </Box>
