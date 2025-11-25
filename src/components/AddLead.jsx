@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect } from 'react';
 import { FirebaseContext, AuthContext } from '../store/Context';
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore'; // Added updateDoc
+import { collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore'; // Added serverTimestamp
 import { useNavigate } from 'react-router-dom';
 import {
   CheckCircle,
@@ -135,7 +135,12 @@ export default function AddLead() {
 
     try {
       const leadsCollection = collection(db, 'leads');
-      const newLeadData = { ...formData, activities: activities };
+      const newLeadData = {
+        ...formData,
+        activities: activities,
+        createdAt: serverTimestamp(), // Set creation timestamp
+        lastEditedAt: serverTimestamp(), // Set last edited timestamp on creation
+      };
       const leadDocRef = await addDoc(leadsCollection, newLeadData);
       const leadId = leadDocRef.id;
       setNewlyCreatedLeadId(leadId); // Store the new lead ID
@@ -166,6 +171,7 @@ export default function AddLead() {
       const leadRef = doc(db, "leads", newlyCreatedLeadId);
       await updateDoc(leadRef, {
         status: 'Converted',
+        lastEditedAt: serverTimestamp(), // Update last edited timestamp
       });
 
       // Create agreement document

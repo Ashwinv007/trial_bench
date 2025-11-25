@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect } from 'react';
 import { FirebaseContext, AuthContext } from '../store/Context';
-import { doc, getDoc, updateDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore'; // Added serverTimestamp
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   CheckCircle, 
@@ -25,7 +25,7 @@ import {
 import styles from './AddLead.module.css'; // Reusing styles
 import ConversionModal from './ConversionModal'; // Import the new modal
 import ClientProfileModal from './ClientProfileModal';
-import { usePermissions } from '../auth/usePermissions'; // Import usePermissions
+import { usePermissions } from '../auth/usePermissions'; // Use the new usePermissions hook
 import { toast } from 'sonner';
 
 // Helper function to format birthday
@@ -229,7 +229,8 @@ export default function EditLead() {
       const leadRef = doc(db, "leads", id);
       await updateDoc(leadRef, {
         ...formData,
-        activities: newActivities
+        activities: newActivities,
+        lastEditedAt: serverTimestamp(), // Update last edited timestamp
       });
       navigate('/leads');
     } catch (error) {
@@ -258,6 +259,7 @@ export default function EditLead() {
       await updateDoc(leadRef, {
         ...formData,
         status: 'Converted',
+        lastEditedAt: serverTimestamp(), // Update last edited timestamp
       });
 
       // Create Agreement Document
