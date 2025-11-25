@@ -68,6 +68,7 @@ export default function MembersPage() {
   const [editingMember, setEditingMember] = useState(null);
   const [primaryMemberId, setPrimaryMemberId] = useState(null);
   const [expandedRows, setExpandedRows] = useState({});
+  const [initialModalAction, setInitialModalAction] = useState(null);
 
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
@@ -116,6 +117,7 @@ export default function MembersPage() {
     setModalOpen(false);
     setEditingMember(null);
     setPrimaryMemberId(null);
+    setInitialModalAction(null);
   };
 
   const handleSaveMember = async (memberData) => {
@@ -218,6 +220,20 @@ export default function MembersPage() {
     }
   };
 
+  const handleRemoveClick = (member) => {
+    if (member.primary) {
+        if (!hasPermission('members:edit')) {
+            toast.error("You don't have permission to replace members.");
+            return;
+        }
+        setEditingMember(member);
+        setInitialModalAction('removeAndReplace');
+        setModalOpen(true);
+    } else {
+        handleRemove(member.id);
+    }
+  };
+
   const toggleRow = (memberId) => {
     setExpandedRows((prev) => ({ ...prev, [memberId]: !prev[memberId] }));
   };
@@ -311,7 +327,7 @@ export default function MembersPage() {
         <TableCell>{member.whatsapp}</TableCell>
         <TableCell>{member.email}</TableCell>
         <TableCell colSpan={2}>
-            {hasPermission('members:delete') && <Button size="small" onClick={(e) => { e.stopPropagation(); handleRemove(member.id); }}>Remove</Button>}
+            {hasPermission('members:delete') && <Button size="small" color="error" onClick={(e) => { e.stopPropagation(); handleRemoveClick(member); }}>Remove</Button>}
         </TableCell>
       </TableRow>
     ))
@@ -347,7 +363,7 @@ export default function MembersPage() {
               </IconButton>}
             </TableCell>
             <TableCell>
-              {hasPermission('members:delete') && <Button onClick={(e) => { e.stopPropagation(); handleRemove(member.id); }}>Remove</Button>}
+              {hasPermission('members:delete') && <Button color="error" onClick={(e) => { e.stopPropagation(); handleRemoveClick(member); }}>Remove</Button>}
             </TableCell>
           </TableRow>
           {isExpanded && subMembers.map((subMember) => (
@@ -365,7 +381,7 @@ export default function MembersPage() {
               <TableCell>{subMember.whatsapp}</TableCell>
               <TableCell>{subMember.email}</TableCell>
               <TableCell colSpan={3}>
-                {hasPermission('members:delete') && <Button size="small" onClick={(e) => { e.stopPropagation(); handleRemove(subMember.id); }}>Remove</Button>}
+                {hasPermission('members:delete') && <Button size="small" color="error" onClick={(e) => { e.stopPropagation(); handleRemoveClick(subMember); }}>Remove</Button>}
               </TableCell>
             </TableRow>
           ))}
@@ -487,6 +503,7 @@ export default function MembersPage() {
           editMember={editingMember}
           onSave={handleSaveMember}
           primaryMemberId={primaryMemberId}
+          initialAction={initialModalAction}
         />
       )}
     </Box>

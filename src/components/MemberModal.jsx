@@ -191,7 +191,7 @@ const ReplacementView = ({ subMembers, onCancel, onConfirm, mode, oldPrimaryMemb
     );
 };
 
-export default function MemberModal({ open, onClose, onSave, editMember = null, primaryMemberId = null }) {
+export default function MemberModal({ open, onClose, onSave, editMember = null, primaryMemberId = null, initialAction = null }) {
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
   const { hasPermission } = usePermissions();
@@ -233,6 +233,10 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
       setProfileMemberId(null);
       setReplacementAction(null);
       setSubMembers([]);
+
+      if (initialAction) {
+        setReplacementAction(initialAction);
+      }
 
       const standardPackages = ["Dedicated Desk", "Flexible Desk", "Cabin", "Virtual Office", "Meeting Room"];
       
@@ -296,7 +300,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         fetchPrimaryMemberDetails();
       }
     }
-  }, [editMember, open, primaryMemberId, db]);
+  }, [editMember, open, primaryMemberId, db, initialAction]);
 
 
 
@@ -603,13 +607,6 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
                     variant="outlined"
                 >
                     Replace
-                </Button>
-                <Button
-                    onClick={() => setReplacementAction('removeAndReplace')}
-                    variant="outlined"
-                    color="error"
-                >
-                    Remove and Replace
                 </Button>
             </>
             )}
