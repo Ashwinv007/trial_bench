@@ -924,7 +924,7 @@ const formatDate = (dateString) => {
                                 {/* Action Buttons */}
                                 <div className={styles.modalActions}>
                                   {hasPermission('agreements:delete') && (
-                                    <>
+                                    
                                       <Button
                                         onClick={handleDeleteClick}
                                         variant="outlined"
@@ -938,6 +938,8 @@ const formatDate = (dateString) => {
                                       >
                                         Delete
                                       </Button>
+                                      )}
+                                      {hasPermission('agreements:early_exit') && (
                                       <Button
                                         onClick={handleEarlyExit}
                                         variant="outlined"
@@ -951,7 +953,7 @@ const formatDate = (dateString) => {
                                       >
                                         Early Exit
                                       </Button>
-                                    </>
+                                    
                                   )}
                                   <Button 
                                     onClick={handleCloseModal} 

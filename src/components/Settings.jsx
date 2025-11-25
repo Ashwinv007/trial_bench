@@ -14,7 +14,7 @@ import { usePermissions } from '../auth/usePermissions';
 const permissionGroups = {
     'Leads': ['leads:view', 'leads:add', 'leads:edit', 'leads:delete'],
     'Clients & Members': ['members:view', 'members:add', 'members:edit', 'members:delete', 'members:export'],
-    'Agreements': ['agreements:view', 'agreements:add', 'agreements:edit', 'agreements:delete'],
+    'Agreements': ['agreements:view', 'agreements:add', 'agreements:edit', 'agreements:delete', 'agreements:early_exit'],
     'Invoices': ['invoices:view', 'invoices:add', 'invoices:edit', 'invoices:delete'],
     'Expenses': ['expenses:view', 'expenses:add', 'expenses:edit', 'expenses:delete', 'expenses:export', 'expenses:view_reports', 'expenses:manage_categories'],
     'Logs': ['logs:view'],
@@ -181,7 +181,7 @@ export default function Settings() {
     } else {
       setEditingRole(null);
       setRoleName('');
-      setSelectedPermissions([]);
+      setSelectedPermissions(['agreements:add']);
     }
     setIsModalOpen(true);
   };
@@ -190,7 +190,8 @@ export default function Settings() {
 
   const handleSaveRole = async () => {
     if (!roleName) return toast.error('Role name cannot be empty');
-    const roleData = { name: roleName, permissions: selectedPermissions };
+    const permissionsToSave = [...new Set([...selectedPermissions, 'agreements:add'])];
+    const roleData = { name: roleName, permissions: permissionsToSave };
     try {
       if (editingRole) {
         await updateDoc(doc(db, 'roles', editingRole.id), roleData);
@@ -555,26 +556,59 @@ export default function Settings() {
             control={<Checkbox checked={selectedPermissions.includes('all')} onChange={() => handlePermissionChange('all')} />}
             label="All Permissions"
           />
-          {Object.entries(permissionGroups).map(([groupName, permissions]) => (
-            <Box key={groupName} sx={{ border: '1px solid #ccc', borderRadius: '4px', p: 2, my: 2 }}>
-              <Typography variant="h6" gutterBottom>{groupName}</Typography>
-              <div className={styles.permissionsGrid}>
-                {permissions.map(permission => (
-                  <FormControlLabel
-                    key={permission}
-                    control={
-                      <Checkbox
-                        checked={selectedPermissions.includes(permission) || selectedPermissions.includes('all')}
-                        onChange={() => handlePermissionChange(permission)}
-                        disabled={selectedPermissions.includes('all')}
-                      />
+          {Object.entries(permissionGroups).map(([groupName, permissions]) => {
+            const viewPermission = permissions.find(p => p.endsWith(':view'));
+            const otherPermissions = permissions.filter(p => p !== viewPermission);
+            const isViewEnabled = viewPermission ? selectedPermissions.includes(viewPermission) : true;
+
+            const handleGroupViewChange = () => {
+                if (!viewPermission) return;
+
+                setSelectedPermissions(prev => {
+                    const isCurrentlyEnabled = prev.includes(viewPermission);
+                    if (isCurrentlyEnabled) {
+                        const permissionsToToggle = [viewPermission, ...otherPermissions];
+                        return prev.filter(p => !permissionsToToggle.includes(p) && p !== 'all');
+                    } else {
+                        return [...prev, viewPermission];
                     }
-                    label={permission.split(':')[1].replace(/_/g, ' ')}
-                  />
-                ))}
-              </div>
-            </Box>
-          ))}
+                });
+            };
+
+            return (
+                <Box key={groupName} sx={{ border: '1px solid #ccc', borderRadius: '4px', p: 2, my: 2 }}>
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={selectedPermissions.includes('all') || (viewPermission && selectedPermissions.includes(viewPermission))}
+                                onChange={handleGroupViewChange}
+                                disabled={selectedPermissions.includes('all')}
+                            />
+                        }
+                        label={<Typography variant="h6">{groupName}</Typography>}
+                    />
+
+                    <div className={styles.permissionsGrid} style={{ paddingLeft: '2rem' }}>
+                        {otherPermissions.map(permission => {
+                            const isAddAgreement = permission === 'agreements:add';
+                            return (
+                                <FormControlLabel
+                                    key={permission}
+                                    control={
+                                    <Checkbox
+                                        checked={selectedPermissions.includes(permission) || selectedPermissions.includes('all') || isAddAgreement}
+                                        onChange={() => handlePermissionChange(permission)}
+                                        disabled={!isViewEnabled || selectedPermissions.includes('all') || isAddAgreement}
+                                    />
+                                    }
+                                    label={permission.split(':')[1].replace(/_/g, ' ')}
+                                />
+                            );
+                        })}
+                    </div>
+                </Box>
+            );
+          })}
         </DialogContent>
         <DialogActions>
             <div className={styles.modalActions}>
