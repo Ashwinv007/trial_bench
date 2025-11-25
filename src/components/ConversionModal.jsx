@@ -38,7 +38,7 @@ export default function ConversionModal({ open, onClose, leadData, onConvert }) 
       birthdayDay: leadData.birthdayDay,
       birthdayMonth: leadData.birthdayMonth,
       whatsapp: leadData.convertedWhatsapp,
-      email: leadData.convertedEmail,
+      email: leadData.ccEmail || leadData.convertedEmail,
     };
     onConvert(memberData);
   };
@@ -57,7 +57,7 @@ export default function ConversionModal({ open, onClose, leadData, onConvert }) 
       ...prev,
       package: leadPackage,
       company: leadData.companyName || '',
-      email: leadData.convertedEmail || '',
+      email: leadData.ccEmail || leadData.convertedEmail || '',
     }));
     setStep('form');
   };

@@ -80,6 +80,7 @@ export default function AddLead() {
     clientType: '',
     companyName: '',
     convertedEmail: '',
+    ccEmail: '',
     convertedWhatsapp: '',
     birthdayDay: '',
     birthdayMonth: '',
@@ -191,7 +192,7 @@ export default function AddLead() {
         clientAuthorizorName: "", 
         clientAuthorizorTitle: "", 
         agreementLength: "", 
-        convertedEmail: memberData.email, 
+        convertedEmail: memberData.ccEmail || memberData.email, 
         phone: memberData.whatsapp, 
         purposeOfVisit: memberData.package, 
         birthdayDay: memberData.birthdayDay,
@@ -285,15 +286,16 @@ export default function AddLead() {
     if (data.status === 'Converted') {
       if (!data.clientType) newErrors.clientType = 'Client Type is required';
       if (data.clientType === 'Company' && !data.companyName.trim()) newErrors.companyName = 'Company Name is required';
-      if (!data.convertedEmail.trim()) {
-        newErrors.convertedEmail = 'Email is required';
-      } else if (!/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(data.convertedEmail)) {
-        newErrors.convertedEmail = 'Invalid email format';
+      if (data.ccEmail && !/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(data.ccEmail)) {
+        newErrors.ccEmail = 'Invalid email format';
       }
       if (!data.convertedWhatsapp.trim()) {
         newErrors.convertedWhatsapp = 'WhatsApp is required';
       } else if (!/^\+\d{10,}$/.test(data.convertedWhatsapp)) {
         newErrors.convertedWhatsapp = 'WhatsApp number must include country code (e.g., +91XXXXXXXXXX)';
+      }
+      if (data.convertedEmail && !/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(data.convertedEmail)) {
+        newErrors.convertedEmail = 'Invalid CC email format';
       }
     }
 
@@ -509,7 +511,7 @@ export default function AddLead() {
                   )}
 
                   <div className={styles.formGroup}>
-                    <label className={styles.label}>Email *</label>
+                    <label className={styles.label}>CC Email</label>
                     <input
                       type="email"
                       name="convertedEmail"
@@ -517,9 +519,21 @@ export default function AddLead() {
                       onChange={handleInputChange}
                       placeholder="Enter email address"
                       className={`${styles.input} ${errors.convertedEmail ? styles.inputError : ''}`}
-                      required
                     />
                     {errors.convertedEmail && <p className={styles.errorMessage}>{errors.convertedEmail}</p>}
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Email</label>
+                    <input
+                      type="email"
+                      name="ccEmail"
+                      value={formData.ccEmail}
+                      onChange={handleInputChange}
+                      placeholder="Enter CC email address"
+                      className={`${styles.input} ${errors.ccEmail ? styles.inputError : ''}`}
+                    />
+                    {errors.ccEmail && <p className={styles.errorMessage}>{errors.ccEmail}</p>}
                   </div>
 
                   <div className={styles.formGroup}>

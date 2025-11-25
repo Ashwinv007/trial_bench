@@ -110,6 +110,7 @@ export default function EditLead() {
           clientType: leadData.clientType || '',
           companyName: leadData.companyName !== 'NA' ? leadData.companyName : '',
           convertedEmail: leadData.convertedEmail || '',
+          ccEmail: leadData.ccEmail || '',
           convertedWhatsapp: leadData.convertedWhatsapp || '',
           birthdayDay: leadData.birthdayDay || '',
           birthdayMonth: leadData.birthdayMonth || '',
@@ -283,7 +284,7 @@ export default function EditLead() {
         clientAuthorizorName: "", 
         clientAuthorizorTitle: "", 
         agreementLength: "", 
-        convertedEmail: memberData.email, 
+        convertedEmail: memberData.ccEmail || memberData.email, 
         phone: memberData.whatsapp, 
         purposeOfVisit: memberData.package, 
         birthdayDay: memberData.birthdayDay,
@@ -335,12 +336,20 @@ export default function EditLead() {
     if (data.status === 'Converted') {
       if (!data.clientType) newErrors.clientType = 'Client Type is required';
       if (data.clientType === 'Company' && !data.companyName.trim()) newErrors.companyName = 'Company Name is required';
-      if (!data.convertedEmail.trim()) {
-        newErrors.convertedEmail = 'Email is required';
-      } else if (!/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(data.convertedEmail)) {
-        newErrors.convertedEmail = 'Invalid email format';
+      if (data.ccEmail && !/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(data.ccEmail)) {
+        newErrors.ccEmail = 'Invalid email format';
       }
-      if (!data.convertedWhatsapp.trim()) newErrors.convertedWhatsapp = 'WhatsApp is required';
+      if (!data.convertedWhatsapp.trim()) {
+        newErrors.convertedWhatsapp = 'WhatsApp is required';
+      } else if (!/^\+\d{10,}$/.test(data.convertedWhatsapp)) {
+        newErrors.convertedWhatsapp = 'WhatsApp number must include country code (e.g., +91XXXXXXXXXX)';
+      }
+      if (data.convertedEmail && !/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(data.convertedEmail)) {
+        newErrors.convertedEmail = 'Invalid CC email format';
+      }
+    }
+
+    if (data.status === 'Converted') {
       if (!data.birthdayDay) newErrors.birthdayDay = 'Day is required';
       if (!data.birthdayMonth) newErrors.birthdayMonth = 'Month is required';
       if (data.birthdayDay && (parseInt(data.birthdayDay, 10) < 1 || parseInt(data.birthdayDay, 10) > 31)) {
@@ -551,7 +560,7 @@ export default function EditLead() {
                   )}
 
                   <div className={styles.formGroup}>
-                    <label className={styles.label}>Email *</label>
+                    <label className={styles.label}>CC Email</label>
                     <input
                       type="email"
                       name="convertedEmail"
@@ -559,9 +568,21 @@ export default function EditLead() {
                       onChange={handleInputChange}
                       placeholder="Enter email address"
                       className={`${styles.input} ${errors.convertedEmail ? styles.inputError : ''}`}
-                      required
                     />
                     {errors.convertedEmail && <p className={styles.errorMessage}>{errors.convertedEmail}</p>}
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Email</label>
+                    <input
+                      type="email"
+                      name="ccEmail"
+                      value={formData.ccEmail}
+                      onChange={handleInputChange}
+                      placeholder="Enter CC email address"
+                      className={`${styles.input} ${errors.ccEmail ? styles.inputError : ''}`}
+                    />
+                    {errors.ccEmail && <p className={styles.errorMessage}>{errors.ccEmail}</p>}
                   </div>
 
                   <div className={styles.formGroup}>
