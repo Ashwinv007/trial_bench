@@ -1,5 +1,5 @@
-import { useState, useEffect, useContext } from 'react';
-import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, MenuItem } from '@mui/material';
+import { useState, useEffect, useContext, useMemo } from 'react';
+import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, MenuItem, Box, InputAdornment, Select } from '@mui/material';
 import { Close } from '@mui/icons-material';
 import styles from './Agreements.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
@@ -15,6 +15,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import ExitDateModal from './ExitDateModal';
+import SearchIcon from '@mui/icons-material/Search';
 
 const generateAgreementNumber = (memberPackageName, allAgreements) => {
   if (!memberPackageName) {
@@ -59,8 +60,9 @@ export default function Agreements() {
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
   const { hasPermission } = usePermissions();
-  const [agreements, setAgreements] = useState([]);
-  const [terminatedAgreements, setTerminatedAgreements] = useState([]);
+  const [allAgreements, setAllAgreements] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('Active');
   const [selectedAgreement, setSelectedAgreement] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isOtherPackage, setIsOtherPackage] = useState(false);
@@ -95,7 +97,7 @@ export default function Agreements() {
 
   const functions = getFunctions();
   const sendAgreementEmailCallable = httpsCallable(functions, 'sendAgreementEmail');
-const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement');
+  const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement');
 
   useEffect(() => {
     if (!hasPermission('agreements:view')) return;
@@ -105,50 +107,29 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
         const agreementsSnapshot = await getDocs(agreementsCollection);
         const agreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        const activeAgreementsRaw = agreementsData.filter(agreement => agreement.leadId && agreement.status !== 'terminated');
-        const terminatedAgreementsRaw = agreementsData.filter(agreement => agreement.leadId && agreement.status === 'terminated');
+        const allAgreementsRaw = agreementsData.filter(agreement => agreement.leadId);
 
-        // Fetch corresponding leads for active agreements
-        const activeLeadPromises = activeAgreementsRaw.map(agreement => {
+        const leadPromises = allAgreementsRaw.map(agreement => {
           const leadDocRef = doc(db, 'leads', agreement.leadId);
           return getDoc(leadDocRef);
         });
-        const activeLeadSnapshots = await Promise.all(activeLeadPromises);
-        const combinedActiveData = activeAgreementsRaw.map((agreement, index) => {
-          const leadData = activeLeadSnapshots[index].data();
+        const leadSnapshots = await Promise.all(leadPromises);
+        const combinedData = allAgreementsRaw.map((agreement, index) => {
+          const leadData = leadSnapshots[index].data();
           return leadData ? { ...leadData, ...agreement } : null;
         }).filter(Boolean);
 
-        combinedActiveData.sort((a, b) => {
+        combinedData.sort((a, b) => {
           if (!b.agreementDate) return -1;
           if (!a.agreementDate) return 1;
           return new Date(b.agreementDate) - new Date(a.agreementDate);
         });
 
-        setAgreements(combinedActiveData);
+        setAllAgreements(combinedData);
 
-        // Fetch corresponding leads for terminated agreements
-        const terminatedLeadPromises = terminatedAgreementsRaw.map(agreement => {
-          const leadDocRef = doc(db, 'leads', agreement.leadId);
-          return getDoc(leadDocRef);
-        });
-        const terminatedLeadSnapshots = await Promise.all(terminatedLeadPromises);
-        const combinedTerminatedData = terminatedAgreementsRaw.map((agreement, index) => {
-          const leadData = terminatedLeadSnapshots[index].data();
-          return leadData ? { ...leadData, ...agreement } : null;
-        }).filter(Boolean);
-
-        combinedTerminatedData.sort((a, b) => {
-          if (!b.agreementDate) return -1;
-          if (!a.agreementDate) return 1;
-          return new Date(b.agreementDate) - new Date(a.agreementDate);
-        });
-        
-        setTerminatedAgreements(combinedTerminatedData);
-
-        // Find the latest agreement by taking the last one in the active agreements array
-        if (combinedActiveData.length > 0) {
-          const latest = combinedActiveData[combinedActiveData.length - 1];
+        const activeAgreements = combinedData.filter(a => a.status !== 'terminated');
+        if (activeAgreements.length > 0) {
+          const latest = activeAgreements[0];
           setLatestAuthDetails({
             authorizorName: latest.authorizorName || '',
             designation: latest.designation || '',
@@ -159,6 +140,27 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
       fetchAgreements();
     }
   }, [db, hasPermission]);
+
+  const displayedAgreements = useMemo(() => {
+    let filtered = allAgreements;
+
+    if (statusFilter === 'Active') {
+        filtered = filtered.filter(a => a.status !== 'terminated');
+    } else if (statusFilter === 'Terminated') {
+        filtered = filtered.filter(a => a.status === 'terminated');
+    }
+
+    if (searchQuery) {
+        const lowercasedQuery = searchQuery.toLowerCase();
+        filtered = filtered.filter(a => 
+            (a.memberLegalName || a.name)?.toLowerCase().includes(lowercasedQuery) ||
+            (a.convertedEmail)?.toLowerCase().includes(lowercasedQuery) ||
+            (a.phone)?.toLowerCase().includes(lowercasedQuery)
+        );
+    }
+
+    return filtered;
+  }, [allAgreements, statusFilter, searchQuery]);
 
   useEffect(() => {
     if (formData.startDate && formData.agreementLength) {
@@ -174,16 +176,14 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
     }
   }, [formData.startDate, formData.agreementLength]);
 
-  // Auto-generate agreement number
   useEffect(() => {
-    // Only generate if it's a new agreement (no selectedAgreement) or if the existing one is being edited and has no number
     if (isModalOpen && (!selectedAgreement?.agreementNumber)) {
-      const newAgreementNumber = generateAgreementNumber(selectedAgreement?.purposeOfVisit, agreements);
+      const newAgreementNumber = generateAgreementNumber(selectedAgreement?.purposeOfVisit, allAgreements);
       if (newAgreementNumber) {
         setFormData(prev => ({ ...prev, agreementNumber: newAgreementNumber }));
       }
     }
-  }, [selectedAgreement?.purposeOfVisit, isModalOpen, selectedAgreement, agreements]);
+  }, [selectedAgreement?.purposeOfVisit, isModalOpen, selectedAgreement, allAgreements]);
 
 
   const handleRowClick = (agreement) => {
@@ -198,7 +198,6 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
     const standardPackages = ["Dedicated Desk", "Flexible Desk", "Private Cabin", "Virtual Office", "Meeting Room", ""];
 
     if (serviceAgreementType) { // Agreement has been saved before
-        // Parse the saved value
         const parts = serviceAgreementType.split(' - ');
         servicePackage = parts[0];
         if (parts.length > 1) {
@@ -294,7 +293,7 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
 
     const updatedAgreement = { ...selectedAgreement, ...dataToUpdate };
 
-    setAgreements((prev) =>
+    setAllAgreements((prev) =>
       prev.map((agreement) =>
         agreement.id === selectedAgreement.id
           ? updatedAgreement
@@ -302,7 +301,6 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
       )
     );
 
-    // New logic: Update lead's legal details
     if (selectedAgreement.leadId) {
         const leadRef = doc(db, 'leads', selectedAgreement.leadId);
         await updateDoc(leadRef, {
@@ -320,7 +318,7 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
       db,
       user,
       'agreement_updated',
-      `Agreement "${updatedAgreement.agreementNumber}" for "${updatedAgreement.name}" was updated.`,
+      `Agreement "${updatedAgreement.agreementNumber}" for "${updatedAgreement.name}" was updated.`, 
       { agreementId: updatedAgreement.id, agreementNumber: updatedAgreement.agreementNumber, memberName: updatedAgreement.name }
     );
   };
@@ -337,21 +335,20 @@ const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement'
         const agreementRef = doc(db, 'agreements', selectedAgreement.id);
         await deleteDoc(agreementRef);
 
-        setAgreements(prev => prev.filter(a => a.id !== selectedAgreement.id));
+        setAllAgreements(prev => prev.filter(a => a.id !== selectedAgreement.id));
         handleCloseModal();
       } catch (error) {
         console.error("Error deleting agreement:", error);
-        // Optionally, show an error message to the user
       }
     }
   };
 
-const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-    const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
-    return adjustedDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const formatDate = (dateString) => {
+      if (!dateString) return '-';
+      const date = new Date(dateString);
+      const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+      const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+      return adjustedDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const splitTextIntoLines = (text, font, fontSize, maxWidth) => {
@@ -385,7 +382,6 @@ const formatDate = (dateString) => {
     const firstPage = pages[0];
     const secondPage = pages[1];
   
-    // Prepared By - Page 1
     firstPage.drawText(agreementData.preparedByNew || '', {
       x: 60,
       y: 52,
@@ -394,7 +390,6 @@ const formatDate = (dateString) => {
       color: rgb(0.466, 0.466, 0.466),
     });
   
-    // Top Agreement Number - All pages from 2 onwards
     for (let i = 1; i < pages.length; i++) {
       pages[i].drawText(agreementData.agreementNumber || '', {
         x: 480,
@@ -403,7 +398,6 @@ const formatDate = (dateString) => {
         size: 8.5,
         color: rgb(0.466, 0.466, 0.466),
       });
-      // Client signatory - Page 2 onwards
       pages[i].drawText(`(${agreementData.memberLegalName || ''})`, {
         x: 89,
         y: 105,
@@ -413,9 +407,7 @@ const formatDate = (dateString) => {
       });
     }
   
-    // Page 2 Details
     if (secondPage) {
-      // Agreement Details
       secondPage.drawText(agreementData.serviceAgreementType || '', { x: 185, y: 394, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(`${agreementData.totalMonthlyPayment || ''} /-`, { x: 275, y: 380, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(formatDate(agreementData.endDate) || '', { x: 350, y: 408, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
@@ -423,26 +415,22 @@ const formatDate = (dateString) => {
       secondPage.drawText(agreementData.agreementNumber || '', { x: 160, y: 437, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(formatDate(agreementData.agreementDate) || '', { x: 145, y: 451, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
   
-      // Member Details
       secondPage.drawText(agreementData.memberLegalName || '', { x: 170, y: 608, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(agreementData.memberCIN || '', { x: 130, y: 594, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(agreementData.memberGST || '', { x: 174, y: 579, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(agreementData.memberPAN || '', { x: 133, y: 565, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(agreementData.memberKYC || '', { x: 133, y: 551, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
   
-      // Address (with line wrapping)
       const address = (agreementData.memberAddress || '').replace(/\n/g, ' ');
       const addressLines = splitTextIntoLines(address, helveticaFont, 9.5, 300);
       let y = 536.5;
       for (const line of addressLines) {
         secondPage.drawText(line, { x: 150, y, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-        y -= 12; // Adjust for next line
+        y -= 12;
       }
   
-      // Client Authorization Details
       secondPage.drawText(agreementData.clientAuthorizorName || '', { x: 150, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(agreementData.clientAuthorizorTitle || '', { x: 150, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      // secondPage.drawText(formatDate(agreementData.agreementDate), { x: 150, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
   
       secondPage.drawText(agreementData.authorizorName || '', { x: 370, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
       secondPage.drawText(agreementData.designation || '', { x: 370, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
@@ -452,13 +440,13 @@ const formatDate = (dateString) => {
     }
   
     const pdfBytes = await pdfDoc.save();
-    // Convert Uint8Array to binary string
     let binary = '';
     for (let i = 0; i < pdfBytes.length; i++) {
       binary += String.fromCharCode(pdfBytes[i]);
     }
     return btoa(binary);
   };
+
   const handleEarlyExit = async () => {
     if (!hasPermission('agreements:early_exit')) {
       toast.error("You don't have permission to terminate agreements.");
@@ -471,22 +459,22 @@ const formatDate = (dateString) => {
   const handleEarlyExitConfirm = async (exitDate) => {
     if (!selectedAgreement) return;
     try {
-      // Call the Firebase Cloud Function
       const result = await earlyExitAgreementCallable({ agreementId: selectedAgreement.id, exitDate: exitDate });
       toast.success(result.data.message);
 
-      // Update local state: move the terminated agreement from active to terminated list
-      setAgreements(prev => prev.filter(a => a.id !== selectedAgreement.id));
-      setTerminatedAgreements(prev => {
-        const updatedSelectedAgreement = { ...selectedAgreement, status: 'terminated' };
-        return [...prev, updatedSelectedAgreement];
-      });
+      setAllAgreements(prev => 
+        prev.map(a => 
+            a.id === selectedAgreement.id 
+            ? { ...a, status: 'terminated', exitDate: exitDate } 
+            : a
+        )
+      );
       
       logActivity(
         db,
         user,
         'agreement_early_exit',
-        `Agreement "${selectedAgreement.agreementNumber}" for "${selectedAgreement.name}" was terminated early.`,
+        `Agreement "${selectedAgreement.agreementNumber}" for "${selectedAgreement.name}" was terminated early.`, 
         { agreementId: selectedAgreement.id, agreementNumber: selectedAgreement.agreementNumber, memberName: selectedAgreement.name }
       );
       handleCloseModal();
@@ -515,7 +503,6 @@ const formatDate = (dateString) => {
         clientName: agreementGenerated.name,
         agreementName: agreementGenerated.agreementNumber,
         pdfBase64: pdfBase64,
-        // ccEmail: agreementGenerated.ccEmail // Add if ccEmail is available in agreementGenerated
       });
       toast.success("Agreement email sent successfully!");
     } catch (error) {
@@ -542,7 +529,6 @@ const formatDate = (dateString) => {
   return (
     <div className={styles.container}>
       <div className={styles.content}>
-        {/* Header */}
         <div className={styles.header}>
           <div className={styles.headerText}>
             <h1 className={styles.title}>Agreements</h1>
@@ -550,7 +536,26 @@ const formatDate = (dateString) => {
           </div>
         </div>
 
-        {/* Table */}
+        <Box sx={{ display: 'flex', gap: 2, my: 3, alignItems: 'center' }}>
+          <TextField
+            placeholder="Search by name, email, or phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            size="small"
+            sx={{ flex: 1, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { fontSize: '14px', '& fieldset': { borderColor: '#e0e0e0' }, '&:hover fieldset': { borderColor: '#2b7a8e' }, '&.Mui-focused fieldset': { borderColor: '#2b7a8e' } } }}
+            InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#9e9e9e', fontSize: '20px' }} /></InputAdornment>) }}
+          />
+          <Select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            size="small"
+            sx={{ minWidth: 200, bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } }}
+          >
+            <MenuItem value="Active">Active Agreements</MenuItem>
+            <MenuItem value="Terminated">Terminated Agreements</MenuItem>
+          </Select>
+        </Box>
+
         <div className={styles.tableCard}>
           <table className={styles.table}>
             <thead>
@@ -563,506 +568,200 @@ const formatDate = (dateString) => {
               </tr>
             </thead>
             <tbody>
-              {agreements.map((agreement) => (
+              {displayedAgreements.map((agreement) => (
                 <tr 
                   key={agreement.id} 
                   onClick={() => handleRowClick(agreement)}
                   className={hasPermission('agreements:view') ? styles.clickableRow : ''}
                 >
-                                    <td>
-                                      <span className={styles.nameText}>{agreement.memberLegalName || agreement.name}</span>
-                                    </td>
-                                    <td>
-                                      {agreement.purposeOfVisit}
-                                    </td>
-                                    <td>{agreement.birthdayDay && agreement.birthdayMonth ? formatBirthday(agreement.birthdayDay, agreement.birthdayMonth) : '-'}</td>
-                                    <td>{agreement.convertedEmail}</td>
-                                    <td>{agreement.phone}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
+                  <td>
+                    <span className={styles.nameText}>{agreement.memberLegalName || agreement.name}</span>
+                  </td>
+                  <td>
+                    {agreement.purposeOfVisit}
+                  </td>
+                  <td>{agreement.birthdayDay && agreement.birthdayMonth ? formatBirthday(agreement.birthdayDay, agreement.birthdayMonth) : '-' }</td>
+                  <td>{agreement.convertedEmail}</td>
+                  <td>{agreement.phone}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-                        {/* Terminated Agreements Table */}
-                        {terminatedAgreements.length > 0 && (
-                          <div className={styles.tableCard} style={{ marginTop: '30px' }}>
-                            <h2 className={styles.sectionTitle} style={{ marginBottom: '15px' }}>Terminated Agreements</h2>
-                            <table className={styles.table}>
-                              <thead>
-                                <tr>
-                                  <th>Name</th>
-                                  <th>Package</th>
-                                  <th>Birthday</th>
-                                  <th>Email</th>
-                                  <th>Phone</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {terminatedAgreements.map((agreement) => (
-                                  <tr
-                                    key={agreement.id}
-                                    onClick={() => handleRowClick(agreement)}
-                                    className={hasPermission('agreements:view') ? styles.clickableRow : ''}
-                                  >
-                                    <td>
-                                      <span className={styles.nameText}>{agreement.memberLegalName || agreement.name}</span>
-                                    </td>
-                                    <td>
-                                      {agreement.purposeOfVisit}
-                                    </td>
-                                    <td>{agreement.birthdayDay && agreement.birthdayMonth ? formatBirthday(agreement.birthdayDay, agreement.birthdayMonth) : '-'}</td>
-                                    <td>{agreement.convertedEmail}</td>
-                                    <td>{agreement.phone}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                  
-                        {/* Agreement Details Modal */}
-                        <Dialog 
-                          open={isModalOpen} 
-                          onClose={handleCloseModal}
-                          maxWidth="md"
-                          fullWidth
-                          PaperProps={{
-                            style: {
-                              borderRadius: '12px',
-                            }
-                          }}
-                        >
-                          <DialogTitle style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center',
-                            backgroundColor: '#f8fafc',
-                            borderBottom: '1px solid #e2e8f0',
-                            padding: '20px 24px'
-                          }}>
-                            <div>
-                              <h2 style={{ 
-                                margin: 0, 
-                                color: '#1a4d5c', 
-                                fontSize: '20px',
-                                fontWeight: 600 
-                              }}>
-                                {agreementGenerated ? 'Agreement Updated' : 'Agreement Details'}
-                              </h2>
-                              <p style={{ 
-                                margin: '4px 0 0 0', 
-                                color: '#64748b', 
-                                fontSize: '14px',
-                                fontWeight: 400
-                              }}>
-                                {agreementGenerated ? 'The agreement has been saved.' : (formData.memberLegalName || selectedAgreement?.name)}
-                              </p>
-                            </div>
-                            <IconButton onClick={handleCloseModal} size="small">
-                              <Close />
-                            </IconButton>
-                          </DialogTitle>
-                          
-                          <DialogContent style={{ padding: '24px' }}>
-                            {agreementGenerated ? (
-                              <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                                <p style={{ margin: '4px 0 24px 0', color: '#64748b', fontSize: '14px', fontWeight: 400 }}>
-                                  You can now download the agreement or send it via email.
-                                </p>
-                                <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
-                                  <Button
-                                    onClick={async () => {
-                                      try {
-                                        const pdfBase64 = await getAgreementPdfBase64(agreementGenerated);
-                                        const byteCharacters = atob(pdfBase64);
-                                        const byteArray = Uint8Array.from(byteCharacters, char => char.charCodeAt(0));
-                                        const blob = new Blob([byteArray], { type: 'application/pdf' });
-                                        saveAs(blob, `${agreementGenerated.agreementNumber || 'agreement'}.pdf`);
-                                        toast.success("Agreement downloaded successfully!");
-                                      } catch (error) {
-                                        console.error("Error downloading agreement:", error);
-                                        toast.error("Failed to download agreement.");
-                                      }
-                                    }}
-                                    variant="contained"
-                                    style={{
-                                      backgroundColor: '#2b7a8e',
-                                      color: 'white',
-                                      textTransform: 'none',
-                                      padding: '8px 24px'
-                                    }}
-                                  >
-                                    Download Agreement
-                                  </Button>
-                                  <Button
-                                    onClick={handleSendAgreementEmail}
-                                    variant="outlined"
-                                    style={{
-                                      color: '#64748b',
-                                      borderColor: '#cbd5e1',
-                                      textTransform: 'none',
-                                      padding: '8px 24px'
-                                    }}
-                                  >
-                                    Send Email
-                                  </Button>
-                                </div>
-                              </div>
-                            ) : (
-                              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                              <form onSubmit={handleSubmit}>
-                                {/* Member Details Section */}
-                                <div className={styles.section}>
-                                  <h3 className={styles.sectionTitle}>Member Details</h3>
-                                  <div className={styles.formGrid}>
-                                    <TextField
-                                      label="Member Legal Name"
-                                      name="memberLegalName"
-                                      value={formData.memberLegalName}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    />
-                                    {/* Removed Title field */}
-                                    <TextField
-                                      label="Member CIN"
-                                      name="memberCIN"
-                                      value={formData.memberCIN}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    />
-                                    <TextField
-                                      label="Member GST Number"
-                                      name="memberGST"
-                                      value={formData.memberGST}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    />
-                                    <TextField
-                                      label="Member PAN"
-                                      name="memberPAN"
-                                      value={formData.memberPAN}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    />
-                                    <TextField
-                                      label="Member KYC"
-                                      name="memberKYC"
-                                      value={formData.memberKYC}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    />
-                                    <TextField
-                                      label="Member Address"
-                                      name="memberAddress"
-                                      value={formData.memberAddress}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      multiline
-                                      rows={2}
-                                      style={{ gridColumn: '1 / -1' }}
-                                      disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    />
-                                  </div>
-                                </div>
-                  
-                                {/* Client Authorization Details Section */}
-                                <div className={styles.section}>
-                                  <h3 className={styles.sectionTitle}>Client Authorization Details</h3>
-                                  <div className={styles.formGrid}>
-                                    <TextField
-                                      label="Name"
-                                      name="clientAuthorizorName"
-                                      value={formData.clientAuthorizorName}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    />
-                                    <TextField
-                                      label="Title"
-                                      name="clientAuthorizorTitle"
-                                      value={formData.clientAuthorizorTitle}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    />
-                                  </div>
-                                </div>
-                  
-                                {/* Agreement Details Section */}
-                                <div className={styles.section}>
-                                  <h3 className={styles.sectionTitle}>Agreement Information</h3>
-                                  <div className={styles.formGrid}>
-                                  <DatePicker
-                                      label="Agreement Date"
-                                      value={formData.agreementDate ? dayjs(formData.agreementDate) : null}
-                                      onChange={(newValue) => handleDateChange('agreementDate', newValue)}
-                                      format="DD/MM/YYYY"
-                                      slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small' } }}
-                                      disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    />
-                                    <TextField
-                                      label="Agreement Number"
-                                      name="agreementNumber"
-                                      value={formData.agreementNumber}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      disabled
-                                    />
-                                    <DatePicker
-                                      label="Start Date"
-                                      value={formData.startDate ? dayjs(formData.startDate) : null}
-                                      onChange={(newValue) => handleDateChange('startDate', newValue)}
-                                      format="DD/MM/YYYY"
-                                      slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small' } }}
-                                      disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    />
-                                    <TextField
-                                      label="Length of Agreement"
-                                      name="agreementLength"
-                                      value={formData.agreementLength}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      select
-                                      disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    >
-                                      {[...Array(11).keys()].map((i) => (
-                                        <MenuItem key={i + 1} value={i + 1}>
-                                          {i + 1} month(s)
-                                        </MenuItem>
-                                      ))}
-                                    </TextField>
-                                    <DatePicker
-                                      label="End Date"
-                                      value={formData.endDate ? dayjs(formData.endDate) : null}
-                                      onChange={(newValue) => handleDateChange('endDate', newValue)}
-                                      format="DD/MM/YYYY"
-                                      slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small', disabled: true } }}
-                                      disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    />
-                                    <TextField
-                                      label="Package"
-                                      name="servicePackage_select"
-                                      value={isOtherPackage ? 'Others' : formData.servicePackage}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      select
-                                      disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    >
-                                      <MenuItem value="">Select Package</MenuItem>
-                                      <MenuItem value="Dedicated Desk">Dedicated Desk</MenuItem>
-                                      <MenuItem value="Flexible Desk">Flexible Desk</MenuItem>
-                                      <MenuItem value="Private Cabin">Private Cabin</MenuItem>
-                                      <MenuItem value="Virtual Office">Virtual Office</MenuItem>
-                                      <MenuItem value="Meeting Room">Meeting Room</MenuItem>
-                                      <MenuItem value="Others">Others</MenuItem>
-                                    </TextField>
-                                    <TextField
-                                        label="Quantity"
-                                        name="serviceQuantity"
-                                        type="number"
-                                        value={formData.serviceQuantity}
-                                        onChange={handleInputChange}
-                                        fullWidth
-                                        variant="outlined"
-                                        size="small"
-                                        InputProps={{ inputProps: { min: 1 } }}
-                                        disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    />
-                                    {isOtherPackage && (
-                                        <TextField
-                                            label="Other Package"
-                                            name="servicePackage"
-                                            value={formData.servicePackage}
-                                            onChange={handleInputChange}
-                                            fullWidth
-                                            variant="outlined"
-                                            size="small"
-                                            style={{ gridColumn: '1 / -1' }}
-                                            disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                        />
-                                    )}
-                                    <TextField
-                                      label="Total Monthly Payment"
-                                      name="totalMonthlyPayment"
-                                      value={formData.totalMonthlyPayment}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      type="number"
-                                      disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    />
-                  
-                                  </div>
-                                </div>
-                  
-                                <div className={styles.section}>
-                                  <h3 className={styles.sectionTitle}>Authorization Details</h3>
-                                  <div className={styles.formGrid}>
-                                    <TextField
-                                      label="Authorizor Name"
-                                      name="authorizorName"
-                                      value={formData.authorizorName}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    />
-                                    <TextField
-                                      label="Prepared By"
-                                      name="preparedByNew"
-                                      value={formData.preparedByNew}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    />
-                                    <TextField
-                                      label="Designation"
-                                      name="designation"
-                                      value={formData.designation}
-                                      onChange={handleInputChange}
-                                      fullWidth
-                                      variant="outlined"
-                                      size="small"
-                                      disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
-                                    />
-                                  </div>
-                                </div>
-                  
-                                {/* Action Buttons */}
-                                <div className={styles.modalActions}>
-                                  {hasPermission('agreements:delete') && selectedAgreement?.status !== 'terminated' && (
-                                    
-                                      <Button
-                                        onClick={handleDeleteClick}
-                                        variant="outlined"
-                                        style={{
-                                          color: '#f44336',
-                                          borderColor: '#f44336',
-                                          textTransform: 'none',
-                                          padding: '8px 24px',
-                                          marginRight: '12px' 
-                                        }}
-                                      >
-                                        Delete
-                                      </Button>
-                                      )}
-                                      {hasPermission('agreements:early_exit') && selectedAgreement?.status !== 'terminated' && (
-                                      <Button
-                                        onClick={handleEarlyExit}
-                                        variant="outlined"
-                                        style={{
-                                          color: '#ff9800', // Orange color for early exit
-                                          borderColor: '#ff9800',
-                                          textTransform: 'none',
-                                          padding: '8px 24px',
-                                          marginRight: 'auto'
-                                        }}
-                                      >
-                                        Early Exit
-                                      </Button>
-                                    
-                                  )}
-                                  {selectedAgreement && (
-                                    <Button
-                                      onClick={async () => {
-                                        try {
-                                          const pdfBase64 = await getAgreementPdfBase64(formData);
-                                          const byteCharacters = atob(pdfBase64);
-                                          const byteArray = Uint8Array.from(byteCharacters, char => char.charCodeAt(0));
-                                          const blob = new Blob([byteArray], { type: 'application/pdf' });
-                                          saveAs(blob, `${formData.agreementNumber || 'agreement'}.pdf`);
-                                          toast.success("Agreement downloaded successfully!");
-                                        } catch (error) {
-                                          console.error("Error downloading agreement:", error);
-                                          toast.error("Failed to download agreement.");
-                                        }
-                                      }}
-                                      variant="outlined"
-                                      style={{
-                                        color: '#2b7a8e',
-                                        borderColor: '#2b7a8e',
-                                        textTransform: 'none',
-                                        padding: '8px 24px'
-                                      }}
-                                    >
-                                      Download Current Agreement
-                                    </Button>
-                                  )}
-                                  {selectedAgreement?.status !== 'terminated' && (
-                                  <Button 
-                                    onClick={handleCloseModal} 
-                                    variant="outlined"
-                                    style={{
-                                      color: '#64748b',
-                                      borderColor: '#cbd5e1',
-                                      textTransform: 'none',
-                                      padding: '8px 24px'
-                                    }}
-                                  >
-                                    Cancel
-                                  </Button>
-                                  )}
-                                  {hasPermission('agreements:edit') && selectedAgreement?.status !== 'terminated' && (
-                                    <Button 
-                                      type="submit" 
-                                      variant="contained"
-                                      style={{
-                                        backgroundColor: '#2b7a8e',
-                                        color: 'white',
-                                        textTransform: 'none',
-                                        padding: '8px 24px'
-                                      }}
-                                    >
-                                      Update Agreement
-                                    </Button>
-                                  )}
-                                </div>
-                              </form>
-                              </LocalizationProvider>
-                            )}
-                          </DialogContent>
-                        </Dialog>
-                        {isExitModalOpen && (
-                          <ExitDateModal
-                            open={isExitModalOpen}
-                            onClose={() => setIsExitModalOpen(false)}
-                            onConfirm={handleEarlyExitConfirm}
-                            memberName={selectedAgreement?.name}
-                          />
-                        )}
-                      </div>
-                    );
-                  }
+      <Dialog 
+        open={isModalOpen} 
+        onClose={handleCloseModal}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          style: {
+            borderRadius: '12px',
+          }
+        }}
+      >
+        <DialogTitle style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          backgroundColor: '#f8fafc',
+          borderBottom: '1px solid #e2e8f0',
+          padding: '20px 24px'
+        }}>
+          <div>
+            <h2 style={{ margin: 0, color: '#1a4d5c', fontSize: '20px', fontWeight: 600 }}>
+              {agreementGenerated ? 'Agreement Updated' : 'Agreement Details'}
+            </h2>
+            <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '14px', fontWeight: 400 }}>
+              {agreementGenerated ? 'The agreement has been saved.' : (formData.memberLegalName || selectedAgreement?.name)}
+            </p>
+          </div>
+          <IconButton onClick={handleCloseModal} size="small">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        
+        <DialogContent style={{ padding: '24px' }}>
+          {agreementGenerated ? (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <p style={{ margin: '4px 0 24px 0', color: '#64748b', fontSize: '14px', fontWeight: 400 }}>
+                You can now download the agreement or send it via email.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+                <Button
+                  onClick={async () => {
+                    try {
+                      const pdfBase64 = await getAgreementPdfBase64(agreementGenerated);
+                      const byteCharacters = atob(pdfBase64);
+                      const byteArray = Uint8Array.from(byteCharacters, char => char.charCodeAt(0));
+                      const blob = new Blob([byteArray], { type: 'application/pdf' });
+                      saveAs(blob, `${agreementGenerated.agreementNumber || 'agreement'}.pdf`);
+                      toast.success("Agreement downloaded successfully!");
+                    } catch (error) {
+                      console.error("Error downloading agreement:", error);
+                      toast.error("Failed to download agreement.");
+                    }
+                  }}
+                  variant="contained"
+                  style={{ backgroundColor: '#2b7a8e', color: 'white', textTransform: 'none', padding: '8px 24px' }}
+                >
+                  Download Agreement
+                </Button>
+                <Button
+                  onClick={handleSendAgreementEmail}
+                  variant="outlined"
+                  style={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', padding: '8px 24px' }}
+                >
+                  Send Email
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <form onSubmit={handleSubmit}>
+              <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Member Details</h3>
+                <div className={styles.formGrid}>
+                  <TextField label="Member Legal Name" name="memberLegalName" value={formData.memberLegalName} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                  <TextField label="Member CIN" name="memberCIN" value={formData.memberCIN} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                  <TextField label="Member GST Number" name="memberGST" value={formData.memberGST} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                  <TextField label="Member PAN" name="memberPAN" value={formData.memberPAN} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                  <TextField label="Member KYC" name="memberKYC" value={formData.memberKYC} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                  <TextField label="Member Address" name="memberAddress" value={formData.memberAddress} onChange={handleInputChange} fullWidth variant="outlined" size="small" multiline rows={2} style={{ gridColumn: '1 / -1' }} disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                </div>
+              </div>
+
+              <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Client Authorization Details</h3>
+                <div className={styles.formGrid}>
+                  <TextField label="Name" name="clientAuthorizorName" value={formData.clientAuthorizorName} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                  <TextField label="Title" name="clientAuthorizorTitle" value={formData.clientAuthorizorTitle} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                </div>
+              </div>
+
+              <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Agreement Information</h3>
+                <div className={styles.formGrid}>
+                <DatePicker label="Agreement Date" value={formData.agreementDate ? dayjs(formData.agreementDate) : null} onChange={(newValue) => handleDateChange('agreementDate', newValue)} format="DD/MM/YYYY" slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small' } }} disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                  <TextField label="Agreement Number" name="agreementNumber" value={formData.agreementNumber} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled />
+                  <DatePicker label="Start Date" value={formData.startDate ? dayjs(formData.startDate) : null} onChange={(newValue) => handleDateChange('startDate', newValue)} format="DD/MM/YYYY" slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small' } }} disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                  <TextField label="Length of Agreement" name="agreementLength" value={formData.agreementLength} onChange={handleInputChange} fullWidth variant="outlined" size="small" select disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}>
+                    {[...Array(11).keys()].map((i) => ( <MenuItem key={i + 1} value={i + 1}> {i + 1} month(s) </MenuItem> ))}
+                  </TextField>
+                  <DatePicker label="End Date" value={formData.endDate ? dayjs(formData.endDate) : null} onChange={(newValue) => handleDateChange('endDate', newValue)} format="DD/MM/YYYY" slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small', disabled: true } }} disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                  <TextField label="Package" name="servicePackage_select" value={isOtherPackage ? 'Others' : formData.servicePackage} onChange={handleInputChange} fullWidth variant="outlined" size="small" select disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}>
+                    <MenuItem value="">Select Package</MenuItem>
+                    <MenuItem value="Dedicated Desk">Dedicated Desk</MenuItem>
+                    <MenuItem value="Flexible Desk">Flexible Desk</MenuItem>
+                    <MenuItem value="Private Cabin">Private Cabin</MenuItem>
+                    <MenuItem value="Virtual Office">Virtual Office</MenuItem>
+                    <MenuItem value="Meeting Room">Meeting Room</MenuItem>
+                    <MenuItem value="Others">Others</MenuItem>
+                  </TextField>
+                  <TextField label="Quantity" name="serviceQuantity" type="number" value={formData.serviceQuantity} onChange={handleInputChange} fullWidth variant="outlined" size="small" InputProps={{ inputProps: { min: 1 } }} disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                  {isOtherPackage && ( <TextField label="Other Package" name="servicePackage" value={formData.servicePackage} onChange={handleInputChange} fullWidth variant="outlined" size="small" style={{ gridColumn: '1 / -1' }} disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} /> )}
+                  <TextField label="Total Monthly Payment" name="totalMonthlyPayment" value={formData.totalMonthlyPayment} onChange={handleInputChange} fullWidth variant="outlined" size="small" type="number" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                </div>
+              </div>
+
+              <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Authorization Details</h3>
+                <div className={styles.formGrid}>
+                  <TextField label="Authorizor Name" name="authorizorName" value={formData.authorizorName} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                  <TextField label="Prepared By" name="preparedByNew" value={formData.preparedByNew} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                  <TextField label="Designation" name="designation" value={formData.designation} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                </div>
+              </div>
+
+              <div className={styles.modalActions}>
+                {hasPermission('agreements:delete') && selectedAgreement?.status !== 'terminated' && ( <Button onClick={handleDeleteClick} variant="outlined" style={{ color: '#f44336', borderColor: '#f44336', textTransform: 'none', padding: '8px 24px', marginRight: '12px' }}> Delete </Button> )}
+                {hasPermission('agreements:early_exit') && selectedAgreement?.status !== 'terminated' && ( <Button onClick={handleEarlyExit} variant="outlined" style={{ color: '#ff9800', borderColor: '#ff9800', textTransform: 'none', padding: '8px 24px', marginRight: 'auto' }}> Early Exit </Button> )}
+                {selectedAgreement && (
+                  <Button
+                    onClick={async () => {
+                      try {
+                        const pdfBase64 = await getAgreementPdfBase64(formData);
+                        const byteCharacters = atob(pdfBase64);
+                        const byteArray = Uint8Array.from(byteCharacters, char => char.charCodeAt(0));
+                        const blob = new Blob([byteArray], { type: 'application/pdf' });
+                        saveAs(blob, `${formData.agreementNumber || 'agreement'}.pdf`);
+                        toast.success("Agreement downloaded successfully!");
+                      } catch (error) {
+                        console.error("Error downloading agreement:", error);
+                        toast.error("Failed to download agreement.");
+                      }
+                    }}
+                    variant="outlined"
+                    style={{ color: '#2b7a8e', borderColor: '#2b7a8e', textTransform: 'none', padding: '8px 24px' }}
+                  >
+                    Download Current Agreement
+                  </Button>
+                )}
+                {selectedAgreement?.status !== 'terminated' && (
+                <Button onClick={handleCloseModal} variant="outlined" style={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', padding: '8px 24px' }}>
+                  Cancel
+                </Button>
+                )}
+                {hasPermission('agreements:edit') && selectedAgreement?.status !== 'terminated' && (
+                  <Button type="submit" variant="contained" style={{ backgroundColor: '#2b7a8e', color: 'white', textTransform: 'none', padding: '8px 24px' }}>
+                    Update Agreement
+                  </Button>
+                )}
+              </div>
+            </form>
+            </LocalizationProvider>
+          )}
+        </DialogContent>
+      </Dialog>
+      {isExitModalOpen && (
+        <ExitDateModal
+          open={isExitModalOpen}
+          onClose={() => setIsExitModalOpen(false)}
+          onConfirm={handleEarlyExitConfirm}
+          memberName={selectedAgreement?.name}
+        />
+      )}
+    </div>
+  );
+}
