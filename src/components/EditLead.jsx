@@ -24,6 +24,7 @@ import {
 } from '@mui/material';
 import styles from './AddLead.module.css'; // Reusing styles
 import ConversionModal from './ConversionModal'; // Import the new modal
+import ClientProfileModal from './ClientProfileModal';
 import { usePermissions } from '../auth/usePermissions'; // Import usePermissions
 import { toast } from 'sonner';
 
@@ -80,6 +81,7 @@ export default function EditLead() {
   const [errors, setErrors] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isConversionModalOpen, setIsConversionModalOpen] = useState(false); // State for the new modal
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
@@ -615,6 +617,11 @@ export default function EditLead() {
                 <Save className={styles.buttonIcon} />
                 Update Lead
               </button>
+              {formData?.status === 'Converted' && (
+                <button className={styles.saveButton} onClick={() => setIsProfileModalOpen(true)} style={{ marginTop: '10px' }}>
+                  View Client Profile
+                </button>
+              )}
             </div>
           </div>
 
@@ -689,6 +696,11 @@ export default function EditLead() {
         onClose={() => setIsConversionModalOpen(false)}
         leadData={formData}
         onConvert={handleConvert}
+      />
+      <ClientProfileModal
+        open={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        clientId={id}
       />
     </div>
   );
