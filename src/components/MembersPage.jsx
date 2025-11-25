@@ -437,14 +437,14 @@ export default function MembersPage() {
             >
                 Export
             </Button>}
-            {hasPermission('members:add') && <Button
+            {/* {hasPermission('members:add') && <Button
                 variant="contained"
                 startIcon={<AddIcon />}
                 sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
                 onClick={() => handleOpenAddModal()}
             >
                 Add Member
-            </Button>}
+            </Button>} */}
         </Box>
 
         <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid #e0e0e0', borderRadius: '8px' }}>
