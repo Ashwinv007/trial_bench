@@ -9,10 +9,10 @@ export const useStatsData = () => {
         {
             id: 1,
             title: 'Total Revenue',
-            value: '$0',
+            value: '₹0',
             change: '+0%',
             trend: 'up',
-            icon: 'DollarSign',
+            icon: 'IndianRupee',
             color: '#2b7a8e'
         },
         {
@@ -63,7 +63,7 @@ export const useStatsData = () => {
                 invoicesSnapshot.forEach(doc => {
                     const invoice = doc.data();
                     if (invoice.paymentStatus === 'Paid') {
-                        totalRevenue += invoice.totalAmountPayable;
+                        totalRevenue += parseFloat(invoice.totalPrice) || 0;
                     }
                     if (invoice.paymentStatus !== 'Paid') {
                         pendingInvoices++;
@@ -85,14 +85,21 @@ export const useStatsData = () => {
                 activeAgreements = agreementsSnapshot.size;
             }
 
+            let formattedRevenue;
+            if (totalRevenue >= 100000) {
+                formattedRevenue = `₹${(totalRevenue / 100000).toFixed(2)} L`;
+            } else {
+                formattedRevenue = `₹${totalRevenue.toLocaleString('en-IN')}`;
+            }
+
             setStatsData([
                 {
                     id: 1,
                     title: 'Total Revenue',
-                    value: `$${totalRevenue.toLocaleString()}`,
+                    value: formattedRevenue,
                     change: '+0%', // Placeholder
                     trend: 'up',
-                    icon: 'DollarSign',
+                    icon: 'IndianRupee',
                     color: '#2b7a8e'
                 },
                 {

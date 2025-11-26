@@ -1,9 +1,9 @@
 import React from 'react';
-import { DollarSign, Users, FileText, FileCheck, TrendingUp, TrendingDown } from 'lucide-react';
+import { IndianRupee, Users, FileText, FileCheck, TrendingUp, TrendingDown } from 'lucide-react';
 import styles from './StatsCard.module.css';
 
 const iconMap = {
-  DollarSign,
+  IndianRupee,
   Users,
   FileText,
   FileCheck

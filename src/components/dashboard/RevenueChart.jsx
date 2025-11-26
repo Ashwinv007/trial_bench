@@ -5,7 +5,7 @@ import styles from '../Dashboard.module.css';
 import { collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { usePermissions } from '../../auth/usePermissions';
-import { DollarSign, ChevronDown } from 'lucide-react';
+import { IndianRupee, ChevronDown } from 'lucide-react';
 
 const RevenueChart = () => {
     const { hasPermission } = usePermissions();
@@ -29,11 +29,13 @@ const RevenueChart = () => {
                     startDate = new Date(now.getFullYear(), 0, 1);
                 }
 
+                const startDateString = startDate.getFullYear() + '-' + ('0' + (startDate.getMonth() + 1)).slice(-2) + '-' + ('0' + startDate.getDate()).slice(-2);
+
                 const invoicesCollection = collection(db, 'invoices');
                 const q = query(
                     invoicesCollection,
                     where('paymentStatus', '==', 'Paid'),
-                    where('dateOfPayment', '>=', Timestamp.fromDate(startDate))
+                    where('date', '>=', startDateString)
                 );
                 const snapshot = await getDocs(q);
                 const invoices = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
@@ -44,8 +46,9 @@ const RevenueChart = () => {
                     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                     const dayRevenues = new Array(7).fill(0);
                     invoices.forEach(invoice => {
-                        const day = invoice.dateOfPayment.toDate().getDay();
-                        dayRevenues[day] += parseFloat(invoice.totalAmountPayable);
+                        const invoiceDate = new Date(invoice.date.replace(/-/g, '/'));
+                        const day = invoiceDate.getDay();
+                        dayRevenues[day] += parseFloat(invoice.totalPrice) || 0;
                     });
                     for (let i = 0; i < 7; i++) {
                         chartData.push({ label: days[(now.getDay() - 6 + i + 7) % 7], revenue: dayRevenues[(now.getDay() - 6 + i + 7) % 7] });
@@ -53,8 +56,11 @@ const RevenueChart = () => {
                 } else if (period === 'month') {
                     const monthDayRevenues = new Array(now.getDate()).fill(0);
                     invoices.forEach(invoice => {
-                        const day = invoice.dateOfPayment.toDate().getDate() - 1;
-                        monthDayRevenues[day] += parseFloat(invoice.totalAmountPayable);
+                        const invoiceDate = new Date(invoice.date.replace(/-/g, '/'));
+                        if (invoiceDate.getMonth() === now.getMonth() && invoiceDate.getFullYear() === now.getFullYear()) {
+                            const day = invoiceDate.getDate() - 1;
+                            monthDayRevenues[day] += parseFloat(invoice.totalPrice) || 0;
+                        }
                     });
                     for (let i = 0; i < now.getDate(); i++) {
                         chartData.push({ label: String(i + 1), revenue: monthDayRevenues[i] });
@@ -62,8 +68,11 @@ const RevenueChart = () => {
                 } else { // year
                     const monthRevenues = new Array(12).fill(0);
                     invoices.forEach(invoice => {
-                        const month = invoice.dateOfPayment.toDate().getMonth();
-                        monthRevenues[month] += parseFloat(invoice.totalAmountPayable);
+                        const invoiceDate = new Date(invoice.date.replace(/-/g, '/'));
+                        if (invoiceDate.getFullYear() === now.getFullYear()) {
+                            const month = invoiceDate.getMonth();
+                            monthRevenues[month] += parseFloat(invoice.totalPrice) || 0;
+                        }
                     });
                     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                     for (let i = 0; i < 12; i++) {
@@ -95,15 +104,15 @@ const RevenueChart = () => {
             <div className={styles.header}>
                 <div>
                     <div className={styles.titleWrapper}>
-                        <DollarSign size={20} className={styles.revenueChartHeaderIcon} />
+                        <IndianRupee size={20} className={styles.revenueChartHeaderIcon} />
                         <h3 className={styles.invoiceTitle}>Revenue</h3>
                     </div>
-                    <div className={styles.revenueChartSubtitle}>Current: ${currentValue.toLocaleString()}</div>
+                    <div className={styles.revenueChartSubtitle}>Current: ₹{currentValue.toLocaleString('en-IN')}</div>
                 </div>
                 <div className={styles.revenueChartHeaderRight}>
                     <div className={styles.revenueChartStats}>
                         <div className={styles.revenueChartStat}>
-                            <div className={styles.revenueChartStatValue}>${(totalRevenue / 1000).toFixed(1)}K</div>
+                            <div className={styles.revenueChartStatValue}>₹{(totalRevenue / 1000).toFixed(1)}K</div>
                             <div className={styles.revenueChartStatLabel}>Total</div>
                         </div>
                         <div className={styles.revenueChartStat}>
@@ -178,7 +187,7 @@ const RevenueChart = () => {
                                 axisLine={false}
                                 tickLine={false}
                                 tick={{ fill: '#666', fontSize: 12 }}
-                                tickFormatter={(value) => `$${value / 1000}K`}
+                                tickFormatter={(value) => `₹${value / 1000}K`}
                             />
                             <Tooltip 
                                 contentStyle={{
@@ -187,7 +196,7 @@ const RevenueChart = () => {
                                     borderRadius: '8px',
                                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
                                 }}
-                                formatter={(value) => [`$${value.toLocaleString()}`, 'Revenue']}
+                                formatter={(value) => [`₹${value.toLocaleString('en-IN')}`, 'Revenue']}
                             />
                             <Area 
                                 type="monotone" 
