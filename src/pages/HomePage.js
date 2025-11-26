@@ -68,7 +68,94 @@ function HomePage() {
 
       const allNotifications = [];
 
-      // Notifications fetching logic...
+      // Fetch Follow-ups (Leads)
+      if (hasPermission('leads:view')) {
+        const leadsCollection = collection(db, 'leads');
+        const leadsSnapshot = await getDocs(leadsCollection);
+        leadsSnapshot.forEach(doc => {
+          const lead = doc.data();
+          if (lead.activities) {
+            lead.activities.forEach(activity => {
+              if (activity.hasFollowUp && activity.followUpDays) {
+                const addedDate = new Date(activity.timestamp);
+                const dueDate = new Date(addedDate);
+                dueDate.setDate(addedDate.getDate() + parseInt(activity.followUpDays, 10));
+                dueDate.setHours(0, 0, 0, 0);
+
+                if (dueDate.getTime() === today.getTime()) {
+                  allNotifications.push({
+                    id: `followup-${doc.id}-${activity.timestamp}`,
+                    title: 'Follow-up Reminder',
+                    description: `Follow up with ${lead.name} regarding "${activity.description}"`,
+                    time: 'Today',
+                    isRead: false,
+                    type: 'followUp'
+                  });
+                }
+              }
+            });
+          }
+        });
+      }
+
+      // Fetch Expiring Agreements
+      if (hasPermission('agreements:view')) {
+        const agreementsCollection = collection(db, 'agreements');
+        const agreementsSnapshot = await getDocs(agreementsCollection);
+        agreementsSnapshot.forEach(doc => {
+          const agreement = doc.data();
+          if (agreement.endDate) {
+            const endDate = new Date(agreement.endDate);
+            const diffTime = endDate.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            let message = '';
+            if (diffDays === 30 || diffDays === 15 || (diffDays >= 0 && diffDays <= 7)) {
+                message = `Agreement for ${agreement.memberLegalName || agreement.name} is expiring in ${diffDays} day(s).`;
+            } else if (diffDays < 0 && diffDays >= -1) {
+                message = `Agreement for ${agreement.memberLegalName || agreement.name} has expired.`;
+            }
+
+
+            if (message) {
+              allNotifications.push({
+                id: `agreement-${doc.id}`,
+                title: 'Agreement Expiration',
+                description: message,
+                time: 'Today',
+                isRead: false,
+                type: 'agreement'
+              });
+            }
+          }
+        });
+      }
+
+      // Fetch Birthday Reminders (Members)
+      if (hasPermission('members:view')) {
+        const membersCollection = collection(db, 'members');
+        const membersSnapshot = await getDocs(membersCollection);
+        membersSnapshot.forEach(doc => {
+          const member = doc.data();
+          if (member.birthdayDay && member.birthdayMonth) {
+            const birthdayMonth = parseInt(member.birthdayMonth, 10) - 1;
+            const birthdayDay = parseInt(member.birthdayDay, 10);
+            const todayMonth = today.getMonth();
+            const todayDay = today.getDate();
+
+            if (birthdayMonth === todayMonth && birthdayDay === todayDay) {
+              allNotifications.push({
+                id: `birthday-${doc.id}`,
+                title: 'Birthday Reminder',
+                description: `It's ${member.name}'s birthday today!`,
+                time: 'Today',
+                isRead: false,
+                type: 'birthday'
+              });
+            }
+          }
+        });
+      }
       
       setNotifications(allNotifications);
     };
@@ -100,6 +187,7 @@ function HomePage() {
           pageTitle={pageTitle} 
           notifications={notifications} 
           setNotifications={setNotifications}
+          toggleSidebar={toggleSidebar} /* Pass toggleSidebar to Header */
           isSidebarCollapsed={isSidebarCollapsed}
         />
         <main style={{ flexGrow: 1, padding: '20px', overflowY: 'auto' }}>

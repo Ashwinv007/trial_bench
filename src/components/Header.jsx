@@ -7,6 +7,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../auth/usePermissions';
+import NotificationsComponent from './Notifications'; // Renamed to avoid conflict
 
 export default function Header({ pageTitle = 'Dashboard', notifications, setNotifications, isSidebarCollapsed }) {
   const { user } = useContext(AuthContext);
@@ -148,28 +149,7 @@ export default function Header({ pageTitle = 'Dashboard', notifications, setNoti
               <p>No notifications</p>
             </div>
           ) : (
-            <div className={styles.notificationsList}>
-              {notifications.map((notification) => (
-                <MenuItem
-                  key={notification.id}
-                  onClick={() => handleMarkAsRead(notification.id)}
-                  className={`${styles.notificationItem} ${!notification.isRead ? styles.unread : ''}`}
-                >
-                  <div className={styles.notificationContent}>
-                    <div className={styles.notificationTitle}>
-                      {notification.title}
-                      {!notification.isRead && <span className={styles.unreadDot}></span>}
-                    </div>
-                    <div className={styles.notificationDescription}>
-                      {notification.description}
-                    </div>
-                    <div className={styles.notificationTime}>
-                      {notification.time}
-                    </div>
-                  </div>
-                </MenuItem>
-              ))}
-            </div>
+            <NotificationsComponent notifications={notifications} onClose={handleNotificationClose} onMarkAsRead={handleMarkAsRead} />
           )}
         </Menu>
 
