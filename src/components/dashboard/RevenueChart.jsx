@@ -13,74 +13,90 @@ const RevenueChart = () => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         const fetchData = async () => {
             if (hasPermission('readInvoice')) {
-                setLoading(true);
-                const now = new Date();
-                let startDate;
+                try {
+                    setLoading(true);
+                    setError(null);
+                    const now = new Date();
+                    let startDate;
 
-                if (period === 'week') {
-                    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
-                } else if (period === 'month') {
-                    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-                } else {
-                    startDate = new Date(now.getFullYear(), 0, 1);
-                }
-
-                const startDateString = startDate.getFullYear() + '-' + ('0' + (startDate.getMonth() + 1)).slice(-2) + '-' + ('0' + startDate.getDate()).slice(-2);
-
-                const invoicesCollection = collection(db, 'invoices');
-                const q = query(
-                    invoicesCollection,
-                    where('paymentStatus', '==', 'Paid'),
-                    where('date', '>=', startDateString)
-                );
-                const snapshot = await getDocs(q);
-                const invoices = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-
-                // Process data for chart
-                const chartData = [];
-                if (period === 'week') {
-                    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                    const dayRevenues = new Array(7).fill(0);
-                    invoices.forEach(invoice => {
-                        const invoiceDate = new Date(invoice.date.replace(/-/g, '/'));
-                        const day = invoiceDate.getDay();
-                        dayRevenues[day] += parseFloat(invoice.totalPrice) || 0;
-                    });
-                    for (let i = 0; i < 7; i++) {
-                        chartData.push({ label: days[(now.getDay() - 6 + i + 7) % 7], revenue: dayRevenues[(now.getDay() - 6 + i + 7) % 7] });
+                    if (period === 'week') {
+                        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+                    } else if (period === 'month') {
+                        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                    } else {
+                        startDate = new Date(now.getFullYear(), 0, 1);
                     }
-                } else if (period === 'month') {
-                    const monthDayRevenues = new Array(now.getDate()).fill(0);
-                    invoices.forEach(invoice => {
-                        const invoiceDate = new Date(invoice.date.replace(/-/g, '/'));
-                        if (invoiceDate.getMonth() === now.getMonth() && invoiceDate.getFullYear() === now.getFullYear()) {
-                            const day = invoiceDate.getDate() - 1;
-                            monthDayRevenues[day] += parseFloat(invoice.totalPrice) || 0;
+
+                    const firestoreStartDate = Timestamp.fromDate(startDate);
+
+                    const invoicesCollection = collection(db, 'invoices');
+                    const q = query(
+                        invoicesCollection,
+                        where('paymentStatus', '==', 'Paid'),
+                        where('date', '>=', firestoreStartDate)
+                    );
+                    const snapshot = await getDocs(q);
+                    const invoices = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+
+                    // Process data for chart
+                    const chartData = [];
+                    if (period === 'week') {
+                        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                        const dayRevenues = new Array(7).fill(0);
+                        invoices.forEach(invoice => {
+                            if (invoice.date && typeof invoice.date.toDate === 'function') {
+                                const invoiceDate = invoice.date.toDate();
+                                const day = invoiceDate.getDay();
+                                dayRevenues[day] += parseFloat(invoice.totalPrice) || 0;
+                            }
+                        });
+                        for (let i = 0; i < 7; i++) {
+                            chartData.push({ label: days[(now.getDay() - 6 + i + 7) % 7], revenue: dayRevenues[(now.getDay() - 6 + i + 7) % 7] });
                         }
-                    });
-                    for (let i = 0; i < now.getDate(); i++) {
-                        chartData.push({ label: String(i + 1), revenue: monthDayRevenues[i] });
-                    }
-                } else { // year
-                    const monthRevenues = new Array(12).fill(0);
-                    invoices.forEach(invoice => {
-                        const invoiceDate = new Date(invoice.date.replace(/-/g, '/'));
-                        if (invoiceDate.getFullYear() === now.getFullYear()) {
-                            const month = invoiceDate.getMonth();
-                            monthRevenues[month] += parseFloat(invoice.totalPrice) || 0;
+                    } else if (period === 'month') {
+                        const monthDayRevenues = new Array(now.getDate()).fill(0);
+                        invoices.forEach(invoice => {
+                            if (invoice.date && typeof invoice.date.toDate === 'function') {
+                                const invoiceDate = invoice.date.toDate();
+                                if (invoiceDate.getMonth() === now.getMonth() && invoiceDate.getFullYear() === now.getFullYear()) {
+                                    const day = invoiceDate.getDate() - 1;
+                                    monthDayRevenues[day] += parseFloat(invoice.totalPrice) || 0;
+                                }
+                            }
+                        });
+                        for (let i = 0; i < now.getDate(); i++) {
+                            chartData.push({ label: String(i + 1), revenue: monthDayRevenues[i] });
                         }
-                    });
-                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                    for (let i = 0; i < 12; i++) {
-                        chartData.push({ label: monthNames[i], revenue: monthRevenues[i] });
+                    } else { // year
+                        const monthRevenues = new Array(12).fill(0);
+                        invoices.forEach(invoice => {
+                            if (invoice.date && typeof invoice.date.toDate === 'function') {
+                                const invoiceDate = invoice.date.toDate();
+                                if (invoiceDate.getFullYear() === now.getFullYear()) {
+                                    const month = invoiceDate.getMonth();
+                                    monthRevenues[month] += parseFloat(invoice.totalPrice) || 0;
+                                }
+                            }
+                        });
+                        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                        for (let i = 0; i < 12; i++) {
+                            chartData.push({ label: monthNames[i], revenue: monthRevenues[i] });
+                        }
                     }
-                }
 
-                setData(chartData);
+                    setData(chartData);
+                } catch (err) {
+                    console.error("Error fetching revenue data:", err);
+                    setError("Failed to load revenue data.");
+                } finally {
+                    setLoading(false);
+                }
+            } else {
                 setLoading(false);
             }
         };
@@ -167,7 +183,9 @@ const RevenueChart = () => {
             
             <div className={styles.chartContainer}>
                 {loading ? <p>Loading...</p> :
-                    !loading && data.length === 0 ? <p>No revenue data available for the selected period.</p> :
+                    error ? <p style={{ color: 'red' }}>{error}</p> :
+                    !hasPermission('readInvoice') ? <p>You don't have permission to view this chart.</p> :
+                    data.length === 0 ? <p>No revenue data available for the selected period.</p> :
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                             <defs>

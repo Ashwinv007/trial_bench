@@ -4,7 +4,7 @@ import { Close, AddCircleOutline, Search as SearchIcon, FilterList as FilterList
 import styles from './Invoices.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
 import { logActivity } from '../utils/logActivity';
-import { collection, getDocs, addDoc, doc, updateDoc, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, query, where, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
@@ -25,6 +25,12 @@ const formatDate = (dateInput) => {
   const userTimezoneOffset = date.getTimezoneOffset() * 60000;
   const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
   return adjustedDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
+const parseFirestoreDate = (firestoreDate) => {
+    if (!firestoreDate) return null;
+    if (firestoreDate.toDate) return firestoreDate.toDate(); // Is a timestamp
+    return new Date(String(firestoreDate).replace(/-/g, '/')); // Is a string 'YYYY-MM-DD'
 };
 
 const updateCalculationsAndDescription = (currentFormData, allClients) => {
@@ -167,11 +173,11 @@ export default function Invoices() {
     legalName: '',
     address: '',
     invoiceNumber: '',
-    date: '',
+    date: null,
     month: '',
     year: '',
-    fromDate: '',
-    toDate: '',
+    fromDate: null,
+    toDate: null,
     items: [{ description: '', sacCode: '997212', price: '', quantity: 1 }],
     totalPrice: '',
     discountPercentage: 0,
@@ -249,11 +255,11 @@ export default function Invoices() {
       legalName: '',
       address: '',
       invoiceNumber: newInvoiceNumber,
-      date: new Date().toISOString().split('T')[0],
+      date: new Date(),
       month: '',
       year: new Date().getFullYear().toString(),
-      fromDate: '',
-      toDate: '',
+      fromDate: null,
+      toDate: null,
       items: [{ description: '', sacCode: '997212', price: '', quantity: 1 }],
       totalPrice: '',
       discountPercentage: 0,
@@ -277,11 +283,11 @@ export default function Invoices() {
       legalName: invoice.legalName,
       address: invoice.address,
       invoiceNumber: invoice.invoiceNumber,
-      date: invoice.date,
+      date: parseFirestoreDate(invoice.date),
       month: invoice.month || '',
       year: invoice.year || '',
-      fromDate: invoice.fromDate || '',
-      toDate: invoice.toDate || '',
+      fromDate: parseFirestoreDate(invoice.fromDate),
+      toDate: parseFirestoreDate(invoice.toDate),
       items: invoice.items || [{ description: '', sacCode: '997212', price: '', quantity: 1 }],
       totalPrice: invoice.totalPrice,
       discountPercentage: invoice.discountPercentage,
@@ -328,13 +334,13 @@ export default function Invoices() {
             const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
             updated.month = monthNames[newMonthIndex];
             updated.year = newYear.toString();
-            updated.fromDate = newFromDateObj.toISOString().split('T')[0];
-            updated.toDate = newToDateObj.toISOString().split('T')[0];
+            updated.fromDate = newFromDateObj;
+            updated.toDate = newToDateObj;
           } else {
             updated.month = '';
             updated.year = new Date().getFullYear().toString();
-            updated.fromDate = '';
-            updated.toDate = '';
+            updated.fromDate = null;
+            updated.toDate = null;
           }
         } else {
           const newItems = [...prev.items];
@@ -346,8 +352,8 @@ export default function Invoices() {
           updated.sgstPercentage = 9;
           updated.month = '';
           updated.year = new Date().getFullYear().toString();
-          updated.fromDate = '';
-          updated.toDate = '';
+          updated.fromDate = null;
+          updated.toDate = null;
         }
       } else {
         updated.agreementId = null;
@@ -363,8 +369,8 @@ export default function Invoices() {
         updated.totalAmountPayable = '';
         updated.month = '';
         updated.year = new Date().getFullYear().toString();
-        updated.fromDate = '';
-        updated.toDate = '';
+        updated.fromDate = null;
+        updated.toDate = null;
       }
       return updateCalculationsAndDescription(updated, clients);
     });
@@ -397,8 +403,8 @@ export default function Invoices() {
   };
 
   const handleDateChange = (name, newValue) => {
-    const formattedDate = newValue ? dayjs(newValue).format('YYYY-MM-DD') : '';
-    setFormData((prev) => updateCalculationsAndDescription({ ...prev, [name]: formattedDate }, clients));
+    const dateObj = newValue ? newValue.toDate() : null;
+    setFormData((prev) => updateCalculationsAndDescription({ ...prev, [name]: dateObj }, clients));
   };
 
  const handleSubmit = async (e) => {
@@ -408,7 +414,13 @@ export default function Invoices() {
       return;
     }
 
-    const { name, phone, email, ...invoicePayload } = formData;
+    const { name, phone, email, date, fromDate, toDate, ...restOfFormData } = formData;
+    
+    const invoicePayload = { ...restOfFormData };
+    if (date) invoicePayload.date = Timestamp.fromDate(date);
+    if (fromDate) invoicePayload.fromDate = Timestamp.fromDate(fromDate);
+    if (toDate) invoicePayload.toDate = Timestamp.fromDate(toDate);
+
 
     const client = clients.find(c => c.id === formData.leadId);
     const clientName = client ? client.name : 'Unknown Client';
@@ -449,8 +461,8 @@ export default function Invoices() {
             cgstPercentage: formData.cgstPercentage,
             sgstPercentage: formData.sgstPercentage,
             month: formData.month,
-            fromDate: formData.fromDate,
-            toDate: formData.toDate,
+            fromDate: fromDate,
+            toDate: toDate,
         };
         await updateDoc(leadRef, { lastInvoiceDetails: lastInvoiceDetails });
 
@@ -480,7 +492,7 @@ export default function Invoices() {
   const handlePaymentDateSubmit = async () => {
     if (paymentDate && selectedInvoiceForPayment) {
       const invoiceRef = doc(db, "invoices", selectedInvoiceForPayment.id);
-      await updateDoc(invoiceRef, { paymentStatus: 'Paid', dateOfPayment: paymentDate, lastEditedAt: serverTimestamp() });
+      await updateDoc(invoiceRef, { paymentStatus: 'Paid', dateOfPayment: Timestamp.fromDate(new Date(paymentDate.replace(/-/g, '/'))), lastEditedAt: serverTimestamp() });
       setInvoices(prev => prev.map(inv => inv.id === selectedInvoiceForPayment.id ? { ...inv, paymentStatus: 'Paid', dateOfPayment: paymentDate } : inv));
       setIsPaymentDateModalOpen(false);
       setSelectedInvoiceForPayment(null);
@@ -570,11 +582,11 @@ export default function Invoices() {
         legalName: client.name || '',
         address: client.memberAddress || '',
         invoiceNumber: generateInvoiceNumber(invoices),
-        date: new Date().toISOString().split('T')[0],
+        date: new Date(),
         month: '',
         year: new Date().getFullYear().toString(),
-        fromDate: '',
-        toDate: '',
+        fromDate: null,
+        toDate: null,
         items: [{ description: '', sacCode: '997212', price: '', quantity: 1 }],
         totalPrice: '',
         discountPercentage: 0,
@@ -601,8 +613,8 @@ export default function Invoices() {
           const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
           initialData.month = monthNames[newMonthIndex];
           initialData.year = newYear.toString();
-          initialData.fromDate = newFromDateObj.toISOString().split('T')[0];
-          initialData.toDate = newToDateObj.toISOString().split('T')[0];
+          initialData.fromDate = newFromDateObj;
+          initialData.toDate = newToDateObj;
         }
       }
       
