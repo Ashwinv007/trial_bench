@@ -1,0 +1,62 @@
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.card:hover {
+  box-shadow: 0 8px 16px rgba(43, 122, 142, 0.12);
+  transform: translateY(-2px);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.iconWrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
+}
+
+.trendBadge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 13px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.value {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1a1a1a;
+  line-height: 1.2;
+}
+
+.title {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}

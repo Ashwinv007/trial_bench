@@ -7,8 +7,15 @@ import RecentClients from './dashboard/RecentClients';
 import LeadConversionsChart from './dashboard/LeadConversionsChart';
 import RevenueChart from './dashboard/RevenueChart';
 import ExpenseChart from './dashboard/ExpenseChart';
+import StatsCard from './dashboard/StatsCard';
+import { useStatsData } from './dashboard/useStatsData';
+import { usePermissions } from '../auth/usePermissions';
+import PermissionMessage from './dashboard/PermissionMessage';
 
 export default function Dashboard() {
+    const { statsData, loading } = useStatsData();
+    const permissions = usePermissions();
+
     return (
         <div className={styles.container}>
             <div className={styles.content}>
@@ -17,14 +24,61 @@ export default function Dashboard() {
                     <p className={styles.subtitle}>An overview of your coworking space.</p>
                 </div>
 
-                <div className={styles.chartsGrid}>
-                    <div className={styles.gridItemSmall}><BirthdayList /></div>
-                    <div className={styles.gridItemSmall}><ExpiringAgreements /></div>
-                    <div className={styles.gridItemSmall}><UnpaidInvoices /></div>
-                    <div className={styles.gridItemSmall}><RecentClients /></div>
-                    <div className={styles.gridItemLarge}><LeadConversionsChart /></div>
-                    <div className={styles.gridItemLarge}><RevenueChart /></div>
-                    <div className={styles.gridItemLarge}><ExpenseChart /></div>
+                {/* Stats Cards Row */}
+                {!loading && (
+                    <div className={styles.statsGrid}>
+                        {statsData.map((stat) => (
+                            <StatsCard
+                                key={stat.id}
+                                title={stat.title}
+                                value={stat.value}
+                                change={stat.change}
+                                trend={stat.trend}
+                                icon={stat.icon}
+                                color={stat.color}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {/* Main Content Grid */}
+                <div className={styles.mainGrid}>
+                    {/* Left Column - Lists */}
+                    <div className={styles.leftColumn}>
+                        <div className={styles.listCard}>
+                            <BirthdayList />
+                        </div>
+                        <div className={styles.listCard}>
+                            <ExpiringAgreements />
+                        </div>
+                    </div>
+
+                    {/* Right Column - Invoices & Clients */}
+                    <div className={styles.rightColumn}>
+                        <div className={styles.listCard}>
+                            <UnpaidInvoices />
+                        </div>
+                        <div className={styles.listCard}>
+                            <RecentClients />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Lead Conversions Chart - Full Width */}
+                <div className={styles.leadConversionsRow}>
+                    <div className={styles.chartCard}>
+                        <LeadConversionsChart />
+                    </div>
+                </div>
+
+                {/* Charts Row */}
+                <div className={styles.chartsRow}>
+                    <div className={styles.chartCard}>
+                        {permissions.hasPermission('readInvoice') ? <RevenueChart /> : <PermissionMessage item="revenue chart" />}
+                    </div>
+                    <div className={styles.chartCard}>
+                        {permissions.hasPermission('readExpense') ? <ExpenseChart /> : <PermissionMessage item="expense chart" />}
+                    </div>
                 </div>
             </div>
         </div>

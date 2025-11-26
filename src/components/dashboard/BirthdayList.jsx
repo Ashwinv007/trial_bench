@@ -3,6 +3,7 @@ import styles from '../Dashboard.module.css';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { usePermissions } from '../../auth/usePermissions';
+import { Cake } from 'lucide-react';
 
 const BirthdayList = () => {
     const { hasPermission } = usePermissions();
@@ -36,6 +37,11 @@ const BirthdayList = () => {
         fetchBirthdays();
     }, [hasPermission]);
 
+    const getInitials = (name) => {
+        if (!name) return '';
+        return name.split(' ').map(word => word[0]).join('').toUpperCase().substring(0, 2);
+    };
+
     if (loading) {
         return <p>Loading birthdays...</p>;
     }
@@ -45,20 +51,32 @@ const BirthdayList = () => {
     }
 
     return (
-        <div className={styles.chartCard}>
-            <h3 className={styles.chartTitle}>Birthdays This Month</h3>
-            <div className={styles.clientsContainer}>
+        <div className={styles.card}>
+            <div className={styles.header}>
+                <div className={styles.titleWrapper}>
+                    <Cake size={20} className={styles.birthdaysHeaderIcon} />
+                    <h3 className={styles.invoiceTitle}>Birthdays This Month</h3>
+                </div>
+                <span className={styles.count}>{birthdays.length}</span>
+            </div>
+            
+            <div className={styles.birthdaysList}>
                 {birthdays.length > 0 ? (
-                    birthdays.map((birthday, index) => (
-                        <div key={index} className={styles.clientRow}>
-                            <div className={styles.clientInfo}>
-                                <div className={styles.clientName}>{birthday.name}</div>
-                                <div className={styles.clientEmail}>{birthday.date}</div>
+                    birthdays.slice(0, 5).map((birthday, index) => (
+                        <div key={index} className={styles.birthdaysItem}>
+                            <div className={styles.birthdaysAvatar}>
+                                {getInitials(birthday.name)}
+                            </div>
+                            <div className={styles.birthdaysInfo}>
+                                <div className={styles.birthdaysName}>{birthday.name}</div>
+                                <div className={styles.birthdaysDate}>{birthday.date}</div>
                             </div>
                         </div>
                     ))
                 ) : (
-                    <p>No birthdays this month.</p>
+                    <div className={styles.emptyClients}>
+                        No birthdays this month.
+                    </div>
                 )}
             </div>
         </div>

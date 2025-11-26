@@ -15,9 +15,13 @@ import { usePermissions } from '../auth/usePermissions';
 import dayjs from 'dayjs';
 import { toast } from 'sonner';
 
-const formatDate = (dateString) => {
-  if (!dateString) return '-';
-  const date = new Date(dateString);
+const formatDate = (dateInput) => {
+  if (!dateInput) return '-';
+  // Handle Firestore Timestamps which have a toDate method, otherwise treat as string/Date object
+  const date = (dateInput.toDate && typeof dateInput.toDate === 'function')
+    ? dateInput.toDate()
+    : new Date(dateInput);
+  
   const userTimezoneOffset = date.getTimezoneOffset() * 60000;
   const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
   return adjustedDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
