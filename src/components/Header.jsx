@@ -1,46 +1,36 @@
-import { useState } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { IconButton, Badge, Menu, MenuItem, Divider, Avatar } from '@mui/material';
-import { Notifications, Person, Logout, Settings } from '@mui/icons-material';
+import { Notifications, Logout, Settings, Menu as MenuIcon } from '@mui/icons-material';
 import styles from './Header.module.css';
+import { AuthContext } from '../store/Context';
+import { signOut } from 'firebase/auth';
+import { auth } from '../firebase/config';
+import { useNavigate } from 'react-router-dom';
+import { usePermissions } from '../auth/usePermissions';
 
-export default function Header({ pageTitle = 'Dashboard' }) {
+export default function Header({ pageTitle = 'Dashboard', notifications, setNotifications, isSidebarCollapsed }) {
+  const { user } = useContext(AuthContext);
+  const { hasAtLeastOnePermission } = usePermissions();
+  const navigate = useNavigate();
+
   const [notificationAnchor, setNotificationAnchor] = useState(null);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+  const [mobileMenuAnchor, setMobileMenuAnchor] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  // Sample notifications data
-  const [notifications] = useState([
-    {
-      id: 1,
-      title: 'New invoice payment received',
-      description: 'Diana Prince paid invoice #WCP2511002',
-      time: '5 mins ago',
-      isRead: false,
-    },
-    {
-      id: 2,
-      title: 'Agreement expiring soon',
-      description: 'Bruce Wayne\'s agreement expires in 30 days',
-      time: '2 hours ago',
-      isRead: false,
-    },
-    {
-      id: 3,
-      title: 'New lead added',
-      description: 'Barry Allen added as a new lead',
-      time: '1 day ago',
-      isRead: true,
-    },
-    {
-      id: 4,
-      title: 'Invoice overdue',
-      description: 'Invoice #WCP2511001 is overdue',
-      time: '2 days ago',
-      isRead: false,
-    },
-  ]);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
-  // User data
-  const userData = {
+  const userData = user ? {
+    name: user.displayName || 'Admin User',
+    email: user.email,
+    initials: user.displayName ? user.displayName.split(' ').map(n => n[0]).join('') : 'AU',
+  } : {
     name: 'Admin User',
     email: 'admin@trialbench.com',
     initials: 'AU',
@@ -56,6 +46,10 @@ export default function Header({ pageTitle = 'Dashboard' }) {
     setNotificationAnchor(null);
   };
 
+  const handleMarkAsRead = (id) => {
+    setNotifications(notifications.map(n => n.id === id ? { ...n, isRead: true } : n));
+  };
+
   const handleUserMenuClick = (event) => {
     setUserMenuAnchor(event.currentTarget);
   };
@@ -64,49 +58,71 @@ export default function Header({ pageTitle = 'Dashboard' }) {
     setUserMenuAnchor(null);
   };
 
-  const handleLogout = () => {
-    handleUserMenuClose();
-    // Logout logic here
-    alert('Logout functionality will be implemented');
+  const handleMobileMenuClick = (event) => {
+    setMobileMenuAnchor(event.currentTarget);
   };
 
-  const handleProfile = () => {
-    handleUserMenuClose();
-    // Navigate to profile page
-    alert('Profile page will be implemented');
+  const handleMobileMenuClose = () => {
+    setMobileMenuAnchor(null);
   };
+
+  const handleLogout = async () => {
+    handleUserMenuClose();
+    handleMobileMenuClose();
+    try {
+      await signOut(auth);
+      navigate('/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
+  const handleSettings = () => {
+    handleUserMenuClose();
+    handleMobileMenuClose();
+    navigate('/settings');
+  };
+
+  const canViewSettings = hasAtLeastOnePermission(['settings:manage_roles', 'settings:manage_users', 'settings:manage_templates']);
 
   return (
-    <header className={styles.header}>
+    <header className={`${styles.header} ${isSidebarCollapsed ? styles.collapsed : ''}`}>
       <div className={styles.container}>
-        {/* Page Title */}
         <div className={styles.titleSection}>
           <h1 className={styles.pageTitle}>{pageTitle}</h1>
         </div>
 
-        {/* Right Section */}
         <div className={styles.rightSection}>
-          {/* Notifications */}
-          <IconButton
-            className={styles.iconButton}
-            onClick={handleNotificationClick}
-            aria-label={`${unreadCount} notifications`}
-          >
-            <Badge badgeContent={unreadCount} color="error">
-              <Notifications />
-            </Badge>
-          </IconButton>
-
-          {/* User Account */}
-          <IconButton
-            className={styles.iconButton}
-            onClick={handleUserMenuClick}
-            aria-label="user account"
-          >
-            <Avatar className={styles.avatar}>
-              {userData.initials}
-            </Avatar>
-          </IconButton>
+          {isMobile ? (
+            <IconButton
+              className={styles.iconButton}
+              onClick={handleMobileMenuClick}
+              aria-label="open menu"
+            >
+              <MenuIcon />
+            </IconButton>
+          ) : (
+            <>
+              <IconButton
+                className={styles.iconButton}
+                onClick={handleNotificationClick}
+                aria-label={`${unreadCount} notifications`}
+              >
+                <Badge badgeContent={unreadCount} color="error">
+                  <Notifications />
+                </Badge>
+              </IconButton>
+              <IconButton
+                className={styles.iconButton}
+                onClick={handleUserMenuClick}
+                aria-label="user account"
+              >
+                <Avatar className={styles.avatar}>
+                  {userData.initials}
+                </Avatar>
+              </IconButton>
+            </>
+          )}
         </div>
 
         {/* Notifications Menu */}
@@ -114,13 +130,11 @@ export default function Header({ pageTitle = 'Dashboard' }) {
           anchorEl={notificationAnchor}
           open={Boolean(notificationAnchor)}
           onClose={handleNotificationClose}
-          PaperProps={{
-            className: styles.notificationMenu,
-          }}
+          PaperProps={{ className: styles.notificationMenu }}
           transformOrigin={{ horizontal: 'right', vertical: 'top' }}
           anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         >
-          <div className={styles.menuHeader}>
+           <div className={styles.menuHeader}>
             <h3 className={styles.menuTitle}>Notifications</h3>
             {unreadCount > 0 && (
               <span className={styles.unreadBadge}>{unreadCount} new</span>
@@ -138,7 +152,7 @@ export default function Header({ pageTitle = 'Dashboard' }) {
               {notifications.map((notification) => (
                 <MenuItem
                   key={notification.id}
-                  onClick={handleNotificationClose}
+                  onClick={() => handleMarkAsRead(notification.id)}
                   className={`${styles.notificationItem} ${!notification.isRead ? styles.unread : ''}`}
                 >
                   <div className={styles.notificationContent}>
@@ -159,14 +173,12 @@ export default function Header({ pageTitle = 'Dashboard' }) {
           )}
         </Menu>
 
-        {/* User Menu */}
+        {/* User Menu (Desktop) */}
         <Menu
           anchorEl={userMenuAnchor}
           open={Boolean(userMenuAnchor)}
           onClose={handleUserMenuClose}
-          PaperProps={{
-            className: styles.userMenu,
-          }}
+          PaperProps={{ className: styles.userMenu }}
           transformOrigin={{ horizontal: 'right', vertical: 'top' }}
           anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         >
@@ -181,18 +193,36 @@ export default function Header({ pageTitle = 'Dashboard' }) {
           </div>
           <Divider />
           
-          <MenuItem onClick={handleProfile} className={styles.menuItem}>
-            <Person className={styles.menuIcon} />
-            Profile
-          </MenuItem>
-          
-          <MenuItem onClick={handleUserMenuClose} className={styles.menuItem}>
-            <Settings className={styles.menuIcon} />
-            Settings
-          </MenuItem>
+          {canViewSettings && (
+            <MenuItem onClick={handleSettings} className={styles.menuItem}>
+              <Settings className={styles.menuIcon} />
+              Settings
+            </MenuItem>
+          )}
           
           <Divider />
           
+          <MenuItem onClick={handleLogout} className={styles.menuItem}>
+            <Logout className={styles.menuIcon} />
+            Logout
+          </MenuItem>
+        </Menu>
+
+        {/* Mobile Menu */}
+        <Menu
+          anchorEl={mobileMenuAnchor}
+          open={Boolean(mobileMenuAnchor)}
+          onClose={handleMobileMenuClose}
+          PaperProps={{ className: styles.mobileMenu }}
+          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        >
+          {canViewSettings && (
+            <MenuItem onClick={handleSettings} className={styles.menuItem}>
+              <Settings className={styles.menuIcon} />
+              Settings
+            </MenuItem>
+          )}
           <MenuItem onClick={handleLogout} className={styles.menuItem}>
             <Logout className={styles.menuIcon} />
             Logout
