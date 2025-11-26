@@ -17,7 +17,7 @@ export const useStatsData = () => {
         },
         {
             id: 2,
-            title: 'Active Clients',
+            title: 'Active Members',
             value: '0',
             change: '+0',
             trend: 'up',
@@ -72,9 +72,8 @@ export const useStatsData = () => {
             }
 
             if (hasPermission('readMember')) {
-                const membersCollection = collection(db, 'leads');
-                const q = query(membersCollection, where('status', '==', 'Converted'));
-                const membersSnapshot = await getDocs(q);
+                const membersCollection = collection(db, 'members');
+                const membersSnapshot = await getDocs(membersCollection);
                 activeClients = membersSnapshot.size;
             }
             
@@ -104,7 +103,7 @@ export const useStatsData = () => {
                 },
                 {
                     id: 2,
-                    title: 'Active Clients',
+                    title: 'Active Members',
                     value: activeClients.toString(),
                     change: '+0', // Placeholder
                     trend: 'up',
