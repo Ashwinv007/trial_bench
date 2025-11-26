@@ -5,6 +5,7 @@ import { useState, useEffect, useContext } from 'react';
 import { FirebaseContext } from '../store/Context';
 import { collection, getDocs } from 'firebase/firestore';
 import Notifications from './Notifications';
+import { usePermissions } from '../auth/usePermissions';
 
 const revenueData = [
   { month: 'Jan', value: 4.4 },
@@ -79,6 +80,7 @@ const statCards = [
 
 export default function Dashboard() {
   const { db } = useContext(FirebaseContext);
+  const { hasPermission } = usePermissions(); // Use the usePermissions hook
   const [followUpNotifications, setFollowUpNotifications] = useState([]);
   const [agreementNotifications, setAgreementNotifications] = useState([]);
   const [birthdayNotifications, setBirthdayNotifications] = useState([]);
@@ -94,123 +96,134 @@ export default function Dashboard() {
       const expiringAgreements = [];
       const birthdayReminders = [];
 
-      // Fetch Follow-ups
-      const leadsCollection = collection(db, 'leads');
-      const leadsSnapshot = await getDocs(leadsCollection);
-      leadsSnapshot.forEach(doc => {
-        const lead = doc.data();
-        if (lead.activities) {
-          lead.activities.forEach(activity => {
-            if (activity.hasFollowUp && activity.followUpDays) {
-              const addedDate = new Date(activity.timestamp);
-              const dueDate = new Date(addedDate);
-              dueDate.setDate(addedDate.getDate() + parseInt(activity.followUpDays, 10));
-              dueDate.setHours(0, 0, 0, 0);
+      // Fetch Follow-ups (Leads)
+      if (hasPermission('leads:view')) {
+        const leadsCollection = collection(db, 'leads');
+        const leadsSnapshot = await getDocs(leadsCollection);
+        leadsSnapshot.forEach(doc => {
+          const lead = doc.data();
+          if (lead.activities) {
+            lead.activities.forEach(activity => {
+              if (activity.hasFollowUp && activity.followUpDays) {
+                const addedDate = new Date(activity.timestamp);
+                const dueDate = new Date(addedDate);
+                dueDate.setDate(addedDate.getDate() + parseInt(activity.followUpDays, 10));
+                dueDate.setHours(0, 0, 0, 0);
 
-              if (dueDate.getTime() === today.getTime()) {
-                dueFollowUps.push({
-                  type: 'followUp',
-                  leadName: lead.name,
-                  note: activity.description,
-                });
+                if (dueDate.getTime() === today.getTime()) {
+                  dueFollowUps.push({
+                    type: 'followUp',
+                    leadName: lead.name,
+                    note: activity.description,
+                  });
+                }
               }
-            }
-          });
-        }
-      });
+            });
+          }
+        });
+      } else {
+        setFollowUpNotifications([]); // Clear if no permission
+      }
 
       // Fetch Expiring Agreements
-      const agreementsCollection = collection(db, 'agreements');
-      const agreementsSnapshot = await getDocs(agreementsCollection);
-      agreementsSnapshot.forEach(doc => {
-        const agreement = doc.data();
-        if (agreement.endDate) {
-          const endDate = new Date(agreement.endDate);
-          const diffTime = endDate.getTime() - today.getTime();
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (hasPermission('agreements:view')) {
+        const agreementsCollection = collection(db, 'agreements');
+        const agreementsSnapshot = await getDocs(agreementsCollection);
+        agreementsSnapshot.forEach(doc => {
+          const agreement = doc.data();
+          if (agreement.endDate) {
+            const endDate = new Date(agreement.endDate);
+            const diffTime = endDate.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-          let message = '';
-          let level = 'info'; // Default level
+            let message = '';
+            let level = 'info'; // Default level
 
-          if (diffDays < 0) {
-            // Expired
-            if (diffDays === -1) { // Only show on the day it expires
-                message = `Agreement for ${agreement.memberLegalName || agreement.name} has expired today.`;
-                level = 'critical';
+            if (diffDays < 0) {
+              // Expired
+              if (diffDays === -1) { // Only show on the day it expires
+                  message = `Agreement for ${agreement.memberLegalName || agreement.name} has expired today.`;
+                  level = 'critical';
+              }
+            } else if (diffDays === 0) {
+              // Expires today
+              message = `Agreement for ${agreement.memberLegalName || agreement.name} expires today!`;
+              level = 'critical';
+            } else if (diffDays > 0 && diffDays <= 7) {
+              // Within 7 days, show every day
+              message = `Agreement for ${agreement.memberLegalName || agreement.name} is expiring in ${diffDays} day(s).`;
+              level = 'critical';
+            } else if (diffDays === 15) {
+              // Exactly 15 days
+              message = `Agreement for ${agreement.memberLegalName || agreement.name} is expiring in 15 days.`;
+              level = 'warning';
+            } else if (diffDays === 30) {
+              // Exactly 30 days
+              message = `Agreement for ${agreement.memberLegalName || agreement.name} is expiring in 30 days.`;
+              level = 'warning';
             }
-          } else if (diffDays === 0) {
-            // Expires today
-            message = `Agreement for ${agreement.memberLegalName || agreement.name} expires today!`;
-            level = 'critical';
-          } else if (diffDays > 0 && diffDays <= 7) {
-            // Within 7 days, show every day
-            message = `Agreement for ${agreement.memberLegalName || agreement.name} is expiring in ${diffDays} day(s).`;
-            level = 'critical';
-          } else if (diffDays === 15) {
-            // Exactly 15 days
-            message = `Agreement for ${agreement.memberLegalName || agreement.name} is expiring in 15 days.`;
-            level = 'warning';
-          } else if (diffDays === 30) {
-            // Exactly 30 days
-            message = `Agreement for ${agreement.memberLegalName || agreement.name} is expiring in 30 days.`;
-            level = 'warning';
+
+            if (message) {
+              expiringAgreements.push({
+                type: 'agreement',
+                message: message,
+                level: level,
+              });
+            }
           }
+        });
+      } else {
+        setAgreementNotifications([]); // Clear if no permission
+      }
 
-          if (message) {
-            expiringAgreements.push({
-              type: 'agreement',
-              message: message,
-              level: level,
-            });
-          }
-        }
-      });
-
-      // Fetch Birthday Reminders
-      const membersCollection = collection(db, 'members');
-      const membersSnapshot = await getDocs(membersCollection);
-      membersSnapshot.forEach(doc => {
-        const member = doc.data();
-        if (member.birthdayDay && member.birthdayMonth) {
-          const birthdayMonth = parseInt(member.birthdayMonth, 10) - 1; // Month is 0-indexed
-          const birthdayDay = parseInt(member.birthdayDay, 10);
-
-          const todayMonth = today.getMonth();
-          const todayDay = today.getDate();
-
-          const tomorrow = new Date(today);
-          tomorrow.setDate(today.getDate() + 1);
-          const tomorrowMonth = tomorrow.getMonth();
-          const tomorrowDay = tomorrow.getDate();
-
-          let message = '';
-          let level = 'info';
-
-          if (birthdayMonth === todayMonth && birthdayDay === todayDay) {
-            message = `It's ${member.name}'s birthday today!`;
-            level = 'info';
-          } else if (birthdayMonth === tomorrowMonth && birthdayDay === tomorrowDay) {
-            message = `${member.name}'s birthday is tomorrow!`;
-            level = 'info';
-          }
-
-          if (message) {
-            birthdayReminders.push({
-              type: 'birthday',
-              message: message,
-              level: level,
-            });
-          }
-        }
-      });
-
+            // Fetch Birthday Reminders (Members)
+            if (hasPermission('members:view')) {
+              const membersCollection = collection(db, 'members');
+              const membersSnapshot = await getDocs(membersCollection);
+              membersSnapshot.forEach(doc => {
+                const member = doc.data();
+                if (member.birthdayDay && member.birthdayMonth) {
+                  const birthdayMonth = parseInt(member.birthdayMonth, 10) - 1; // Month is 0-indexed
+                  const birthdayDay = parseInt(member.birthdayDay, 10);
+      
+                  const todayMonth = today.getMonth();
+                  const todayDay = today.getDate();
+      
+                  const tomorrow = new Date(today);
+                  tomorrow.setDate(today.getDate() + 1);
+                  const tomorrowMonth = tomorrow.getMonth();
+                  const tomorrowDay = tomorrow.getDate();
+      
+                  let message = '';
+                  let level = 'info';
+      
+                  if (birthdayMonth === todayMonth && birthdayDay === todayDay) {
+                    message = `It's ${member.name}'s birthday today!`;
+                    level = 'info';
+                  } else if (birthdayMonth === tomorrowMonth && birthdayDay === tomorrowDay) {
+                    message = `${member.name}'s birthday is tomorrow!`;
+                    level = 'info';
+                  }
+      
+                  if (message) {
+                    birthdayReminders.push({
+                      type: 'birthday',
+                      message: message,
+                      level: level,
+                    });
+                  }
+                }
+              });
+            } else {
+              setBirthdayNotifications([]); // Clear if no permission
+            }
       setFollowUpNotifications(dueFollowUps);
       setAgreementNotifications(expiringAgreements);
       setBirthdayNotifications(birthdayReminders);
     };
 
     fetchNotifications();
-  }, [db]);
+  }, [db, hasPermission]);
 
   return (
     <div className={styles.container}>

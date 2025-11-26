@@ -1,9 +1,25 @@
 import React from 'react';
 import styles from './Notifications.module.css';
 import { Notifications as NotificationsIcon, Close } from '@mui/icons-material';
+import { usePermissions } from '../auth/usePermissions'; // Import usePermissions
 
 export default function Notifications({ notifications, onClose, title }) {
-  if (!notifications || notifications.length === 0) {
+  const { hasPermission } = usePermissions(); // Use the usePermissions hook
+
+  const filteredNotifications = notifications.filter(notification => {
+    if (notification.type === 'followUp' && !hasPermission('leads:view')) {
+      return false;
+    }
+    if (notification.type === 'agreement' && !hasPermission('agreements:view')) {
+      return false;
+    }
+    if (notification.type === 'birthday' && !hasPermission('members:view')) {
+      return false;
+    }
+    return true;
+  });
+
+  if (!filteredNotifications || filteredNotifications.length === 0) {
     return null;
   }
 
@@ -17,7 +33,7 @@ export default function Notifications({ notifications, onClose, title }) {
         </button>
       </div>
       <ul className={styles.notificationList}>
-        {notifications.map((notification, index) => (
+        {filteredNotifications.map((notification, index) => (
           <li key={index} className={`${styles.notificationItem} ${notification.type === 'agreement' ? styles[notification.level] : ''}`}>
             {notification.type === 'followUp' && (
               <>
