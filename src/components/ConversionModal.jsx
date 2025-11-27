@@ -38,7 +38,8 @@ export default function ConversionModal({ open, onClose, leadData, onConvert }) 
       birthdayDay: leadData.birthdayDay,
       birthdayMonth: leadData.birthdayMonth,
       whatsapp: leadData.convertedWhatsapp,
-      email: leadData.ccEmail || leadData.convertedEmail,
+      email: leadData.convertedEmail,
+      ccEmail: leadData.ccEmail,
     };
     onConvert(memberData);
   };

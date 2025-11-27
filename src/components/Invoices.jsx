@@ -241,6 +241,7 @@ export default function Invoices() {
         name: client ? client.name : 'Unknown Client',
         phone: client ? client.convertedWhatsapp : 'N/A',
         email: client ? client.convertedEmail : 'N/A',
+        ccEmail: client ? client.ccEmail : 'N/A',
       };
     });
   }, [invoices, clients]);
@@ -425,11 +426,12 @@ export default function Invoices() {
     const client = clients.find(c => c.id === formData.leadId);
     const clientName = client ? client.name : 'Unknown Client';
     const clientEmail = client ? client.convertedEmail : '';
+    const clientCcEmail = client ? client.ccEmail : '';
 
     if (editingInvoice) {
       const invoiceRef = doc(db, "invoices", editingInvoice.id);
       await updateDoc(invoiceRef, { ...invoicePayload, lastEditedAt: serverTimestamp() });
-      const updatedInvoice = { ...editingInvoice, ...invoicePayload, name: clientName, email: clientEmail };
+      const updatedInvoice = { ...editingInvoice, ...invoicePayload, name: clientName, email: clientEmail, ccEmail: clientCcEmail };
       setInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? updatedInvoice : inv));
       setInvoiceGenerated(updatedInvoice);
       logActivity(
@@ -442,7 +444,7 @@ export default function Invoices() {
     } else {
       try {
         const docRef = await addDoc(collection(db, "invoices"), { ...invoicePayload, createdAt: serverTimestamp(), lastEditedAt: serverTimestamp() });
-        const newInvoice = { id: docRef.id, ...invoicePayload, name: clientName, email: clientEmail };
+        const newInvoice = { id: docRef.id, ...invoicePayload, name: clientName, email: clientEmail, ccEmail: clientCcEmail };
         setInvoices(prev => [...prev, newInvoice]);
         setInvoiceGenerated(newInvoice);
         logActivity(
@@ -645,6 +647,7 @@ export default function Invoices() {
 
       await sendInvoiceEmailCallable({
         toEmail: invoiceGenerated.email,
+        ccEmail: invoiceGenerated.ccEmail || null,
         customerName: invoiceGenerated.name,
         invoiceNumber: invoiceGenerated.invoiceNumber,
         pdfBase64: pdfBase64,

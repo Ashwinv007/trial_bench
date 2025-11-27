@@ -530,6 +530,7 @@ export default function Agreements() {
       const pdfBase64 = await getAgreementPdfBase64(agreementGenerated);
       await sendAgreementEmailCallable({
         toEmail: agreementGenerated.convertedEmail,
+        ccEmail: agreementGenerated.ccEmail || null,
         clientName: agreementGenerated.name,
         agreementName: agreementGenerated.agreementNumber,
         pdfBase64: pdfBase64,

@@ -356,7 +356,9 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         toast.error("You don't have permission to send welcome emails.");
         return;
     }
-    const emailToSend = editMember && editMember.primary ? leadEmail : formData.email;
+    const emailToSend = formData.email;
+    const ccEmailToSend = formData.ccEmail;
+
     if (!emailToSend || !emailToSend.trim()) {
       toast.error('Member does not have an email to send to.');
       return;
@@ -366,7 +368,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
       await sendWelcomeEmailCallable({
         toEmail: emailToSend, 
         username: formData.name, 
-        ccEmail: null, // CC email is no longer collected
+        ccEmail: ccEmailToSend || null,
       });
       toast.success('Welcome email sent successfully!');
       logActivity(
