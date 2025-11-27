@@ -338,7 +338,9 @@ export default function EditLead() {
     if (data.status === 'Converted') {
       if (!data.clientType) newErrors.clientType = 'Client Type is required';
       if (data.clientType === 'Company' && !data.companyName.trim()) newErrors.companyName = 'Company Name is required';
-      if (data.convertedEmail && !/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(data.convertedEmail)) {
+      if (!data.convertedEmail.trim()) {
+        newErrors.convertedEmail = 'Email is required';
+      } else if (!/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(data.convertedEmail)) {
         newErrors.convertedEmail = 'Invalid email format';
       }
       if (!data.convertedWhatsapp.trim()) {
@@ -562,7 +564,7 @@ export default function EditLead() {
                   )}
 
                   <div className={styles.formGroup}>
-                    <label className={styles.label}>Email</label>
+                    <label className={styles.label}>Email *</label>
                     <input
                       type="email"
                       name="convertedEmail"
@@ -570,6 +572,7 @@ export default function EditLead() {
                       onChange={handleInputChange}
                       placeholder="Enter email address"
                       className={`${styles.input} ${errors.convertedEmail ? styles.inputError : ''}`}
+                      required
                     />
                     {errors.convertedEmail && <p className={styles.errorMessage}>{errors.convertedEmail}</p>}
                   </div>
@@ -621,9 +624,8 @@ export default function EditLead() {
                           labelId="birthday-month-label"
                           value={formData.birthdayMonth}
                           onChange={(e) => handleInputChange({ target: { name: 'birthdayMonth', value: e.target.value } })}
-                          displayEmpty
+                          label="Month"
                         >
-                          <MenuItem value="" disabled>Select Month</MenuItem>
                           {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((monthName, index) => (
                             <MenuItem key={index + 1} value={String(index + 1)}>{monthName}</MenuItem>
                           ))}
