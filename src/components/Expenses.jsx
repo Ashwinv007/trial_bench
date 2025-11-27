@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import styles from './Expenses.module.css';
 import { db } from '../firebase/config';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { AuthContext } from '../store/Context';
 import * as XLSX from 'xlsx';
 import { usePermissions } from '../auth/usePermissions';
@@ -57,6 +57,12 @@ const categoryColors = {
   'Other Expenses': '#95A5A6'
 };
 
+const parseDate = (date) => {
+    if (!date) return null;
+    if (date.toDate) return date.toDate(); // It's a Timestamp
+    return dayjs(date).toDate(); // It's a string or Date object
+};
+
 // Function to get color for a category (with fallback for new categories)
 const getCategoryColor = (category) => {
   if (categoryColors[category]) {
@@ -80,8 +86,8 @@ export default function Expenses() {
   const [editingCategoryIndex, setEditingCategoryIndex] = useState(null);
   const [newCategory, setNewCategory] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useState(null);
+  const [dateTo, setDateTo] = useState(null);
   const [reportTab, setReportTab] = useState(0); // 0 for Monthly, 1 for Yearly
   const [selectedReportYear, setSelectedReportYear] = useState(new Date().getFullYear().toString());
   const [selectedMonthlyYear, setSelectedMonthlyYear] = useState(new Date().getFullYear().toString());
@@ -89,7 +95,7 @@ export default function Expenses() {
   const [formData, setFormData] = useState({
     category: '',
     amount: '',
-    date: '',
+    date: null,
     notes: '',
     billNumber: ''
   });
@@ -108,7 +114,7 @@ export default function Expenses() {
 
   useEffect(() => {
     if (isReportsModalOpen) {
-      const availableYears = [...new Set(expenses.map(e => new Date(e.date).getFullYear()))].sort((a, b) => b - a);
+      const availableYears = [...new Set(expenses.map(e => parseDate(e.date).getFullYear()))].sort((a, b) => b - a);
       if (availableYears.length > 0) {
         setSelectedReportYear(availableYears[0].toString());
         setSelectedMonthlyYear(availableYears[0].toString());
@@ -127,7 +133,7 @@ export default function Expenses() {
     setFormData({
       category: '',
       amount: '',
-      date: '',
+      date: null,
       notes: '',
       billNumber: ''
     });
@@ -138,7 +144,7 @@ export default function Expenses() {
     setFormData({
       category: expense.category,
       amount: expense.amount,
-      date: expense.date,
+      date: parseDate(expense.date),
       notes: expense.notes,
       billNumber: expense.billNumber
     });
@@ -177,7 +183,7 @@ export default function Expenses() {
     }
 
     // Check if date is in the future
-    const selectedDate = new Date(formData.date);
+    const selectedDate = formData.date;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -188,12 +194,19 @@ export default function Expenses() {
       }
     }
 
+    const payload = {
+        ...formData,
+        amount: amount,
+        date: Timestamp.fromDate(formData.date)
+    };
+
     if (editingExpense) {
       const expenseDoc = doc(db, 'expenses', editingExpense.id);
-      await updateDoc(expenseDoc, { ...formData, amount: amount });
+      await updateDoc(expenseDoc, payload);
       toast.success('Expense updated successfully');
     } else {
-      await addDoc(collection(db, 'expenses'), { ...formData, amount: amount, addedBy: user.displayName });
+      payload.addedBy = user.displayName;
+      await addDoc(collection(db, 'expenses'), payload);
       toast.success('Expense added successfully');
     }
 
@@ -297,25 +310,25 @@ export default function Expenses() {
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-IN', { 
+    const date = parseDate(dateString);
+    return date ? date.toLocaleDateString('en-IN', { 
       year: 'numeric', 
       month: 'short', 
       day: 'numeric' 
-    });
+    }) : '';
   };
 
   // Filter expenses based on category and date range
   const handleDateChange = (name, newValue) => {
-    const formattedDate = newValue ? dayjs(newValue).format('YYYY-MM-DD') : '';
+    const dateValue = newValue ? newValue.toDate() : null;
     if (name === 'dateFrom') {
-      setDateFrom(formattedDate);
+      setDateFrom(dateValue);
     } else if (name === 'dateTo') {
-      setDateTo(formattedDate);
+      setDateTo(dateValue);
     } else {
       setFormData((prev) => ({
         ...prev,
-        [name]: formattedDate,
+        [name]: dateValue,
       }));
     }
   };
@@ -325,11 +338,11 @@ export default function Expenses() {
     return expenses.filter(expense => {
       const categoryMatch = filterCategory === 'All' || expense.category === filterCategory;
       
-      const expenseDate = dayjs(expense.date);
-      const fromDate = dateFrom ? dayjs(dateFrom) : null;
-      const toDate = dateTo ? dayjs(dateTo) : null;
+      const expenseDate = dayjs(parseDate(expense.date));
+      const fromDateObj = dateFrom ? dayjs(dateFrom) : null;
+      const toDateObj = dateTo ? dayjs(dateTo) : null;
       
-      const dateMatch = (!fromDate || expenseDate.isSameOrAfter(fromDate, 'day')) && (!toDate || expenseDate.isSameOrBefore(toDate, 'day'));
+      const dateMatch = (!fromDateObj || expenseDate.isSameOrAfter(fromDateObj, 'day')) && (!toDateObj || expenseDate.isSameOrBefore(toDateObj, 'day'));
       
       return categoryMatch && dateMatch;
     });
@@ -340,8 +353,8 @@ export default function Expenses() {
 
   const handleResetFilters = () => {
     setFilterCategory('All');
-    setDateFrom('');
-    setDateTo('');
+    setDateFrom(null);
+    setDateTo(null);
     toast.success('Filters reset');
   };
 
@@ -350,7 +363,8 @@ export default function Expenses() {
     const monthlyData = {};
     
     expenses.forEach(expense => {
-      const date = new Date(expense.date);
+      const date = parseDate(expense.date);
+      if (!date) return;
       const monthYear = `${date.toLocaleString('default', { month: 'long' })} ${date.getFullYear()}`;
       
       if (!monthlyData[monthYear]) {
@@ -375,7 +389,8 @@ export default function Expenses() {
     const yearlyData = {};
     
     expenses.forEach(expense => {
-      const date = new Date(expense.date);
+      const date = parseDate(expense.date);
+      if (!date) return;
       const year = date.getFullYear().toString();
       
       if (!yearlyData[year]) {
@@ -399,13 +414,13 @@ export default function Expenses() {
   const getAvailableMonthsForYear = (year) => {
     const months = new Set();
     expenses.forEach(expense => {
-        const expenseDate = new Date(expense.date);
-        if (expenseDate.getFullYear().toString() === year) {
+        const expenseDate = parseDate(expense.date);
+        if (expenseDate && expenseDate.getFullYear().toString() === year) {
             months.add(expenseDate.toLocaleString('default', { month: 'long' }));
         }
     });
     const monthOrder = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    return Array.from(months).sort((a, b) => monthOrder.indexOf(a) - b.indexOf(a));
+    return Array.from(months).sort((a, b) => monthOrder.indexOf(a) - monthOrder.indexOf(b));
   };
 
   const getCategoryChartData = (categoryBreakdown) => {
@@ -419,8 +434,9 @@ export default function Expenses() {
   };
 
   // Grouping Functions - Relative time grouping like transaction history
-  const getRelativeTimeGroup = (dateString) => {
-    const expenseDate = dayjs(dateString);
+  const getRelativeTimeGroup = (dateField) => {
+    const expenseDate = dayjs(parseDate(dateField));
+    if (!expenseDate.isValid()) return { key: 'invalid', label: 'Invalid Date', order: 99 };
     const today = dayjs().startOf('day');
     
     const diffDays = today.diff(expenseDate, 'day');
@@ -469,7 +485,7 @@ export default function Expenses() {
 
   const getGroupedExpensesByTime = () => {
     const grouped = {};
-    const sorted = [...filteredExpenses].sort((a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf());
+    const sorted = [...filteredExpenses].sort((a, b) => dayjs(parseDate(b.date)).valueOf() - dayjs(parseDate(a.date)).valueOf());
 
     sorted.forEach(expense => {
       const groupInfo = getRelativeTimeGroup(expense.date);

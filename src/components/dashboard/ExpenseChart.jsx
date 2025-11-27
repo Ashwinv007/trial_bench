@@ -96,12 +96,12 @@ const ExpenseChart = () => {
                         <TrendingDown size={20} className={styles.expenseChartHeaderIcon} />
                         <h3 className={styles.invoiceTitle}>Expenses</h3>
                     </div>
-                    <div className={styles.expenseChartSubtitle}>Current: ${currentValue.toLocaleString()}</div>
+                    <div className={styles.expenseChartSubtitle}>Current: ₹{currentValue.toLocaleString('en-IN')}</div>
                 </div>
                 <div className={styles.expenseChartHeaderRight}>
                     <div className={styles.expenseChartStats}>
                         <div className={styles.expenseChartStat}>
-                            <div className={styles.expenseChartStatValue}>${(totalExpenses / 1000).toFixed(1)}K</div>
+                            <div className={styles.expenseChartStatValue}>₹{(totalExpenses / 1000).toFixed(1)}K</div>
                             <div className={styles.expenseChartStatLabel}>Total</div>
                         </div>
                         <div className={styles.expenseChartStat}>
@@ -176,7 +176,7 @@ const ExpenseChart = () => {
                                 axisLine={false}
                                 tickLine={false}
                                 tick={{ fill: '#666', fontSize: 12 }}
-                                tickFormatter={(value) => `${value / 1000}K`}
+                                tickFormatter={(value) => `₹${value / 1000}K`}
                             />
                             <Tooltip 
                                 contentStyle={{
@@ -185,7 +185,7 @@ const ExpenseChart = () => {
                                     borderRadius: '8px',
                                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
                                 }}
-                                formatter={(value) => [`${value.toLocaleString()}`, 'Expenses']}
+                                formatter={(value) => [`₹${value.toLocaleString('en-IN')}`, 'Expenses']}
                             />
                             <Area 
                                 type="monotone" 
