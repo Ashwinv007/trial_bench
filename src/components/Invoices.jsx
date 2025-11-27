@@ -22,9 +22,7 @@ const formatDate = (dateInput) => {
     ? dateInput.toDate()
     : new Date(dateInput);
   
-  const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-  const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
-  return adjustedDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
 const parseFirestoreDate = (firestoreDate) => {
@@ -327,11 +325,20 @@ export default function Invoices() {
           
           const lastToDate = client.lastInvoiceDetails.toDate;
           if (lastToDate) {
-            const lastToDateObj = new Date(lastToDate);
-            const newFromDateObj = new Date(Date.UTC(lastToDateObj.getUTCFullYear(), lastToDateObj.getUTCMonth(), lastToDateObj.getUTCDate() + 1));
-            const newMonthIndex = newFromDateObj.getUTCMonth();
-            const newYear = newFromDateObj.getUTCFullYear();
-            const newToDateObj = new Date(Date.UTC(newYear, newMonthIndex + 1, 0));
+            const lastToDateObj = parseFirestoreDate(lastToDate);
+            // Use local date methods to avoid timezone shifts
+            const newFromDateObj = new Date(
+              lastToDateObj.getFullYear(),
+              lastToDateObj.getMonth(),
+              lastToDateObj.getDate() + 1
+            );
+            
+            const newMonthIndex = newFromDateObj.getMonth();
+            const newYear = newFromDateObj.getFullYear();
+            
+            // Set toDate to the last day of the new month
+            const newToDateObj = new Date(newYear, newMonthIndex + 1, 0);
+            
             const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
             updated.month = monthNames[newMonthIndex];
             updated.year = newYear.toString();
@@ -405,7 +412,15 @@ export default function Invoices() {
 
   const handleDateChange = (name, newValue) => {
     const dateObj = newValue ? newValue.toDate() : null;
-    setFormData((prev) => updateCalculationsAndDescription({ ...prev, [name]: dateObj }, clients));
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: dateObj };
+      if (name === 'fromDate' && dateObj) {
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        updated.month = monthNames[dateObj.getMonth()];
+        updated.year = dateObj.getFullYear().toString();
+      }
+      return updateCalculationsAndDescription(updated, clients);
+    });
   };
 
  const handleSubmit = async (e) => {
@@ -555,8 +570,8 @@ export default function Invoices() {
         return null;
       };
 
-      const dateA = getDate(a.lastEditedAt || a.createdAt);
-      const dateB = getDate(b.lastEditedAt || b.createdAt);
+      const dateA = getDate(a.createdAt);
+      const dateB = getDate(b.createdAt);
 
       if (dateA && dateB) {
         return dateB.getTime() - dateA.getTime(); // Descending sort
@@ -609,11 +624,20 @@ export default function Invoices() {
         
         const lastToDate = client.lastInvoiceDetails.toDate;
         if (lastToDate) {
-          const lastToDateObj = new Date(lastToDate);
-          const newFromDateObj = new Date(Date.UTC(lastToDateObj.getUTCFullYear(), lastToDateObj.getUTCMonth(), lastToDateObj.getUTCDate() + 1));
-          const newMonthIndex = newFromDateObj.getUTCMonth();
-          const newYear = newFromDateObj.getUTCFullYear();
-          const newToDateObj = new Date(Date.UTC(newYear, newMonthIndex + 1, 0));
+          const lastToDateObj = parseFirestoreDate(lastToDate);
+          // Use local date methods to avoid timezone shifts
+          const newFromDateObj = new Date(
+            lastToDateObj.getFullYear(),
+            lastToDateObj.getMonth(),
+            lastToDateObj.getDate() + 1
+          );
+
+          const newMonthIndex = newFromDateObj.getMonth();
+          const newYear = newFromDateObj.getFullYear();
+          
+          // Set toDate to the last day of the new month
+          const newToDateObj = new Date(newYear, newMonthIndex + 1, 0);
+
           const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
           initialData.month = monthNames[newMonthIndex];
           initialData.year = newYear.toString();
@@ -823,8 +847,6 @@ export default function Invoices() {
               <div className={styles.formGrid}>
                 <TextField label="Invoice Number" name="invoiceNumber" value={formData.invoiceNumber} onChange={handleInputChange} fullWidth variant="outlined" size="small" required disabled />
                 <DatePicker label="Date" value={formData.date ? dayjs(formData.date) : null} onChange={(newValue) => handleDateChange('date', newValue)} format="DD/MM/YYYY" slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small', required: true } }} />
-                <Select label="Month" name="month" value={formData.month} onChange={handleInputChange} fullWidth variant="outlined" size="small" displayEmpty><MenuItem value="" disabled>Select Month</MenuItem>{["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}</Select>
-                <TextField label="Year" name="year" value={formData.year} onChange={handleInputChange} fullWidth variant="outlined" size="small" placeholder="e.g., 2025" />
                 <DatePicker label="From Date" value={formData.fromDate ? dayjs(formData.fromDate) : null} onChange={(newValue) => handleDateChange('fromDate', newValue)} format="DD/MM/YYYY" slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small', required: true } }} />
                 <DatePicker label="To Date" value={formData.toDate ? dayjs(formData.toDate) : null} onChange={(newValue) => handleDateChange('toDate', newValue)} format="DD/MM/YYYY" slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small', required: true } }} />
               </div>
