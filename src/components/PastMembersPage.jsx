@@ -123,7 +123,7 @@ export default function PastMembersPage() {
           </Box>
         </TableCell>
         <TableCell>{member.package}</TableCell>
-        <TableCell>{member.company}</TableCell>
+        <TableCell>{member.clientType === 'individual' && !member.company ? 'N/A' : member.company}</TableCell>
         <TableCell>{formatBirthdayDisplay(member.birthday)}</TableCell>
         <TableCell>{member.whatsapp}</TableCell>
         <TableCell>{member.email}</TableCell>

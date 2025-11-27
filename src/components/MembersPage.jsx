@@ -329,7 +329,7 @@ export default function MembersPage() {
           </Box>
         </TableCell>
         <TableCell>{member.package}</TableCell>
-        <TableCell>{member.company}</TableCell>
+        <TableCell>{member.clientType === 'individual' && !member.company ? 'N/A' : member.company}</TableCell>
         <TableCell>{formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth)}</TableCell>
         <TableCell>{member.whatsapp}</TableCell>
         <TableCell>{member.email}</TableCell>
@@ -360,7 +360,7 @@ export default function MembersPage() {
               </Box>
             </TableCell>
             <TableCell onClick={() => handleOpenEditModal(member)}>{member.package}</TableCell>
-            <TableCell onClick={() => handleOpenEditModal(member)}>{member.company}</TableCell>
+            <TableCell onClick={() => handleOpenEditModal(member)}>{member.clientType === 'individual' && !member.company ? 'N/A' : member.company}</TableCell>
             <TableCell onClick={() => handleOpenEditModal(member)}>{formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth)}</TableCell>
             <TableCell onClick={() => handleOpenEditModal(member)}>{member.whatsapp}</TableCell>
             <TableCell onClick={() => handleOpenEditModal(member)}>{member.email}</TableCell>
@@ -383,7 +383,7 @@ export default function MembersPage() {
                 </Box>
               </TableCell>
               <TableCell>{subMember.package}</TableCell>
-              <TableCell>{subMember.company}</TableCell>
+              <TableCell>{subMember.clientType === 'individual' && !subMember.company ? 'N/A' : subMember.company}</TableCell>
               <TableCell>{formatBirthdayDisplay(subMember.birthdayDay, subMember.birthdayMonth)}</TableCell>
               <TableCell>{subMember.whatsapp}</TableCell>
               <TableCell>{subMember.email}</TableCell>

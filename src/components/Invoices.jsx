@@ -312,7 +312,7 @@ export default function Invoices() {
         const client = clients.find(c => c.id === agreement.leadId);
         updated.agreementId = agreement.id;
         updated.leadId = agreement.leadId;
-        updated.legalName = client?.name || '';
+        updated.legalName = agreement.memberLegalName || client?.name || '';
         updated.address = agreement.memberAddress || client?.memberAddress || '';
 
         if (client && client.lastInvoiceDetails) {
@@ -574,13 +574,15 @@ export default function Invoices() {
 
     const client = clients.find(c => c.id === leadId);
     if (client) {
+      const agreement = agreements.find(a => a.leadId === leadId);
       setEditingInvoice(null);
       setInvoiceGenerated(null);
       
       const initialData = {
         leadId: client.id,
-        legalName: client.name || '',
-        address: client.memberAddress || '',
+        agreementId: agreement ? agreement.id : null,
+        legalName: agreement?.memberLegalName || client.name || '',
+        address: agreement?.memberAddress || client.memberAddress || '',
         invoiceNumber: generateInvoiceNumber(invoices),
         date: new Date(),
         month: '',
@@ -621,7 +623,7 @@ export default function Invoices() {
       setFormData(updateCalculationsAndDescription(initialData, clients));
       setIsModalOpen(true);
     }
-  }, [clients, hasPermission, invoices]);
+  }, [clients, hasPermission, invoices, agreements]);
 
   const handleSendInvoiceEmail = async () => {
     if (!invoiceGenerated) {

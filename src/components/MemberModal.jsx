@@ -169,6 +169,7 @@ const ReplacementView = ({ subMembers, onCancel, onConfirm, mode, oldPrimaryMemb
                                 value={newMemberData.birthdayMonth}
                                 onChange={(e) => handleNewMemberChange('birthdayMonth', e.target.value)}
                                 displayEmpty
+                                label="Birthday Month"
                             >
                                 <MenuItem value="" disabled>Select Month</MenuItem>
                                 {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((monthName, index) => (
@@ -560,6 +561,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
                 value={formData.birthdayMonth}
                 onChange={(e) => handleChange('birthdayMonth', e.target.value)}
                 displayEmpty
+                label="Birthday Month"
               >
                 <MenuItem value="" disabled>Select Month</MenuItem>
                 {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((monthName, index) => (

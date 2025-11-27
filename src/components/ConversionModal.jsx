@@ -23,7 +23,7 @@ export default function ConversionModal({ open, onClose, leadData, onConvert }) 
         company: '',
         birthdayDay: '',
         birthdayMonth: '',
-        whatsapp: '',
+        whatsapp: '+91',
         email: '',
       });
       setIsOtherPackage(false);

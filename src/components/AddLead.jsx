@@ -372,6 +372,7 @@ export default function AddLead() {
                   <option value="Private Cabin">Private Cabin</option>
                   <option value="Virtual Office">Virtual Office</option>
                   <option value="Meeting Room">Meeting Room</option>
+                  <option value="Day Pass">Day Pass</option>
                   <option value="Others">Others</option>
                 </select>
                 {errors.purposeOfVisit && !isOtherPurpose && <p className={styles.errorMessage}>{errors.purposeOfVisit}</p>}
