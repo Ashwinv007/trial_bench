@@ -243,7 +243,7 @@ export default function Agreements() {
     }
 
     setFormData({
-      memberLegalName: '',
+      memberLegalName: agreement.memberLegalName || '',
       memberCIN: agreement.memberCIN || 'Not Applicable',
       memberGST: agreement.memberGST || 'Not Applicable',
       memberPAN: agreement.memberPAN || 'Not Applicable',
