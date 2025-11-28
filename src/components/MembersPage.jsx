@@ -241,29 +241,60 @@ export default function MembersPage() {
     }
   };
 
-  const toggleRow = (memberId) => {
-    setExpandedRows((prev) => ({ ...prev, [memberId]: !prev[memberId] }));
-  };
+  useEffect(() => {
+    if (primaryMemberFilter === 'Primary Members' && searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const newExpandedRows = {};
+
+      const subMembersMatching = allMembers.filter(m => 
+        !m.primary && m.primaryMemberId && (
+          (m.name && m.name.toLowerCase().includes(query)) ||
+          (m.email && m.email.toLowerCase().includes(query)) ||
+          (m.whatsapp && m.whatsapp.toLowerCase().includes(query)) ||
+          (m.company && m.company.toLowerCase().includes(query))
+        )
+      );
+
+      subMembersMatching.forEach(subMember => {
+        newExpandedRows[subMember.primaryMemberId] = true;
+      });
+      
+      setExpandedRows(newExpandedRows);
+    } else if (!searchQuery.trim()) {
+      setExpandedRows({});
+    }
+  }, [searchQuery, primaryMemberFilter, allMembers]);
 
   const filteredMembers = useMemo(() => {
     let members = allMembers;
+    const query = searchQuery.toLowerCase().trim();
+    const hasSearch = query.length > 0;
+
+    const isMatch = (member) =>
+      (member.name && member.name.toLowerCase().includes(query)) ||
+      (member.email && member.email.toLowerCase().includes(query)) ||
+      (member.whatsapp && member.whatsapp.toLowerCase().includes(query)) ||
+      (member.company && member.company.toLowerCase().includes(query));
 
     if (primaryMemberFilter === 'Primary Members') {
-      members = members.filter((member) => member.primary);
+      if (hasSearch) {
+        const matchingMembers = allMembers.filter(isMatch);
+        const primaryIdsToShow = new Set();
+        matchingMembers.forEach(m => {
+          if (m.primary) primaryIdsToShow.add(m.id);
+          else if (m.primaryMemberId) primaryIdsToShow.add(m.primaryMemberId);
+        });
+        
+        members = allMembers.filter(m => m.primary && primaryIdsToShow.has(m.id));
+      } else {
+        members = members.filter(m => m.primary);
+      }
+    } else { // All Members
+      if (hasSearch) {
+        members = members.filter(isMatch);
+      }
     }
-    // For "All Members", we show everyone in a flat list. No special filtering needed here.
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      members = members.filter(
-        (member) =>
-          (member.name && member.name.toLowerCase().includes(query)) ||
-          (member.email && member.email.toLowerCase().includes(query)) ||
-          (member.whatsapp && member.whatsapp.toLowerCase().includes(query)) ||
-          (member.company && member.company.toLowerCase().includes(query))
-      );
-    }
-
+    
     if (packageFilter !== 'All Packages') {
       members = members.filter((member) => member.package === packageFilter);
     }
@@ -293,9 +324,30 @@ export default function MembersPage() {
 
   const getSubMembers = (member) => {
     if (!member.subMembers || member.subMembers.length === 0) return [];
-    return member.subMembers
+    
+    let subMembers = member.subMembers
       .map(subId => allMembers.find(m => m.id === subId))
       .filter(Boolean);
+
+    const query = searchQuery.toLowerCase().trim();
+    const hasSearch = query.length > 0;
+
+    if (primaryMemberFilter === 'Primary Members' && hasSearch) {
+        const isMatch = (m) =>
+            (m.name && m.name.toLowerCase().includes(query)) ||
+            (m.email && m.email.toLowerCase().includes(query)) ||
+            (m.whatsapp && m.whatsapp.toLowerCase().includes(query)) ||
+            (m.company && m.company.toLowerCase().includes(query));
+        
+        const primaryMatches = isMatch(member);
+        const matchingSubMembers = subMembers.filter(isMatch);
+
+        if (!primaryMatches && matchingSubMembers.length > 0) {
+            return matchingSubMembers;
+        }
+    }
+    
+    return subMembers;
   };
 
   const handleExport = () => {
@@ -349,8 +401,8 @@ export default function MembersPage() {
           <TableRow sx={{ '& > *': { borderBottom: 'unset' }, '&:hover': { backgroundColor: '#f5f5f5' }, cursor: 'pointer' }}>
             <TableCell sx={{ width: '40px' }}>
               {subMembers.length > 0 && (
-                <IconButton aria-label="expand row" size="small" onClick={(e) => { e.stopPropagation(); toggleRow(member.id); }}>
-                  {isExpanded ? <KeyboardArrowDown fontSize="small" /> : <KeyboardArrowDown fontSize="small" />}
+                <IconButton aria-label="expand row" size="small" onClick={(e) => { e.stopPropagation(); setExpandedRows((prev) => ({ ...prev, [member.id]: !prev[member.id] })); }}>
+                  {isExpanded ? <KeyboardArrowDown fontSize="small" /> : <KeyboardArrowRight fontSize="small" />}
                 </IconButton>
               )}
             </TableCell>
