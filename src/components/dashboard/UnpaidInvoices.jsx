@@ -68,14 +68,14 @@ const UnpaidInvoices = () => {
                                 <span className={styles.amount}>{formatCurrency(invoice.totalAmountPayable)}</span>
                             </div>
                         </div>
-                        <ExternalLink size={16} className={styles.linkIcon} />
+
                     </div>
                 ))}
             </div>
 
-            <div className={styles.viewAll}>
+            {/* <div className={styles.viewAll}>
                 View All Invoices
-            </div>
+            </div> */}
         </div>
     );
 };
