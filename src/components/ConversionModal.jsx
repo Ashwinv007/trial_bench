@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Typography, Box, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Typography, Box, Select, MenuItem, FormControl, InputLabel, FormHelperText } from '@mui/material';
 
 export default function ConversionModal({ open, onClose, leadData, onConvert }) {
-  const [step, setStep] = useState('initial'); // 'initial', 'form'
+  const [step, setStep] = useState('initial'); // 'initial', 'birthday', 'form'
   const [primaryMemberData, setPrimaryMemberData] = useState({
     name: '',
     package: '',
     company: '',
     birthdayDay: '',
     birthdayMonth: '',
-    whatsapp: '',
+    whatsapp: '+91',
     email: '',
   });
+  const [birthdayData, setBirthdayData] = useState({ day: '', month: '' });
+  const [birthdayErrors, setBirthdayErrors] = useState({});
   const [isOtherPackage, setIsOtherPackage] = useState(false);
 
   useEffect(() => {
@@ -26,22 +28,14 @@ export default function ConversionModal({ open, onClose, leadData, onConvert }) 
         whatsapp: '+91',
         email: '',
       });
+      setBirthdayData({ day: '', month: '' });
+      setBirthdayErrors({});
       setIsOtherPackage(false);
     }
   }, [open]);
 
   const handleYes = () => {
-    const memberData = {
-      name: leadData.name,
-      package: leadData.purposeOfVisit,
-      company: leadData.companyName,
-      birthdayDay: leadData.birthdayDay,
-      birthdayMonth: leadData.birthdayMonth,
-      whatsapp: leadData.convertedWhatsapp,
-      email: leadData.convertedEmail,
-      ccEmail: leadData.ccEmail,
-    };
-    onConvert(memberData);
+    setStep('birthday'); // Move to birthday step instead of converting directly
   };
 
   const handleNo = () => {
@@ -61,6 +55,30 @@ export default function ConversionModal({ open, onClose, leadData, onConvert }) 
       email: leadData.ccEmail || leadData.convertedEmail || '',
     }));
     setStep('form');
+  };
+
+  const handleConfirmConversion = () => {
+    const errors = {};
+    if (!birthdayData.day) errors.day = 'Day is required';
+    if (!birthdayData.month) errors.month = 'Month is required';
+    if (birthdayData.day && (parseInt(birthdayData.day, 10) < 1 || parseInt(birthdayData.day, 10) > 31)) {
+        errors.day = 'Day must be between 1 and 31';
+    }
+    setBirthdayErrors(errors);
+
+    if (Object.keys(errors).length === 0) {
+        const memberData = {
+            name: leadData.name,
+            package: leadData.purposeOfVisit,
+            company: leadData.companyName,
+            whatsapp: leadData.convertedWhatsapp,
+            email: leadData.convertedEmail,
+            ccEmail: leadData.ccEmail,
+            birthdayDay: birthdayData.day,
+            birthdayMonth: birthdayData.month,
+        };
+        onConvert(memberData);
+    }
   };
 
   const handleInputChange = (e) => {
@@ -88,6 +106,37 @@ export default function ConversionModal({ open, onClose, leadData, onConvert }) 
       <DialogContent>
         {step === 'initial' && (
           <Typography>Is the Primary Member the same as the Lead?</Typography>
+        )}
+        {step === 'birthday' && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+                <Typography>Enter Primary Member's Birthday</Typography>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                    <TextField
+                        autoFocus
+                        label="Birthday Day"
+                        fullWidth
+                        type="number"
+                        value={birthdayData.day}
+                        onChange={(e) => setBirthdayData(prev => ({ ...prev, day: e.target.value }))}
+                        inputProps={{ min: 1, max: 31 }}
+                        error={!!birthdayErrors.day}
+                        helperText={birthdayErrors.day}
+                    />
+                    <FormControl fullWidth variant="outlined" error={!!birthdayErrors.month}>
+                        <InputLabel>Birthday Month</InputLabel>
+                        <Select
+                            value={birthdayData.month}
+                            onChange={(e) => setBirthdayData(prev => ({ ...prev, month: e.target.value }))}
+                            label="Birthday Month"
+                        >
+                            {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((monthName, index) => (
+                                <MenuItem key={index + 1} value={String(index + 1)}>{monthName}</MenuItem>
+                            ))}
+                        </Select>
+                        {birthdayErrors.month && <FormHelperText>{birthdayErrors.month}</FormHelperText>}
+                    </FormControl>
+                </Box>
+            </Box>
         )}
         {step === 'form' && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
@@ -178,6 +227,12 @@ export default function ConversionModal({ open, onClose, leadData, onConvert }) 
             <Button onClick={handleNo} variant="outlined">No</Button>
             <Button onClick={handleYes} variant="contained">Yes</Button>
           </>
+        )}
+        {step === 'birthday' && (
+            <>
+                <Button onClick={() => setStep('initial')} variant="outlined">Back</Button>
+                <Button onClick={handleConfirmConversion} variant="contained">Confirm Conversion</Button>
+            </>
         )}
         {step === 'form' && (
           <>

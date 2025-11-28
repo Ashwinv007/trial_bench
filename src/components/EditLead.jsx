@@ -112,8 +112,6 @@ export default function EditLead() {
           convertedEmail: leadData.convertedEmail || '',
           ccEmail: leadData.ccEmail || '',
           convertedWhatsapp: leadData.convertedWhatsapp || '',
-          birthdayDay: leadData.birthdayDay || '',
-          birthdayMonth: leadData.birthdayMonth || '',
         });
         setOriginalLead(leadData);
         if (leadData.activities) {
@@ -290,8 +288,6 @@ export default function EditLead() {
         ccEmail: memberData.ccEmail, 
         phone: memberData.whatsapp, 
         purposeOfVisit: memberData.package, 
-        birthdayDay: memberData.birthdayDay,
-        birthdayMonth: memberData.birthdayMonth,
         status: "active", 
         createdAt: new Date().toISOString(),
       });
@@ -354,13 +350,6 @@ export default function EditLead() {
       }
     }
 
-    if (data.status === 'Converted') {
-      if (!data.birthdayDay) newErrors.birthdayDay = 'Day is required';
-      if (!data.birthdayMonth) newErrors.birthdayMonth = 'Month is required';
-      if (data.birthdayDay && (parseInt(data.birthdayDay, 10) < 1 || parseInt(data.birthdayDay, 10) > 31)) {
-        newErrors.birthdayDay = 'Day must be between 1 and 31';
-      }
-    }
     return newErrors;
   };
 
@@ -604,37 +593,6 @@ export default function EditLead() {
                       required
                     />
                     {errors.convertedWhatsapp && <p className={styles.errorMessage}>{errors.convertedWhatsapp}</p>}
-                  </div>
-
-                  {/* Birthday Input - Replaced with Day and Month Selectors */}
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>Birthday</label>
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                      <TextField
-                        label="Day"
-                        fullWidth
-                        type="number"
-                        value={formData.birthdayDay}
-                        onChange={(e) => handleInputChange({ target: { name: 'birthdayDay', value: e.target.value } })}
-                        inputProps={{ min: 1, max: 31 }}
-                        error={!!errors.birthdayDay}
-                        helperText={errors.birthdayDay}
-                      />
-                      <FormControl fullWidth variant="outlined" error={!!errors.birthdayMonth}>
-                        <InputLabel id="birthday-month-label">Month</InputLabel>
-                        <Select
-                          labelId="birthday-month-label"
-                          value={formData.birthdayMonth}
-                          onChange={(e) => handleInputChange({ target: { name: 'birthdayMonth', value: e.target.value } })}
-                          label="Month"
-                        >
-                          {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((monthName, index) => (
-                            <MenuItem key={index + 1} value={String(index + 1)}>{monthName}</MenuItem>
-                          ))}
-                        </Select>
-                        {errors.birthdayMonth && <FormHelperText>{errors.birthdayMonth}</FormHelperText>}
-                      </FormControl>
-                    </Box>
                   </div>
                 </div>
               )}
