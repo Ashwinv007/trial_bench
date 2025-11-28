@@ -66,6 +66,7 @@ export default function MembersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [packageFilter, setPackageFilter] = useState('All Packages');
   const [primaryMemberFilter, setPrimaryMemberFilter] = useState('All Members');
+  const [birthdayMonthFilter, setBirthdayMonthFilter] = useState('All Months');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [primaryMemberId, setPrimaryMemberId] = useState(null);
@@ -291,6 +292,10 @@ export default function MembersPage() {
       members = members.filter((member) => member.package === packageFilter);
     }
 
+    if (birthdayMonthFilter !== 'All Months') {
+      members = members.filter((member) => member.birthdayMonth === birthdayMonthFilter);
+    }
+
     if (primaryMemberFilter === 'All Members') {
       members.sort((a, b) => {
         const getGroupId = (m) => m.primaryMemberId || m.id;
@@ -312,7 +317,7 @@ export default function MembersPage() {
     }
     
     return members;
-  }, [searchQuery, packageFilter, primaryMemberFilter, allMembers]);
+  }, [searchQuery, packageFilter, primaryMemberFilter, birthdayMonthFilter, allMembers]);
 
   const getSubMembers = (member) => {
     if (!member.subMembers || member.subMembers.length === 0) return [];
@@ -469,6 +474,7 @@ export default function MembersPage() {
               setSearchQuery('');
               setPackageFilter('All Packages');
               setPrimaryMemberFilter('All Members');
+              setBirthdayMonthFilter('All Months');
             }}
             sx={{ textTransform: 'none', fontSize: '14px', color: '#424242', borderColor: '#e0e0e0', bgcolor: '#ffffff', px: 2, '&:hover': { borderColor: '#2b7a8e', bgcolor: '#ffffff' } }}
           >
@@ -495,6 +501,26 @@ export default function MembersPage() {
           >
             <MenuItem value="All Members">All Members</MenuItem>
             <MenuItem value="Primary Members">Primary Members</MenuItem>
+          </Select>
+          <Select
+            value={birthdayMonthFilter}
+            onChange={(e) => setBirthdayMonthFilter(e.target.value)}
+            size="small"
+            sx={{ minWidth: '150px', bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } }}
+          >
+            <MenuItem value="All Months">All Months</MenuItem>
+            <MenuItem value="1">January</MenuItem>
+            <MenuItem value="2">February</MenuItem>
+            <MenuItem value="3">March</MenuItem>
+            <MenuItem value="4">April</MenuItem>
+            <MenuItem value="5">May</MenuItem>
+            <MenuItem value="6">June</MenuItem>
+            <MenuItem value="7">July</MenuItem>
+            <MenuItem value="8">August</MenuItem>
+            <MenuItem value="9">September</MenuItem>
+            <MenuItem value="10">October</MenuItem>
+            <MenuItem value="11">November</MenuItem>
+            <MenuItem value="12">December</MenuItem>
           </Select>
             {hasPermission('members:export') && <Button
                 variant="contained"
