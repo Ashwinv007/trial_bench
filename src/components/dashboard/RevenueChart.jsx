@@ -17,7 +17,7 @@ const RevenueChart = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            if (hasPermission('readInvoice')) {
+            if (hasPermission('invoices:view')) {
                 try {
                     setLoading(true);
                     setError(null);
@@ -93,11 +93,13 @@ const RevenueChart = () => {
                 } catch (err) {
                     console.error("Error fetching revenue data:", err);
                     setError("Failed to load revenue data.");
+                    setData([]); // Set data to empty on error
                 } finally {
                     setLoading(false);
                 }
             } else {
                 setLoading(false);
+                setData([]); // Ensure data is empty if no permission
             }
         };
 
@@ -114,6 +116,14 @@ const RevenueChart = () => {
         month: 'This Month',
         year: 'This Year'
     };
+    
+    if (loading) {
+        return <p>Loading revenue chart...</p>; // Updated loading message
+    }
+
+    if (!hasPermission('invoices:view') || data.length === 0 || error) { // Also check for error
+        return null;
+    }
 
     return (
         <div className={styles.card}>
@@ -183,9 +193,6 @@ const RevenueChart = () => {
             
             <div className={styles.chartContainer}>
                 {loading ? <p>Loading...</p> :
-                    error ? <p style={{ color: 'red' }}>{error}</p> :
-                    !hasPermission('readInvoice') ? <p>You don't have permission to view this chart.</p> :
-                    data.length === 0 ? <p>No revenue data available for the selected period.</p> :
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                             <defs>

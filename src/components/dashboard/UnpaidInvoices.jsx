@@ -22,12 +22,17 @@ const UnpaidInvoices = () => {
 
     useEffect(() => {
         const fetchUnpaidInvoices = async () => {
-            if (hasPermission('readInvoice')) {
-                const invoicesCollection = collection(db, 'invoices');
-                const invoicesSnapshot = await getDocs(invoicesCollection);
-                const allInvoices = invoicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const unpaid = allInvoices.filter(invoice => invoice.paymentStatus !== 'Paid');
-                setUnpaidInvoices(unpaid);
+            if (hasPermission('invoices:view')) {
+                try {
+                    const invoicesCollection = collection(db, 'invoices');
+                    const invoicesSnapshot = await getDocs(invoicesCollection);
+                    const allInvoices = invoicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    const unpaid = allInvoices.filter(invoice => invoice.paymentStatus !== 'Paid');
+                    setUnpaidInvoices(unpaid);
+                } catch (error) {
+                    console.error("Firebase permission error fetching unpaid invoices:", error);
+                    setUnpaidInvoices([]); // Set to empty array on error
+                }
             }
             setLoading(false);
         };
@@ -39,7 +44,7 @@ const UnpaidInvoices = () => {
         return <p>Loading unpaid invoices...</p>;
     }
 
-    if (!hasPermission('readInvoice')) {
+    if (!hasPermission('invoices:view') || unpaidInvoices.length === 0) {
         return null;
     }
 

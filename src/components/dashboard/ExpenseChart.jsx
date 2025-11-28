@@ -13,64 +13,76 @@ const ExpenseChart = () => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null); // Added error state
 
     useEffect(() => {
         const fetchData = async () => {
-            if (hasPermission('readExpense')) {
+            if (hasPermission('expenses:view')) {
                 setLoading(true);
-                const now = new Date();
-                let startDate;
+                setError(null); // Clear previous errors
+                try {
+                    const now = new Date();
+                    let startDate;
 
-                if (period === 'week') {
-                    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
-                } else if (period === 'month') {
-                    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-                } else {
-                    startDate = new Date(now.getFullYear(), 0, 1);
+                    if (period === 'week') {
+                        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+                    } else if (period === 'month') {
+                        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                    } else {
+                        startDate = new Date(now.getFullYear(), 0, 1);
+                    }
+
+                    const expensesCollection = collection(db, 'expenses');
+                    const q = query(
+                        expensesCollection,
+                        where('date', '>=', Timestamp.fromDate(startDate))
+                    );
+                    const snapshot = await getDocs(q);
+                    const expenses = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+
+                    // Process data for chart
+                    const chartData = [];
+                    if (period === 'week') {
+                        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                        const dayExpenses = new Array(7).fill(0);
+                        expenses.forEach(expense => {
+                            const day = expense.date.toDate().getDay();
+                            dayExpenses[day] += parseFloat(expense.amount);
+                        });
+                        for (let i = 0; i < 7; i++) {
+                            chartData.push({ label: days[(now.getDay() - 6 + i + 7) % 7], expenses: dayExpenses[(now.getDay() - 6 + i + 7) % 7] });
+                        }
+                    } else if (period === 'month') {
+                        const monthDayExpenses = new Array(now.getDate()).fill(0);
+                        expenses.forEach(expense => {
+                            const day = expense.date.toDate().getDate() - 1;
+                            monthDayExpenses[day] += parseFloat(expense.amount);
+                        });
+                        for (let i = 0; i < now.getDate(); i++) {
+                            chartData.push({ label: String(i + 1), expenses: monthDayExpenses[i] });
+                        }
+                    } else { // year
+                        const monthExpenses = new Array(12).fill(0);
+                        expenses.forEach(expense => {
+                            const month = expense.date.toDate().getMonth();
+                            monthExpenses[month] += parseFloat(expense.amount);
+                        });
+                        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                        for (let i = 0; i < 12; i++) {
+                            chartData.push({ label: monthNames[i], expenses: monthExpenses[i] });
+                        }
+                    }
+                    setData(chartData);
+                } catch (err) {
+                    console.error("Error fetching expense data:", err);
+                    setError("Failed to load expense data.");
+                    setData([]); // Set data to empty on error
+                } finally {
+                    setLoading(false);
                 }
-
-                const expensesCollection = collection(db, 'expenses');
-                const q = query(
-                    expensesCollection,
-                    where('date', '>=', Timestamp.fromDate(startDate))
-                );
-                const snapshot = await getDocs(q);
-                const expenses = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-
-                // Process data for chart
-                const chartData = [];
-                if (period === 'week') {
-                    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                    const dayExpenses = new Array(7).fill(0);
-                    expenses.forEach(expense => {
-                        const day = expense.date.toDate().getDay();
-                        dayExpenses[day] += parseFloat(expense.amount);
-                    });
-                    for (let i = 0; i < 7; i++) {
-                        chartData.push({ label: days[(now.getDay() - 6 + i + 7) % 7], expenses: dayExpenses[(now.getDay() - 6 + i + 7) % 7] });
-                    }
-                } else if (period === 'month') {
-                    const monthDayExpenses = new Array(now.getDate()).fill(0);
-                    expenses.forEach(expense => {
-                        const day = expense.date.toDate().getDate() - 1;
-                        monthDayExpenses[day] += parseFloat(expense.amount);
-                    });
-                    for (let i = 0; i < now.getDate(); i++) {
-                        chartData.push({ label: String(i + 1), expenses: monthDayExpenses[i] });
-                    }
-                } else { // year
-                    const monthExpenses = new Array(12).fill(0);
-                    expenses.forEach(expense => {
-                        const month = expense.date.toDate().getMonth();
-                        monthExpenses[month] += parseFloat(expense.amount);
-                    });
-                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                    for (let i = 0; i < 12; i++) {
-                        chartData.push({ label: monthNames[i], expenses: monthExpenses[i] });
-                    }
-                }
-                setData(chartData);
+            } else {
                 setLoading(false);
+                setData([]); // Ensure data is empty if no permission
             }
         };
 
@@ -87,6 +99,14 @@ const ExpenseChart = () => {
         month: 'This Month',
         year: 'This Year'
     };
+
+    if (loading) {
+        return <p>Loading expense chart...</p>; // Updated loading message
+    }
+
+    if (!hasPermission('expenses:view') || data.length === 0 || error) { // Also check for error
+        return null;
+    }
 
     return (
         <div className={styles.card}>
@@ -156,7 +176,6 @@ const ExpenseChart = () => {
             
             <div className={styles.chartContainer}>
                 {loading ? <p>Loading...</p> :
-                    !loading && data.length === 0 ? <p>No expense data available for the selected period.</p> :
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                             <defs>

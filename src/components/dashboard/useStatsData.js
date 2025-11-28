@@ -47,7 +47,7 @@ export const useStatsData = () => {
 
     useEffect(() => {
         const fetchStatsData = async () => {
-            if (!hasPermission('readInvoice') && !hasPermission('readMember') && !hasPermission('readAgreement')) {
+            if (!hasPermission('invoices:view') && !hasPermission('members:view') && !hasPermission('agreements:view')) {
                 setLoading(false);
                 return;
             }
@@ -57,7 +57,7 @@ export const useStatsData = () => {
             let pendingInvoices = 0;
             let activeAgreements = 0;
 
-            if (hasPermission('readInvoice')) {
+            if (hasPermission('invoices:view')) {
                 const invoicesCollection = collection(db, 'invoices');
                 const invoicesSnapshot = await getDocs(invoicesCollection);
                 invoicesSnapshot.forEach(doc => {
@@ -71,13 +71,13 @@ export const useStatsData = () => {
                 });
             }
 
-            if (hasPermission('readMember')) {
+            if (hasPermission('members:view')) {
                 const membersCollection = collection(db, 'members');
                 const membersSnapshot = await getDocs(membersCollection);
                 activeClients = membersSnapshot.size;
             }
             
-            if (hasPermission('readAgreement')) {
+            if (hasPermission('agreements:view')) {
                 const agreementsCollection = collection(db, 'agreements');
                 const q = query(agreementsCollection, where('status', '!=', 'terminated'));
                 const agreementsSnapshot = await getDocs(q);

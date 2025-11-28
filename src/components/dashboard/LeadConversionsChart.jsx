@@ -14,87 +14,95 @@ const LeadConversionsChart = () => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            if (hasPermission('readLead')) {
-                setLoading(true);
-                const now = new Date();
-                let startDate;
-
-                if (period === 'week') {
-                    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
-                } else if (period === 'month') {
-                    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-                } else {
-                    startDate = new Date(now.getFullYear(), 0, 1);
+        useEffect(() => {
+            const fetchData = async () => {
+                if (hasPermission('leads:view')) {
+                    setLoading(true);
+                    try {
+                        const now = new Date();
+                        let startDate;
+    
+                        if (period === 'week') {
+                            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+                        } else if (period === 'month') {
+                            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                        } else {
+                            startDate = new Date(now.getFullYear(), 0, 1);
+                        }
+    
+                        const leadsCollection = collection(db, 'leads');
+                        const q = query(
+                            leadsCollection,
+                            where('status', '==', 'Converted'),
+                            where('lastEditedAt', '>=', Timestamp.fromDate(startDate))
+                        );
+                        const snapshot = await getDocs(q);
+                        const leads = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    
+                        // Process data for chart
+                        const chartData = [];
+                        if (period === 'week') {
+                            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                            const dayCounts = new Array(7).fill(0);
+                            leads.forEach(lead => {
+                                const day = lead.lastEditedAt.toDate().getDay();
+                                dayCounts[day]++;
+                            });
+                            for (let i = 0; i < 7; i++) {
+                                chartData.push({ label: days[(now.getDay() - 6 + i + 7) % 7], conversions: dayCounts[(now.getDay() - 6 + i + 7) % 7] });
+                            }
+                        } else if (period === 'month') {
+                            const monthDayCounts = new Array(now.getDate()).fill(0);
+                            leads.forEach(lead => {
+                                const day = lead.lastEditedAt.toDate().getDate() - 1;
+                                monthDayCounts[day]++;
+                            });
+                            for (let i = 0; i < now.getDate(); i++) {
+                                chartData.push({ label: String(i + 1), conversions: monthDayCounts[i] });
+                            }
+                        } else { // year
+                            const monthCounts = new Array(12).fill(0);
+                            leads.forEach(lead => {
+                                const month = lead.lastEditedAt.toDate().getMonth();
+                                monthCounts[month]++;
+                            });
+                            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                            for (let i = 0; i < 12; i++) {
+                                chartData.push({ label: monthNames[i], conversions: monthCounts[i] });
+                            }
+                        }
+                        setData(chartData);
+                    } catch (error) {
+                        console.error("Firebase permission error fetching lead conversions:", error);
+                        setData([]); // Set data to empty array on error
+                    }
+                    setLoading(false);
                 }
-
-                const leadsCollection = collection(db, 'leads');
-                const q = query(
-                    leadsCollection,
-                    where('status', '==', 'Converted'),
-                    where('lastEditedAt', '>=', Timestamp.fromDate(startDate))
-                );
-                const snapshot = await getDocs(q);
-                const leads = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-
-                // Process data for chart
-                const chartData = [];
-                if (period === 'week') {
-                    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                    const dayCounts = new Array(7).fill(0);
-                    leads.forEach(lead => {
-                        const day = lead.lastEditedAt.toDate().getDay();
-                        dayCounts[day]++;
-                    });
-                    for (let i = 0; i < 7; i++) {
-                        chartData.push({ label: days[(now.getDay() - 6 + i + 7) % 7], conversions: dayCounts[(now.getDay() - 6 + i + 7) % 7] });
-                    }
-                } else if (period === 'month') {
-                    const monthDayCounts = new Array(now.getDate()).fill(0);
-                    leads.forEach(lead => {
-                        const day = lead.lastEditedAt.toDate().getDate() - 1;
-                        monthDayCounts[day]++;
-                    });
-                    for (let i = 0; i < now.getDate(); i++) {
-                        chartData.push({ label: String(i + 1), conversions: monthDayCounts[i] });
-                    }
-                } else { // year
-                    const monthCounts = new Array(12).fill(0);
-                    leads.forEach(lead => {
-                        const month = lead.lastEditedAt.toDate().getMonth();
-                        monthCounts[month]++;
-                    });
-                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                    for (let i = 0; i < 12; i++) {
-                        chartData.push({ label: monthNames[i], conversions: monthCounts[i] });
-                    }
-                }
-                setData(chartData);
-                setLoading(false);
-            }
+            };
+    
+            fetchData();
+        }, [hasPermission, period]);
+    
+        const totalConversions = data.reduce((sum, item) => sum + item.conversions, 0);
+        const averageConversions = data.length > 0 ? Math.round(totalConversions / data.length) : 0;
+        const currentConversions = data.length > 0 ? data[data.length - 1].conversions : 0;
+    
+        const periodLabels = {
+            week: 'This Week',
+            month: 'This Month',
+            year: 'This Year'
         };
-
-        fetchData();
-    }, [hasPermission, period]);
-
-    const totalConversions = data.reduce((sum, item) => sum + item.conversions, 0);
-    const averageConversions = data.length > 0 ? Math.round(totalConversions / data.length) : 0;
-    const currentConversions = data.length > 0 ? data[data.length - 1].conversions : 0;
-
-    const periodLabels = {
-        week: 'This Week',
-        month: 'This Month',
-        year: 'This Year'
-    };
-
-    if (!hasPermission('readLead')) {
-        return null;
-    }
-
-    return (
-        <div className={styles.card}>
-            <div className={styles.header}>
+    
+        if (loading) {
+            return <p>Loading...</p>;
+        }
+    
+        if (data.length === 0 && !loading) {
+            return null;
+        }
+    
+        return (
+            <div className={styles.card}>            <div className={styles.header}>
                 <div>
                     <div className={styles.titleWrapper}>
                         <TrendingUp size={20} className={styles.leadConversionsChartHeaderIcon} />
