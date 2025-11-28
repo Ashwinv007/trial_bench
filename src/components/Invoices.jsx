@@ -780,6 +780,7 @@ export default function Invoices() {
             <thead>
               <tr>
                 <th>Payment Status</th>
+                <th>Invoice No.</th>
                 <th>Name</th>
                 <th>Phone</th>
                 <th>Email</th>
@@ -795,6 +796,7 @@ export default function Invoices() {
                       {invoice.paymentStatus || 'Unpaid'}
                     </span>
                   </td>
+                  <td>{invoice.invoiceNumber}</td>
                   <td><span className={styles.nameText}>{invoice.name}</span></td>
                   <td>{invoice.phone}</td>
                   <td>{invoice.email}</td>
