@@ -72,6 +72,7 @@ export default function MembersPage() {
   const [initialModalAction, setInitialModalAction] = useState(null);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // Added for refresh mechanism
 
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
@@ -94,7 +95,7 @@ export default function MembersPage() {
       }
     };
     fetchMembers();
-  }, [db]);
+  }, [db, refreshTrigger]); // Added refreshTrigger to dependencies
 
   const handleOpenAddModal = (primaryId = null) => {
     if (!hasPermission('members:add')) {
@@ -125,23 +126,38 @@ export default function MembersPage() {
 
   const handleSaveMember = async (memberData) => {
     const isEditing = !!editingMember;
+
+    // Permission checks
     if (isEditing) {
         if (!hasPermission('members:edit')) {
             toast.error("You don't have permission to edit members.");
+            handleCloseModal();
             return;
         }
     } else {
         if (!hasPermission('members:add')) {
             toast.error("You don't have permission to add members.");
+            handleCloseModal();
             return;
         }
     }
 
     try {
-      if (isEditing) {
+      if (initialModalAction === 'removeAndReplace') {
+          // The modal is assumed to handle the DB operations. We log and toast.
+          // The refresh at the end will sync the state.
+          logActivity(
+              db,
+              user,
+              'member_replaced',
+              `Primary member "${editingMember?.name}" was replaced by "${memberData.name}".`,
+              { oldMemberId: editingMember?.id, newMemberName: memberData.name, newMemberId: memberData.id || 'N/A' }
+          );
+          toast.success("Primary member replaced successfully!");
+      } else if (isEditing) {
+        // Any edit might change relationships, so a refresh is required.
         const memberDoc = doc(db, "members", editingMember.id);
         await updateDoc(memberDoc, memberData);
-        setAllMembers(prev => prev.map(m => m.id === editingMember.id ? { ...m, ...memberData } : m));
         toast.success("Member updated successfully!");
         logActivity(
           db,
@@ -150,10 +166,10 @@ export default function MembersPage() {
           `Member "${memberData.name}" was updated.`,
           { memberId: editingMember.id, memberName: memberData.name }
         );
-      } else {
+      } else { // Adding a new member
         const docRef = await addDoc(collection(db, "members"), memberData);
-        const newMember = { ...memberData, id: docRef.id };
-        let newAllMembers = [...allMembers, newMember];
+        
+        // If adding a sub-member, we must update the primary member's doc as well.
         if (primaryMemberId) {
           const primaryMemberDocRef = doc(db, "members", primaryMemberId);
           const primaryMemberDoc = await getDoc(primaryMemberDocRef);
@@ -161,10 +177,9 @@ export default function MembersPage() {
             const primaryData = primaryMemberDoc.data();
             const subMembers = primaryData.subMembers || [];
             await updateDoc(primaryMemberDocRef, { subMembers: [...subMembers, docRef.id] });
-            newAllMembers = newAllMembers.map(m => m.id === primaryMemberId ? { ...m, subMembers: [...subMembers, docRef.id] } : m);
           }
         }
-        setAllMembers(newAllMembers);
+        
         toast.success("Member added successfully!");
         logActivity(
           db,
@@ -174,9 +189,15 @@ export default function MembersPage() {
           { memberId: docRef.id, memberName: memberData.name }
         );
       }
+
+      // After any successful DB operation, trigger a full data re-fetch for consistency.
+      setRefreshTrigger(prev => prev + 1);
+
     } catch (error) {
       console.error("Error saving member: ", error);
       toast.error(`Failed to ${isEditing ? 'update' : 'add'} member.`);
+    } finally {
+      handleCloseModal();
     }
   };
 
