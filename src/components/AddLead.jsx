@@ -238,7 +238,11 @@ export default function AddLead() {
     }
 
     setFormData(prev => {
-      const newState = {...prev, [name]: value};
+      let newState = {...prev, [name]: value};
+
+      if (name === 'clientType' && value === 'Individual') {
+        newState.companyName = '';
+      }
 
       if (name === 'status' && value === 'Converted') {
         newState.convertedWhatsapp = prev.phone;
