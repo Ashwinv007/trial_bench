@@ -512,7 +512,7 @@ export default function MembersPage() {
             <MenuItem value="All Packages">All Packages</MenuItem>
             <MenuItem value="Dedicated Desk">Dedicated Desk</MenuItem>
             <MenuItem value="Flexible Desk">Flexible Desk</MenuItem>
-            <MenuItem value="Cabin">Cabin</MenuItem>
+            <MenuItem value="Private Cabin">Private Cabin</MenuItem>
             <MenuItem value="Virtual Office">Virtual Office</MenuItem>
             <MenuItem value="Meeting Room">Meeting Room</MenuItem>
           </Select>

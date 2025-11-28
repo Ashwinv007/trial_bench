@@ -45,7 +45,7 @@ export default function ConversionModal({ open, onClose, leadData, onConvert }) 
   };
 
   const handleNo = () => {
-    const standardPackages = ["Dedicated Desk", "Flexible Desk", "Cabin", "Virtual Office", "Meeting Room"];
+    const standardPackages = ["Dedicated Desk", "Flexible Desk", "Private Cabin", "Virtual Office", "Meeting Room"];
     const leadPackage = leadData.purposeOfVisit || '';
 
     if (leadPackage && !standardPackages.includes(leadPackage)) {
@@ -109,7 +109,7 @@ export default function ConversionModal({ open, onClose, leadData, onConvert }) 
               >
                 <MenuItem value="Dedicated Desk">Dedicated Desk</MenuItem>
                 <MenuItem value="Flexible Desk">Flexible Desk</MenuItem>
-                <MenuItem value="Cabin">Cabin</MenuItem>
+                <MenuItem value="Private Cabin">Private Cabin</MenuItem>
                 <MenuItem value="Virtual Office">Virtual Office</MenuItem>
                 <MenuItem value="Meeting Room">Meeting Room</MenuItem>
                 <MenuItem value="Others">Others</MenuItem>
