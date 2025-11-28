@@ -45,7 +45,7 @@ const ReplacementView = ({ subMembers, onCancel, onConfirm, mode, oldPrimaryMemb
     const [showNewMemberForm, setShowNewMemberForm] = useState(false);
     const [newMemberData, setNewMemberData] = useState({ 
         name: '', 
-        whatsapp: '', 
+        whatsapp: '+91', 
         birthdayDay: '', 
         birthdayMonth: '' 
     });
@@ -201,7 +201,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     company: '',
     birthdayDay: '',
     birthdayMonth: '',
-    whatsapp: '',
+    whatsapp: '+91',
     email: '',
     ccEmail: '',
   });
@@ -225,7 +225,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     // When the modal is opened/re-opened, reset everything
     if (open) {
       // Reset all state at the beginning
-      setFormData({ name: '', package: '', company: '', birthdayDay: '', birthdayMonth: '', whatsapp: '', email: '', ccEmail: '' });
+      setFormData({ name: '', package: '', company: '', birthdayDay: '', birthdayMonth: '', whatsapp: '+91', email: '', ccEmail: '' });
       setErrors({});
       setIsOtherPackage(false);
       setLeadEmail('');
