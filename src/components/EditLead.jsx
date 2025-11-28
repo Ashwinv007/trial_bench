@@ -20,7 +20,8 @@ import {
   IconButton,
   FormControl, 
   InputLabel,  
-  FormHelperText 
+  FormHelperText,
+  CircularProgress
 } from '@mui/material';
 import styles from './AddLead.module.css'; // Reusing styles
 import ConversionModal from './ConversionModal'; // Import the new modal
@@ -82,6 +83,8 @@ export default function EditLead() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isConversionModalOpen, setIsConversionModalOpen] = useState(false); // State for the new modal
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
 
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
@@ -223,6 +226,7 @@ export default function EditLead() {
       });
     });
 
+    setIsUpdating(true);
     try {
       const leadRef = doc(db, "leads", id);
       await updateDoc(leadRef, {
@@ -233,6 +237,9 @@ export default function EditLead() {
       navigate('/leads');
     } catch (error) {
       console.error("Error updating document: ", error);
+      toast.error("Failed to update lead.");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -242,6 +249,7 @@ export default function EditLead() {
       return;
     }
 
+    setIsConverting(true);
     try {
       // Create Member
       const membersCollection = collection(db, 'members');
@@ -296,6 +304,9 @@ export default function EditLead() {
       navigate('/members');
     } catch (error) {
       console.error("Error converting lead: ", error);
+      toast.error("Failed to convert lead.");
+    } finally {
+      setIsConverting(false);
     }
   };
 
@@ -598,9 +609,8 @@ export default function EditLead() {
               )}
 
               {/* Save Button */}
-              <button className={styles.saveButton} onClick={handleUpdateLead}>
-                <Save className={styles.buttonIcon} />
-                Update Lead
+              <button className={styles.saveButton} onClick={handleUpdateLead} disabled={isUpdating}>
+                {isUpdating ? <CircularProgress size={24} color="inherit" /> : <><Save className={styles.buttonIcon} />Update Lead</>}
               </button>
               {formData?.status === 'Converted' && (
                 <button className={styles.saveButton} onClick={() => setIsProfileModalOpen(true)} style={{ marginTop: '10px' }}>
@@ -681,6 +691,7 @@ export default function EditLead() {
         onClose={() => setIsConversionModalOpen(false)}
         leadData={formData}
         onConvert={handleConvert}
+        isConverting={isConverting}
       />
       <ClientProfileModal
         open={isProfileModalOpen}

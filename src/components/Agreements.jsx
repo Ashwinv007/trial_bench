@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext, useMemo } from 'react';
-import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, MenuItem, Box, InputAdornment, Select } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, MenuItem, Box, InputAdornment, Select, CircularProgress } from '@mui/material';
 import { Close } from '@mui/icons-material';
 import styles from './Agreements.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
@@ -68,6 +68,10 @@ export default function Agreements() {
   const [isOtherPackage, setIsOtherPackage] = useState(false);
   const [agreementGenerated, setAgreementGenerated] = useState(null);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [latestAuthDetails, setLatestAuthDetails] = useState({ // New state for latest auth details
     authorizorName: '',
     designation: '',
@@ -308,49 +312,58 @@ export default function Agreements() {
     
     if (!selectedAgreement) return;
 
-    const serviceAgreementType = `${formData.servicePackage} - ${formData.serviceQuantity} nos`;
-    const dataToUpdate = {
-        ...formData,
-        serviceAgreementType: serviceAgreementType,
-        clientAuthorizorName: formData.clientAuthorizorName,
-        clientAuthorizorTitle: formData.clientAuthorizorTitle,
-        lastEditedAt: serverTimestamp(), // Update last edited timestamp
-    };
+    setIsSubmitting(true);
+    try {
+        const serviceAgreementType = `${formData.servicePackage} - ${formData.serviceQuantity} nos`;
+        const dataToUpdate = {
+            ...formData,
+            serviceAgreementType: serviceAgreementType,
+            clientAuthorizorName: formData.clientAuthorizorName,
+            clientAuthorizorTitle: formData.clientAuthorizorTitle,
+            lastEditedAt: serverTimestamp(), // Update last edited timestamp
+        };
 
-    const agreementRef = doc(db, 'agreements', selectedAgreement.id);
-    await updateDoc(agreementRef, dataToUpdate);
+        const agreementRef = doc(db, 'agreements', selectedAgreement.id);
+        await updateDoc(agreementRef, dataToUpdate);
 
-    const updatedAgreement = { ...selectedAgreement, ...dataToUpdate };
+        const updatedAgreement = { ...selectedAgreement, ...dataToUpdate };
 
-    setAllAgreements((prev) =>
-      prev.map((agreement) =>
-        agreement.id === selectedAgreement.id
-          ? updatedAgreement
-          : agreement
-      )
-    );
+        setAllAgreements((prev) =>
+          prev.map((agreement) =>
+            agreement.id === selectedAgreement.id
+              ? updatedAgreement
+              : agreement
+          )
+        );
 
-    if (selectedAgreement.leadId) {
-        const leadRef = doc(db, 'leads', selectedAgreement.leadId);
-        await updateDoc(leadRef, {
-            memberLegalName: formData.memberLegalName,
-            memberAddress: formData.memberAddress,
-            memberCIN: formData.memberCIN,
-            memberGST: formData.memberGST,
-            memberPAN: formData.memberPAN,
-            memberKYC: formData.memberKYC,
-            lastEditedAt: serverTimestamp(), // Update last edited timestamp for the lead as well
-        });
+        if (selectedAgreement.leadId) {
+            const leadRef = doc(db, 'leads', selectedAgreement.leadId);
+            await updateDoc(leadRef, {
+                memberLegalName: formData.memberLegalName,
+                memberAddress: formData.memberAddress,
+                memberCIN: formData.memberCIN,
+                memberGST: formData.memberGST,
+                memberPAN: formData.memberPAN,
+                memberKYC: formData.memberKYC,
+                lastEditedAt: serverTimestamp(), // Update last edited timestamp for the lead as well
+            });
+        }
+
+        setAgreementGenerated(updatedAgreement);
+        logActivity(
+          db,
+          user,
+          'agreement_updated',
+          `Agreement "${updatedAgreement.agreementNumber}" for "${updatedAgreement.name}" was updated.`, 
+          { agreementId: updatedAgreement.id, agreementNumber: updatedAgreement.agreementNumber, memberName: updatedAgreement.name }
+        );
+        toast.success("Agreement updated successfully.");
+    } catch (error) {
+        console.error("Error updating agreement:", error);
+        toast.error("Failed to update agreement.");
+    } finally {
+        setIsSubmitting(false);
     }
-
-    setAgreementGenerated(updatedAgreement);
-    logActivity(
-      db,
-      user,
-      'agreement_updated',
-      `Agreement "${updatedAgreement.agreementNumber}" for "${updatedAgreement.name}" was updated.`, 
-      { agreementId: updatedAgreement.id, agreementNumber: updatedAgreement.agreementNumber, memberName: updatedAgreement.name }
-    );
   };
 
   const handleDeleteClick = async () => {
@@ -361,14 +374,19 @@ export default function Agreements() {
     if (!selectedAgreement) return;
 
     if (window.confirm(`Are you sure you want to delete the agreement for ${selectedAgreement.name}? This action cannot be undone.`)) {
+      setIsDeleting(true);
       try {
         const agreementRef = doc(db, 'agreements', selectedAgreement.id);
         await deleteDoc(agreementRef);
 
         setAllAgreements(prev => prev.filter(a => a.id !== selectedAgreement.id));
+        toast.success("Agreement deleted successfully.");
         handleCloseModal();
       } catch (error) {
         console.error("Error deleting agreement:", error);
+        toast.error("Failed to delete agreement.");
+      } finally {
+        setIsDeleting(false);
       }
     }
   };
@@ -488,6 +506,7 @@ export default function Agreements() {
 
   const handleEarlyExitConfirm = async (exitDate) => {
     if (!selectedAgreement) return;
+    setIsExiting(true);
     try {
       const result = await earlyExitAgreementCallable({ agreementId: selectedAgreement.id, exitDate: exitDate });
       toast.success(result.data.message);
@@ -495,7 +514,7 @@ export default function Agreements() {
       setAllAgreements(prev => 
         prev.map(a => 
             a.id === selectedAgreement.id 
-            ? { ...a, status: 'terminated', exitDate: exitDate, lastEditedAt: serverTimestamp() } // Assuming callable updates lastEditedAt
+            ? { ...a, status: 'terminated', exitDate: exitDate, lastEditedAt: serverTimestamp() }
             : a
         )
       );
@@ -512,6 +531,7 @@ export default function Agreements() {
       console.error("Error performing early exit:", error);
       toast.error(error.message || "Failed to perform early exit.");
     } finally {
+      setIsExiting(false);
       setIsExitModalOpen(false);
     }
   };
@@ -526,6 +546,7 @@ export default function Agreements() {
       return;
     }
 
+    setIsSendingEmail(true);
     try {
       const pdfBase64 = await getAgreementPdfBase64(agreementGenerated);
       await sendAgreementEmailCallable({
@@ -539,6 +560,8 @@ export default function Agreements() {
     } catch (error) {
       console.error("Error sending agreement email:", error);
       toast.error(error.message || "Failed to send agreement email.");
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -648,7 +671,7 @@ export default function Agreements() {
               {agreementGenerated ? 'The agreement has been saved.' : (formData.memberLegalName || selectedAgreement?.name)}
             </p>
           </div>
-          <IconButton onClick={handleCloseModal} size="small">
+          <IconButton onClick={handleCloseModal} size="small" disabled={isSubmitting || isDeleting || isExiting || isSendingEmail}>
             <Close />
           </IconButton>
         </DialogTitle>
@@ -683,8 +706,9 @@ export default function Agreements() {
                   onClick={handleSendAgreementEmail}
                   variant="outlined"
                   style={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', padding: '8px 24px' }}
+                  disabled={isSendingEmail}
                 >
-                  Send Email
+                  {isSendingEmail ? <CircularProgress size={24} /> : 'Send Email'}
                 </Button>
               </div>
             </div>
@@ -746,8 +770,8 @@ export default function Agreements() {
               </div>
 
               <div className={styles.modalActions}>
-                {hasPermission('agreements:delete') && selectedAgreement?.status !== 'terminated' && ( <Button onClick={handleDeleteClick} variant="outlined" style={{ color: '#f44336', borderColor: '#f44336', textTransform: 'none', padding: '8px 24px', marginRight: '12px' }}> Delete </Button> )}
-                {hasPermission('agreements:early_exit') && selectedAgreement?.status !== 'terminated' && ( <Button onClick={handleEarlyExit} variant="outlined" style={{ color: '#ff9800', borderColor: '#ff9800', textTransform: 'none', padding: '8px 24px', marginRight: 'auto' }}> Early Exit </Button> )}
+                {hasPermission('agreements:delete') && selectedAgreement?.status !== 'terminated' && ( <Button onClick={handleDeleteClick} variant="outlined" style={{ color: '#f44336', borderColor: '#f44336', textTransform: 'none', padding: '8px 24px', marginRight: '12px' }} disabled={isDeleting}>{isDeleting ? <CircularProgress size={24} /> : 'Delete'}</Button> )}
+                {hasPermission('agreements:early_exit') && selectedAgreement?.status !== 'terminated' && ( <Button onClick={handleEarlyExit} variant="outlined" style={{ color: '#ff9800', borderColor: '#ff9800', textTransform: 'none', padding: '8px 24px', marginRight: 'auto' }} disabled={isExiting}>{isExiting ? <CircularProgress size={24} /> : 'Early Exit'}</Button> )}
                 {selectedAgreement && (
                   <Button
                     onClick={async () => {
@@ -770,13 +794,13 @@ export default function Agreements() {
                   </Button>
                 )}
                 {selectedAgreement?.status !== 'terminated' && (
-                <Button onClick={handleCloseModal} variant="outlined" style={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', padding: '8px 24px' }}>
+                <Button onClick={handleCloseModal} variant="outlined" style={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', padding: '8px 24px' }} disabled={isSubmitting}>
                   Cancel
                 </Button>
                 )}
                 {hasPermission('agreements:edit') && selectedAgreement?.status !== 'terminated' && (
-                  <Button type="submit" variant="contained" style={{ backgroundColor: '#2b7a8e', color: 'white', textTransform: 'none', padding: '8px 24px' }}>
-                    Update Agreement
+                  <Button type="submit" variant="contained" style={{ backgroundColor: '#2b7a8e', color: 'white', textTransform: 'none', padding: '8px 24px' }} disabled={isSubmitting}>
+                    {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Update Agreement'}
                   </Button>
                 )}
               </div>
@@ -791,6 +815,7 @@ export default function Agreements() {
           onClose={() => setIsExitModalOpen(false)}
           onConfirm={handleEarlyExitConfirm}
           memberName={selectedAgreement?.name}
+          isExiting={isExiting}
         />
       )}
     </div>

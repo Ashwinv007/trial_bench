@@ -13,7 +13,8 @@ import {
   Tabs,
   Tab,
   Card,
-  CardContent
+  CardContent,
+  CircularProgress
 } from '@mui/material';
 import { Close, AddCircleOutline, Edit, Delete, Settings, FileDownload, Assessment } from '@mui/icons-material';
 import { toast } from 'sonner';
@@ -92,6 +93,8 @@ export default function Expenses() {
   const [selectedReportYear, setSelectedReportYear] = useState(new Date().getFullYear().toString());
   const [selectedMonthlyYear, setSelectedMonthlyYear] = useState(new Date().getFullYear().toString());
   const [selectedMonthlyMonth, setSelectedMonthlyMonth] = useState('All');
+  const [isSaving, setIsSaving] = useState(false);
+  const [deletingExpenseId, setDeletingExpenseId] = useState(null);
   const [formData, setFormData] = useState({
     category: '',
     amount: '',
@@ -157,9 +160,16 @@ export default function Expenses() {
       return;
     }
     if (window.confirm('Are you sure you want to delete this expense?')) {
-      await deleteDoc(doc(db, 'expenses', id));
-      fetchExpenses();
-      toast.success('Expense deleted successfully');
+      setDeletingExpenseId(id);
+      try {
+        await deleteDoc(doc(db, 'expenses', id));
+        fetchExpenses();
+        toast.success('Expense deleted successfully');
+      } catch (error) {
+        toast.error('Failed to delete expense.');
+      } finally {
+        setDeletingExpenseId(null);
+      }
     }
   };
 
@@ -194,25 +204,31 @@ export default function Expenses() {
       }
     }
 
+    setIsSaving(true);
     const payload = {
         ...formData,
         amount: amount,
         date: Timestamp.fromDate(formData.date)
     };
 
-    if (editingExpense) {
-      const expenseDoc = doc(db, 'expenses', editingExpense.id);
-      await updateDoc(expenseDoc, payload);
-      toast.success('Expense updated successfully');
-    } else {
-      payload.addedBy = user.displayName;
-      await addDoc(collection(db, 'expenses'), payload);
-      toast.success('Expense added successfully');
+    try {
+      if (editingExpense) {
+        const expenseDoc = doc(db, 'expenses', editingExpense.id);
+        await updateDoc(expenseDoc, payload);
+        toast.success('Expense updated successfully');
+      } else {
+        payload.addedBy = user.displayName;
+        await addDoc(collection(db, 'expenses'), payload);
+        toast.success('Expense added successfully');
+      }
+      fetchExpenses();
+      setIsExpenseModalOpen(false);
+      setEditingExpense(null);
+    } catch (error) {
+      toast.error('Failed to save expense.');
+    } finally {
+      setIsSaving(false);
     }
-
-    fetchExpenses();
-    setIsExpenseModalOpen(false);
-    setEditingExpense(null);
   };
 
   const handleOpenCategoryModal = () => {
@@ -701,8 +717,9 @@ export default function Expenses() {
                               size="small" 
                               onClick={() => handleDeleteExpense(expense.id)}
                               className={styles.deleteButton}
+                              disabled={deletingExpenseId === expense.id}
                             >
-                              <Delete fontSize="small" />
+                              {deletingExpenseId === expense.id ? <CircularProgress size={20} /> : <Delete fontSize="small" />}
                             </IconButton>
                           )}
                         </div>
@@ -748,8 +765,9 @@ export default function Expenses() {
                           size="small" 
                           onClick={() => handleDeleteExpense(expense.id)}
                           className={styles.deleteButton}
+                          disabled={deletingExpenseId === expense.id}
                         >
-                          <Delete fontSize="small" />
+                          {deletingExpenseId === expense.id ? <CircularProgress size={20} /> : <Delete fontSize="small" />}
                         </IconButton>
                       )}
                     </div>
@@ -847,8 +865,9 @@ export default function Expenses() {
                   onClick={handleSaveExpense}
                   variant="contained"
                   className={styles.saveButton}
+                  disabled={isSaving}
                 >
-                  {editingExpense ? 'Update' : 'Add'} Expense
+                  {isSaving ? <CircularProgress size={24} /> : (editingExpense ? 'Update' : 'Add') + ' Expense'}
                 </Button>
               )}
             </div>

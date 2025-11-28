@@ -17,6 +17,7 @@ import {
   InputAdornment,
   MenuItem,
   Select,
+  CircularProgress,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -36,6 +37,7 @@ export default function PastMembersPage() {
   const { db } = useContext(FirebaseContext);
   const { user, hasPermission } = useContext(AuthContext);
   const [allMembers, setAllMembers] = useState([]);
+  const [deletingMemberId, setDeletingMemberId] = useState(null);
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -76,6 +78,7 @@ export default function PastMembersPage() {
 
   const handlePermanentDelete = async (memberId) => {
     if (window.confirm('Are you sure you want to permanently delete this member? This action cannot be undone.')) {
+      setDeletingMemberId(memberId);
       try {
         const memberToDelete = allMembers.find(member => member.id === memberId);
         await deleteDoc(doc(db, "past_members", memberId));
@@ -93,6 +96,8 @@ export default function PastMembersPage() {
       } catch (error) {
         console.error("Error deleting member: ", error);
         toast.error("Failed to permanently delete member.");
+      } finally {
+        setDeletingMemberId(null);
       }
     }
   };
@@ -130,7 +135,14 @@ export default function PastMembersPage() {
         <TableCell>{member.removedAt?.toDate().toLocaleDateString()}</TableCell>
         {hasPermission('manage_settings') && (
             <TableCell>
-                <Button size="small" color="error" onClick={() => handlePermanentDelete(member.id)}>Delete</Button>
+                <Button
+                    size="small"
+                    color="error"
+                    onClick={() => handlePermanentDelete(member.id)}
+                    disabled={deletingMemberId === member.id}
+                >
+                    {deletingMemberId === member.id ? <CircularProgress size={20} /> : 'Delete'}
+                </Button>
             </TableCell>
         )}
       </TableRow>

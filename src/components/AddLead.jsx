@@ -20,7 +20,8 @@ import {
   IconButton,
   FormControl,
   InputLabel,
-  FormHelperText
+  FormHelperText,
+  CircularProgress
 } from '@mui/material';
 import styles from './AddLead.module.css';
 import ConversionModal from './ConversionModal'; // Import the new modal
@@ -103,6 +104,8 @@ export default function AddLead() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isConversionModalOpen, setIsConversionModalOpen] = useState(false); // State for the new modal
   const [newlyCreatedLeadId, setNewlyCreatedLeadId] = useState(null); // To store the ID of the lead just created
+  const [isSaving, setIsSaving] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
 
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
@@ -131,6 +134,7 @@ export default function AddLead() {
       return;
     }
 
+    setIsSaving(true);
     try {
       const leadsCollection = collection(db, 'leads');
       const newLeadData = {
@@ -151,10 +155,14 @@ export default function AddLead() {
       }
     } catch (error) {
       console.error("Error processing lead: ", error);
+      toast.error("Failed to save lead.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleConvert = async (memberData) => {
+    setIsConverting(true);
     try {
       const membersCollection = collection(db, 'members');
       await addDoc(membersCollection, {
@@ -209,6 +217,9 @@ export default function AddLead() {
       navigate('/members');
     } catch (error) {
       console.error("Error converting lead: ", error);
+      toast.error("Failed to convert lead.");
+    } finally {
+      setIsConverting(false);
     }
   };
 
@@ -554,9 +565,8 @@ export default function AddLead() {
               )}
 
               {/* Save Button */}
-              <button className={styles.saveButton} onClick={handleSaveLead}>
-                <Save className={styles.buttonIcon} />
-                Save Lead
+              <button className={styles.saveButton} onClick={handleSaveLead} disabled={isSaving}>
+                {isSaving ? <CircularProgress size={24} color="inherit" /> : <><Save className={styles.buttonIcon} /> Save Lead</>}
               </button>
             </div>
           </div>
@@ -632,6 +642,7 @@ export default function AddLead() {
         onClose={() => setIsConversionModalOpen(false)}
         leadData={{...formData, id: newlyCreatedLeadId}}
         onConvert={handleConvert}
+        isConverting={isConverting}
       />
     </div>
   );

@@ -45,26 +45,34 @@ const LeadConversionsChart = () => {
                             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                             const dayCounts = new Array(7).fill(0);
                             leads.forEach(lead => {
-                                const day = lead.lastEditedAt.toDate().getDay();
+                                const leadDate = lead.lastEditedAt.toDate();
+                                const day = leadDate.getUTCDay(); // Use UTC day
                                 dayCounts[day]++;
                             });
                             for (let i = 0; i < 7; i++) {
-                                chartData.push({ label: days[(now.getDay() - 6 + i + 7) % 7], conversions: dayCounts[(now.getDay() - 6 + i + 7) % 7] });
+                                // Align labels with UTC days for consistency
+                                chartData.push({ label: days[(now.getUTCDay() - 6 + i + 7) % 7], conversions: dayCounts[(now.getUTCDay() - 6 + i + 7) % 7] });
                             }
                         } else if (period === 'month') {
-                            const monthDayCounts = new Array(now.getDate()).fill(0);
+                            const monthDayCounts = new Array(now.getUTCDate()).fill(0); // Use UTC date for array size
                             leads.forEach(lead => {
-                                const day = lead.lastEditedAt.toDate().getDate() - 1;
-                                monthDayCounts[day]++;
+                                const leadDate = lead.lastEditedAt.toDate();
+                                if (leadDate.getUTCMonth() === now.getUTCMonth() && leadDate.getUTCFullYear() === now.getUTCFullYear()) {
+                                    const day = leadDate.getUTCDate() - 1; // Use UTC date
+                                    monthDayCounts[day]++;
+                                }
                             });
-                            for (let i = 0; i < now.getDate(); i++) {
+                            for (let i = 0; i < now.getUTCDate(); i++) { // Use UTC date for loop
                                 chartData.push({ label: String(i + 1), conversions: monthDayCounts[i] });
                             }
                         } else { // year
                             const monthCounts = new Array(12).fill(0);
                             leads.forEach(lead => {
-                                const month = lead.lastEditedAt.toDate().getMonth();
-                                monthCounts[month]++;
+                                const leadDate = lead.lastEditedAt.toDate();
+                                if (leadDate.getUTCFullYear() === now.getUTCFullYear()) {
+                                    const month = leadDate.getUTCMonth(); // Use UTC month
+                                    monthCounts[month]++;
+                                }
                             });
                             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                             for (let i = 0; i < 12; i++) {

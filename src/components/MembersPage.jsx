@@ -19,6 +19,7 @@ import {
   MenuItem,
   Select,
   IconButton,
+  CircularProgress,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -73,6 +74,8 @@ export default function MembersPage() {
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0); // Added for refresh mechanism
+  const [isSaving, setIsSaving] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
@@ -127,82 +130,49 @@ export default function MembersPage() {
   const handleSaveMember = async (memberData) => {
     const isEditing = !!editingMember;
 
-    // Permission checks
-    if (isEditing) {
-        if (!hasPermission('members:edit')) {
-            toast.error("You don't have permission to edit members.");
-            handleCloseModal();
-            return;
-        }
-    } else {
-        if (!hasPermission('members:add')) {
-            toast.error("You don't have permission to add members.");
-            handleCloseModal();
-            return;
-        }
+    if (isEditing ? !hasPermission('members:edit') : !hasPermission('members:add')) {
+        toast.error(`You don't have permission to ${isEditing ? 'edit' : 'add'} members.`);
+        handleCloseModal();
+        return;
     }
 
+    setIsSaving(true);
     try {
-      if (initialModalAction === 'removeAndReplace') {
-          // The modal is assumed to handle the DB operations. We log and toast.
-          // The refresh at the end will sync the state.
-          logActivity(
-              db,
-              user,
-              'member_replaced',
-              `Primary member "${editingMember?.name}" was replaced by "${memberData.name}".`,
-              { oldMemberId: editingMember?.id, newMemberName: memberData.name, newMemberId: memberData.id || 'N/A' }
-          );
-          toast.success("Primary member replaced successfully!");
-      } else if (isEditing) {
-        // Any edit might change relationships, so a refresh is required.
-        const memberDoc = doc(db, "members", editingMember.id);
-        await updateDoc(memberDoc, memberData);
-        toast.success("Member updated successfully!");
-        logActivity(
-          db,
-          user,
-          'member_edited',
-          `Member "${memberData.name}" was updated.`,
-          { memberId: editingMember.id, memberName: memberData.name }
-        );
-      } else { // Adding a new member
-        const docRef = await addDoc(collection(db, "members"), memberData);
-        
-        // If adding a sub-member, we must update the primary member's doc as well.
-        if (primaryMemberId) {
-          const primaryMemberDocRef = doc(db, "members", primaryMemberId);
-          const primaryMemberDoc = await getDoc(primaryMemberDocRef);
-          if (primaryMemberDoc.exists()) {
-            const primaryData = primaryMemberDoc.data();
-            const subMembers = primaryData.subMembers || [];
-            await updateDoc(primaryMemberDocRef, { subMembers: [...subMembers, docRef.id] });
-          }
+        if (initialModalAction === 'removeAndReplace') {
+            logActivity(db, user, 'member_replaced', `Primary member "${editingMember?.name}" was replaced by "${memberData.name}".`, { oldMemberId: editingMember?.id, newMemberName: memberData.name, newMemberId: memberData.id || 'N/A' });
+            toast.success("Primary member replaced successfully!");
+        } else if (isEditing) {
+            const memberDoc = doc(db, "members", editingMember.id);
+            await updateDoc(memberDoc, memberData);
+            toast.success("Member updated successfully!");
+            logActivity(db, user, 'member_edited', `Member "${memberData.name}" was updated.`, { memberId: editingMember.id, memberName: memberData.name });
+        } else {
+            const docRef = await addDoc(collection(db, "members"), memberData);
+            if (primaryMemberId) {
+                const primaryMemberDocRef = doc(db, "members", primaryMemberId);
+                const primaryMemberDoc = await getDoc(primaryMemberDocRef);
+                if (primaryMemberDoc.exists()) {
+                    const primaryData = primaryMemberDoc.data();
+                    const subMembers = primaryData.subMembers || [];
+                    await updateDoc(primaryMemberDocRef, { subMembers: [...subMembers, docRef.id] });
+                }
+            }
+            toast.success("Member added successfully!");
+            logActivity(db, user, 'member_created', `New member "${memberData.name}" was added.`, { memberId: docRef.id, memberName: memberData.name });
         }
-        
-        toast.success("Member added successfully!");
-        logActivity(
-          db,
-          user,
-          'member_created',
-          `New member "${memberData.name}" was added.`,
-          { memberId: docRef.id, memberName: memberData.name }
-        );
-      }
-
-      // After any successful DB operation, trigger a full data re-fetch for consistency.
-      setRefreshTrigger(prev => prev + 1);
-
+        setRefreshTrigger(prev => prev + 1);
     } catch (error) {
-      console.error("Error saving member: ", error);
-      toast.error(`Failed to ${isEditing ? 'update' : 'add'} member.`);
+        console.error("Error saving member: ", error);
+        toast.error(`Failed to ${isEditing ? 'update' : 'add'} member.`);
     } finally {
-      handleCloseModal();
+        setIsSaving(false);
+        handleCloseModal();
     }
   };
 
   const handleRemoveConfirm = async (exitDate) => {
     if (!memberToRemove) return;
+    setIsRemoving(true);
     const memberId = memberToRemove.id;
     try {
       const memberDocRef = doc(db, "members", memberId);
@@ -238,6 +208,7 @@ export default function MembersPage() {
       console.error("Error removing member: ", error);
       toast.error("Failed to remove member.");
     } finally {
+      setIsRemoving(false);
       setIsExitModalOpen(false);
       setMemberToRemove(null);
     }
@@ -584,6 +555,7 @@ export default function MembersPage() {
           onSave={handleSaveMember}
           primaryMemberId={primaryMemberId}
           initialAction={initialModalAction}
+          isSaving={isSaving}
         />
       )}
       {isExitModalOpen && (
@@ -592,6 +564,7 @@ export default function MembersPage() {
             onClose={() => setIsExitModalOpen(false)}
             onConfirm={handleRemoveConfirm}
             memberName={memberToRemove?.name}
+            isRemoving={isRemoving}
         />
       )}
     </Box>

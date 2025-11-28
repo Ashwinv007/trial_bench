@@ -20,7 +20,8 @@ import {
   TableHead,
   TableRow,
   Paper,
-  IconButton
+  IconButton,
+  CircularProgress
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -33,6 +34,7 @@ export default function Leads() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Statuses'); // New state for status filter
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const filteredLeads = useMemo(() => {
     let currentLeads = leads; // Start with all fetched leads
@@ -106,12 +108,15 @@ export default function Leads() {
 
   const handleDelete = async (leadId) => {
     if (window.confirm('Are you sure you want to delete this lead?')) {
+      setIsDeleting(true);
       try {
         await deleteDoc(doc(db, 'leads', leadId));
         setLeads(leads.filter(lead => lead.id !== leadId));
         console.log('Lead deleted successfully');
       } catch (error) {
         console.error("Error deleting lead:", error);
+      } finally {
+        setIsDeleting(false);
       }
     }
   };
@@ -237,8 +242,8 @@ export default function Leads() {
                   </TableCell>
                   <TableCell>
                     {hasPermission('leads:delete') && (
-                      <IconButton color="error" onClick={(e) => { e.stopPropagation(); handleDelete(lead.id); }}>
-                        <Delete />
+                      <IconButton color="error" onClick={(e) => { e.stopPropagation(); handleDelete(lead.id); }} disabled={isDeleting}>
+                        {isDeleting ? <CircularProgress size={24} /> : <Delete />}
                       </IconButton>
                     )}
                   </TableCell>

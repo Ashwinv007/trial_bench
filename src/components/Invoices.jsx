@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext, useMemo, useCallback } from 'react';
-import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, Autocomplete, Select, MenuItem, InputAdornment } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, Autocomplete, Select, MenuItem, InputAdornment, CircularProgress } from '@mui/material';
 import { Close, AddCircleOutline, Search as SearchIcon, FilterList as FilterListIcon, RemoveCircleOutline } from '@mui/icons-material';
 import styles from './Invoices.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
@@ -165,6 +165,9 @@ export default function Invoices() {
   const [monthFilter, setMonthFilter] = useState('All Months');
   const [yearFilter, setYearFilter] = useState('All Years');
   const [invoiceGenerated, setInvoiceGenerated] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [formData, setFormData] = useState({
     leadId: null,
     agreementId: null,
@@ -430,6 +433,7 @@ export default function Invoices() {
       return;
     }
 
+    setIsSubmitting(true);
     const { name, phone, email, date, fromDate, toDate, ...restOfFormData } = formData;
     
     const invoicePayload = { ...restOfFormData };
@@ -443,21 +447,21 @@ export default function Invoices() {
     const clientEmail = client ? client.convertedEmail : '';
     const clientCcEmail = client ? client.ccEmail : '';
 
-    if (editingInvoice) {
-      const invoiceRef = doc(db, "invoices", editingInvoice.id);
-      await updateDoc(invoiceRef, { ...invoicePayload, lastEditedAt: serverTimestamp() });
-      const updatedInvoice = { ...editingInvoice, ...invoicePayload, name: clientName, email: clientEmail, ccEmail: clientCcEmail };
-      setInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? updatedInvoice : inv));
-      setInvoiceGenerated(updatedInvoice);
-      logActivity(
-        db,
-        user,
-        'invoice_updated',
-        `Invoice "${updatedInvoice.invoiceNumber}" for "${updatedInvoice.name}" was updated.`,
-        { invoiceId: updatedInvoice.id, invoiceNumber: updatedInvoice.invoiceNumber, clientName: updatedInvoice.name }
-      );
-    } else {
-      try {
+    try {
+      if (editingInvoice) {
+        const invoiceRef = doc(db, "invoices", editingInvoice.id);
+        await updateDoc(invoiceRef, { ...invoicePayload, lastEditedAt: serverTimestamp() });
+        const updatedInvoice = { ...editingInvoice, ...invoicePayload, name: clientName, email: clientEmail, ccEmail: clientCcEmail };
+        setInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? updatedInvoice : inv));
+        setInvoiceGenerated(updatedInvoice);
+        logActivity(
+          db,
+          user,
+          'invoice_updated',
+          `Invoice "${updatedInvoice.invoiceNumber}" for "${updatedInvoice.name}" was updated.`,
+          { invoiceId: updatedInvoice.id, invoiceNumber: updatedInvoice.invoiceNumber, clientName: updatedInvoice.name }
+        );
+      } else {
         const docRef = await addDoc(collection(db, "invoices"), { ...invoicePayload, createdAt: serverTimestamp(), lastEditedAt: serverTimestamp() });
         const newInvoice = { id: docRef.id, ...invoicePayload, name: clientName, email: clientEmail, ccEmail: clientCcEmail };
         setInvoices(prev => [...prev, newInvoice]);
@@ -490,10 +494,12 @@ export default function Invoices() {
                     : c
             )
         );
-
-      } catch (error) {
-        console.error("Error adding document: ", error);
       }
+    } catch (error) {
+      console.error("Error processing invoice: ", error);
+      toast.error("Failed to process invoice.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -508,19 +514,28 @@ export default function Invoices() {
 
   const handlePaymentDateSubmit = async () => {
     if (paymentDate && selectedInvoiceForPayment) {
-      const invoiceRef = doc(db, "invoices", selectedInvoiceForPayment.id);
-      await updateDoc(invoiceRef, { paymentStatus: 'Paid', dateOfPayment: Timestamp.fromDate(new Date(paymentDate.replace(/-/g, '/'))), lastEditedAt: serverTimestamp() });
-      setInvoices(prev => prev.map(inv => inv.id === selectedInvoiceForPayment.id ? { ...inv, paymentStatus: 'Paid', dateOfPayment: paymentDate } : inv));
-      setIsPaymentDateModalOpen(false);
-      setSelectedInvoiceForPayment(null);
-      setPaymentDate('');
-      logActivity(
-        db,
-        user,
-        'invoice_paid',
-        `Invoice "${selectedInvoiceForPayment.invoiceNumber}" for "${selectedInvoiceForPayment.name}" was marked as paid.`,
-        { invoiceId: selectedInvoiceForPayment.id, invoiceNumber: selectedInvoiceForPayment.invoiceNumber, clientName: selectedInvoiceForPayment.name, dateOfPayment: paymentDate }
-      );
+      setIsMarkingPaid(true);
+      try {
+        const invoiceRef = doc(db, "invoices", selectedInvoiceForPayment.id);
+        await updateDoc(invoiceRef, { paymentStatus: 'Paid', dateOfPayment: Timestamp.fromDate(new Date(paymentDate.replace(/-/g, '/'))), lastEditedAt: serverTimestamp() });
+        setInvoices(prev => prev.map(inv => inv.id === selectedInvoiceForPayment.id ? { ...inv, paymentStatus: 'Paid', dateOfPayment: paymentDate } : inv));
+        setIsPaymentDateModalOpen(false);
+        setSelectedInvoiceForPayment(null);
+        setPaymentDate('');
+        logActivity(
+          db,
+          user,
+          'invoice_paid',
+          `Invoice "${selectedInvoiceForPayment.invoiceNumber}" for "${selectedInvoiceForPayment.name}" was marked as paid.`,
+          { invoiceId: selectedInvoiceForPayment.id, invoiceNumber: selectedInvoiceForPayment.invoiceNumber, clientName: selectedInvoiceForPayment.name, dateOfPayment: paymentDate }
+        );
+        toast.success("Invoice marked as paid.");
+      } catch (error) {
+        console.error("Error marking invoice as paid:", error);
+        toast.error("Failed to mark invoice as paid.");
+      } finally {
+        setIsMarkingPaid(false);
+      }
     }
   };
 
@@ -661,6 +676,7 @@ export default function Invoices() {
       return;
     }
     
+    setIsSendingEmail(true);
     try {
       const pdfBytes = await getInvoicePdfBytes(invoiceGenerated);
       let binary = '';
@@ -680,6 +696,8 @@ export default function Invoices() {
     } catch (error) {
       console.error("Error sending invoice email:", error);
       toast.error(error.message || "Failed to send invoice email.");
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -803,13 +821,15 @@ export default function Invoices() {
             <h2 style={{ m: 0, color: '#1a4d5c', fontSize: '18px', fontWeight: 600 }}>Payment Date</h2>
             <p style={{ m: '4px 0 0 0', color: '#64748b', fontSize: '14px', fontWeight: 400 }}>Select the date when payment was received</p>
           </div>
-          <IconButton onClick={() => setIsPaymentDateModalOpen(false)} size="small"><Close /></IconButton>
+          <IconButton onClick={() => setIsPaymentDateModalOpen(false)} size="small" disabled={isMarkingPaid}><Close /></IconButton>
         </DialogTitle>
         <DialogContent sx={{ p: '24px' }}>
           <TextField label="Payment Date" type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} fullWidth variant="outlined" size="small" InputLabelProps={{ shrink: true }} sx={{ mb: '24px' }} />
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-            <Button onClick={() => setIsPaymentDateModalOpen(false)} variant="outlined" sx={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', p: '8px 24px' }}>Cancel</Button>
-            <Button onClick={handlePaymentDateSubmit} variant="contained" disabled={!paymentDate} sx={{ bgcolor: paymentDate ? '#2b7a8e' : '#cbd5e1', color: 'white', textTransform: 'none', p: '8px 24px' }}>Mark as Paid</Button>
+            <Button onClick={() => setIsPaymentDateModalOpen(false)} variant="outlined" sx={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', p: '8px 24px' }} disabled={isMarkingPaid}>Cancel</Button>
+            <Button onClick={handlePaymentDateSubmit} variant="contained" disabled={!paymentDate || isMarkingPaid} sx={{ bgcolor: paymentDate ? '#2b7a8e' : '#cbd5e1', color: 'white', textTransform: 'none', p: '8px 24px' }}>
+              {isMarkingPaid ? <CircularProgress size={24} color="inherit" /> : 'Mark as Paid'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -820,7 +840,7 @@ export default function Invoices() {
             <h2 style={{ m: 0, color: '#1a4d5c', fontSize: '20px', fontWeight: 600 }}>{invoiceGenerated ? (editingInvoice ? 'Invoice Updated' : 'Invoice Generated') : (editingInvoice ? 'Edit Invoice' : 'Generate Invoice')}</h2>
             <p style={{ m: '4px 0 0 0', color: '#64748b', fontSize: '14px', fontWeight: 400 }}>{invoiceGenerated ? 'The invoice has been saved.' : (editingInvoice ? 'Update invoice details' : 'Fill in the details to generate a new invoice')}</p>
           </div>
-          <IconButton onClick={handleCloseModal} size="small"><Close /></IconButton>
+          <IconButton onClick={handleCloseModal} size="small" disabled={isSubmitting || isSendingEmail}><Close /></IconButton>
         </DialogTitle>
         <DialogContent sx={{ p: '24px' }}>
         {invoiceGenerated ? (
@@ -828,7 +848,9 @@ export default function Invoices() {
               <p style={{ margin: '4px 0 24px 0', color: '#64748b', fontSize: '14px', fontWeight: 400 }}>You can now download the invoice or send it via email.</p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
                 <Button onClick={async () => { try { const pdfBytes = await getInvoicePdfBytes(invoiceGenerated); const blob = new Blob([pdfBytes], { type: 'application/pdf' }); saveAs(blob, `${invoiceGenerated.invoiceNumber || 'invoice'}.pdf`); toast.success("Invoice downloaded successfully!"); } catch (error) { console.error("Error downloading invoice:", error); toast.error("Failed to download invoice."); } }} variant="contained" sx={{ bgcolor: '#2b7a8e', color: 'white', textTransform: 'none', p: '8px 24px' }}>Download Invoice</Button>
-                <Button onClick={handleSendInvoiceEmail} variant="outlined" sx={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', p: '8px 24px' }}>Send Email</Button>
+                <Button onClick={handleSendInvoiceEmail} variant="outlined" sx={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', p: '8px 24px' }} disabled={isSendingEmail}>
+                  {isSendingEmail ? <CircularProgress size={24} /> : 'Send Email'}
+                </Button>
               </div>
             </div>
           ) : (
@@ -874,9 +896,9 @@ export default function Invoices() {
               </div>
             </div>
             <div className={styles.modalActions}>
-              <Button onClick={handleCloseModal} variant="outlined" sx={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', p: '8px 24px' }}>Cancel</Button>
+              <Button onClick={handleCloseModal} variant="outlined" sx={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', p: '8px 24px' }} disabled={isSubmitting}>Cancel</Button>
               {editingInvoice && <Button onClick={async () => { try { const pdfBytes = await getInvoicePdfBytes(editingInvoice); const blob = new Blob([pdfBytes], { type: 'application/pdf' }); saveAs(blob, `${editingInvoice.invoiceNumber || 'invoice'}.pdf`); toast.success("Invoice downloaded successfully!"); } catch (error) { console.error("Error downloading invoice:", error); toast.error("Failed to download invoice."); } }} variant="outlined" sx={{ color: '#2b7a8e', borderColor: '#2b7a8e', textTransform: 'none', p: '8px 24px' }}>Download Current Invoice</Button>}
-              {((editingInvoice && hasPermission('invoices:edit')) || (!editingInvoice && hasPermission('invoices:add'))) && <Button type="submit" variant="contained" sx={{ bgcolor: '#2b7a8e', color: 'white', textTransform: 'none', p: '8px 24px' }}>{editingInvoice ? 'Update Invoice' : 'Generate Invoice'}</Button>}
+              {((editingInvoice && hasPermission('invoices:edit')) || (!editingInvoice && hasPermission('invoices:add'))) && <Button type="submit" variant="contained" sx={{ bgcolor: '#2b7a8e', color: 'white', textTransform: 'none', p: '8px 24px' }} disabled={isSubmitting}>{isSubmitting ? <CircularProgress size={24} color="inherit" /> : (editingInvoice ? 'Update Invoice' : 'Generate Invoice')}</Button>}
             </div>
           </form>
           </LocalizationProvider>

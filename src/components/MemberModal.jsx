@@ -18,7 +18,8 @@ import {
   IconButton,
   FormControl,
   InputLabel,
-  FormHelperText
+  FormHelperText,
+  CircularProgress
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { Email as EmailIcon } from '@mui/icons-material';
@@ -40,7 +41,7 @@ const formatBirthday = (day, month) => {
   return `${dayNum}${suffix} ${monthNamesFull[monthNum - 1]}`;
 };
 
-const ReplacementView = ({ subMembers, onCancel, onConfirm, mode, oldPrimaryMember }) => {
+const ReplacementView = ({ subMembers, onCancel, onConfirm, mode, oldPrimaryMember, isReplacing }) => {
     const [selectedMemberId, setSelectedMemberId] = useState('');
     const [showNewMemberForm, setShowNewMemberForm] = useState(false);
     const [newMemberData, setNewMemberData] = useState({ 
@@ -182,9 +183,9 @@ const ReplacementView = ({ subMembers, onCancel, onConfirm, mode, oldPrimaryMemb
             )}
             
             <DialogActions sx={{ p: '16px 0 0', gap: 1.5 }}>
-                <Button onClick={onCancel} variant="outlined">Cancel</Button>
-                <Button onClick={handleConfirm} variant="contained" sx={{ bgcolor: '#2b7a8e' }}>
-                    Confirm Replacement
+                <Button onClick={onCancel} variant="outlined" disabled={isReplacing}>Cancel</Button>
+                <Button onClick={handleConfirm} variant="contained" sx={{ bgcolor: '#2b7a8e' }} disabled={isReplacing}>
+                    {isReplacing ? <CircularProgress size={24} color="inherit" /> : 'Confirm Replacement'}
                 </Button>
             </DialogActions>
         </Box>
@@ -217,6 +218,8 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
   // State for replacement flow
   const [replacementAction, setReplacementAction] = useState(null); // null, 'replace', 'removeAndReplace'
   const [subMembers, setSubMembers] = useState([]);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isReplacing, setIsReplacing] = useState(false);
 
   const functions = getFunctions();
   const sendWelcomeEmailCallable = httpsCallable(functions, 'sendWelcomeEmail');
@@ -238,7 +241,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         setReplacementAction(initialAction);
       }
 
-      const standardPackages = ["Dedicated Desk", "Flexible Desk", "Cabin", "Virtual Office", "Meeting Room"];
+      const standardPackages = ["Dedicated Desk", "Flexible Desk", "Private Cabin", "Virtual Office", "Meeting Room"];
       
       const setupForm = (memberData) => {
         const initialPackage = memberData.package || '';
@@ -364,6 +367,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
       return;
     }
 
+    setIsSendingEmail(true);
     try {
       await sendWelcomeEmailCallable({
         toEmail: emailToSend, 
@@ -381,6 +385,8 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     } catch (error) {
       console.error("Error sending welcome email:", error);
       toast.error(error.message || "Failed to send welcome email.");
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -438,21 +444,18 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
       promotionTarget: replacementData
     };
 
-    toast.promise(
-        replacePrimaryMemberCallable(payload),
-        {
-            loading: 'Processing replacement...',
-            success: (result) => {
-                onSave({}); // To trigger a refresh in parent component.
-                onClose(); // Close the modal.
-                return result.data.message;
-            },
-            error: (err) => {
-                console.error(err);
-                return err.message || 'Replacement failed.';
-            },
-        }
-    );
+    setIsReplacing(true);
+    try {
+        const result = await replacePrimaryMemberCallable(payload);
+        toast.success(result.data.message);
+        onSave({}); // To trigger a refresh in parent component.
+        onClose(); // Close the modal.
+    } catch (err) {
+        console.error(err);
+        toast.error(err.message || 'Replacement failed.');
+    } finally {
+        setIsReplacing(false);
+    }
   };
 
   const handleReplacementCancel = () => {
@@ -477,7 +480,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
                 <Typography sx={{ fontSize: '18px', fontWeight: 600, color: '#1a4d5c' }}>
                     {replacementAction === 'replace' ? 'Replace Primary Member' : 'Remove and Replace Primary Member'}
                 </Typography>
-                <IconButton onClick={onClose} sx={{ color: '#757575', p: 0.5 }}>
+                <IconButton onClick={onClose} sx={{ color: '#757575', p: 0.5 }} disabled={isReplacing}>
                     <CloseIcon sx={{ fontSize: '20px' }} />
                 </IconButton>
             </DialogTitle>
@@ -488,6 +491,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
                     onConfirm={handleReplacementConfirm}
                     mode={replacementAction}
                     oldPrimaryMember={editMember}
+                    isReplacing={isReplacing}
                 />
             </DialogContent>
         </Dialog>
@@ -528,7 +532,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
                 <MenuItem value="" disabled>Select package</MenuItem>
                 <MenuItem value="Dedicated Desk">Dedicated Desk</MenuItem>
                 <MenuItem value="Flexible Desk">Flexible Desk</MenuItem>
-                <MenuItem value="Cabin">Cabin</MenuItem>
+                <MenuItem value="Private Cabin">Private Cabin</MenuItem>
                 <MenuItem value="Virtual Office">Virtual Office</MenuItem>
                 <MenuItem value="Meeting Room">Meeting Room</MenuItem>
                 <MenuItem value="Others">Others</MenuItem>
@@ -587,9 +591,8 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
             <div className={styles.timelineCard}>
               <h2 className={styles.sectionTitle}>Actions</h2>
               {editMember && editMember.primary && (
-                <button className={styles.welcomeButton} onClick={handleSendWelcomeEmail} style={{marginBottom: '15px'}}>
-                    <EmailIcon className={styles.buttonIcon} />
-                    Send Welcome Email
+                <button className={styles.welcomeButton} onClick={handleSendWelcomeEmail} style={{marginBottom: '15px'}} disabled={isSendingEmail}>
+                    {isSendingEmail ? <CircularProgress size={24} color="inherit" /> : <><EmailIcon className={styles.buttonIcon} /> Send Welcome Email</>}
                 </button>
               )}
               <Typography variant="body2" color="text.secondary">

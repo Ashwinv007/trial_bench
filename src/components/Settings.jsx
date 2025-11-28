@@ -77,6 +77,14 @@ export default function Settings() {
   const [otpSending, setOtpSending] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [isSavingRole, setIsSavingRole] = useState(false);
+  const [isDeletingRole, setIsDeletingRole] = useState(false);
+  const [isAssigningRole, setIsAssigningRole] = useState(false);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [isUpdatingUser, setIsUpdatingUser] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
   // Edit User Modal State
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
@@ -197,6 +205,7 @@ export default function Settings() {
   const handleSaveRole = async () => {
     if (!roleName) return toast.error('Role name cannot be empty');
     
+    setIsSavingRole(true);
     let permissionsToSave = [...selectedPermissions];
     if (permissionsToSave.includes('leads:add') || permissionsToSave.includes('leads:edit')) {
         if (!permissionsToSave.includes('members:add')) {
@@ -220,11 +229,14 @@ export default function Settings() {
       handleCloseModal();
     } catch (error) {
       toast.error('Failed to save role.');
+    } finally {
+      setIsSavingRole(false);
     }
   };
   
   const handleDeleteRole = async (id) => {
     if (window.confirm('Are you sure you want to delete this role?')) {
+      setIsDeletingRole(true);
       try {
         const roleToDelete = roles.find(role => role.id === id);
         await deleteDoc(doc(db, 'roles', id));
@@ -235,6 +247,8 @@ export default function Settings() {
         }
       } catch (error) {
         toast.error('Failed to delete role.');
+      } finally {
+        setIsDeletingRole(false);
       }
     }
   };
@@ -267,6 +281,7 @@ export default function Settings() {
 
   // User Management Handlers
   const handleAssignRole = async (userEmail, roleId) => {
+    setIsAssigningRole(true);
     try {
       const result = await setUserRole({ email: userEmail, roleId: roleId });
       toast.success(result.data.message);
@@ -278,6 +293,8 @@ export default function Settings() {
       logActivity(db, user, 'role_assigned', `Role "${role ? role.name : 'None'}" assigned to user "${userEmail}".`, { userEmail, roleId, roleName: role ? role.name : 'None' });
     } catch (error) {
       toast.error(error.message || "Failed to assign role.");
+    } finally {
+      setIsAssigningRole(false);
     }
   };
 
@@ -329,6 +346,7 @@ export default function Settings() {
 
   const handleCreateUser = async () => {
     if (!newUsername || !newUserPassword) return toast.error('Username and password must be provided.');
+    setIsCreatingUser(true);
     try {
       await createUser({ email: newUserEmail, password: newUserPassword, otp, username: newUsername });
       toast.success("User created successfully.");
@@ -337,6 +355,8 @@ export default function Settings() {
       logActivity(db, user, 'user_created', `User "${newUsername}" with email "${newUserEmail}" was created.`, { newUserEmail, newUsername });
     } catch (error) {
       toast.error(error.message || "Failed to create user.");
+    } finally {
+      setIsCreatingUser(false);
     }
   };
 
@@ -352,6 +372,7 @@ export default function Settings() {
 
   const handleUpdateUser = async () => {
     if (!editingUser || !editingUser.newUsername) return toast.error("Username cannot be empty.");
+    setIsUpdatingUser(true);
     try {
       await updateUser({ uid: editingUser.uid, username: editingUser.newUsername });
       toast.success("User updated successfully.");
@@ -360,6 +381,8 @@ export default function Settings() {
       logActivity(db, user, 'user_updated', `User "${editingUser.uid}" was updated with username "${editingUser.newUsername}".`, { userId: editingUser.uid, newUsername: editingUser.newUsername });
     } catch (error) {
       toast.error(error.message || "Failed to update user.");
+    } finally {
+      setIsUpdatingUser(false);
     }
   };
 
@@ -376,6 +399,7 @@ export default function Settings() {
 
   const handleAdminSetPassword = async () => {
     if (!resettingUser || !newPasswordForReset) return toast.error("Password cannot be empty.");
+    setIsResettingPassword(true);
     try {
       await adminSetUserPassword({ uid: resettingUser.uid, newPassword: newPasswordForReset });
       toast.success(`Password for ${resettingUser.email} has been reset.`);
@@ -383,11 +407,14 @@ export default function Settings() {
       logActivity(db, user, 'password_reset', `Password for user "${resettingUser.email}" was reset.`, { userId: resettingUser.uid, userEmail: resettingUser.email });
     } catch (error) {
       toast.error(error.message || "Failed to reset password.");
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
   const handleDeleteUser = async (uid) => {
     if (window.confirm('Are you sure you want to permanently delete this user? This action cannot be undone.')) {
+      setIsDeletingUser(true);
       try {
         const userToDelete = users.find(u => u.uid === uid);
         await deleteUser({ uid });
@@ -398,6 +425,8 @@ export default function Settings() {
         }
       } catch (error) {
         toast.error('Failed to delete user.');
+      } finally {
+        setIsDeletingUser(false);
       }
     }
   };
@@ -411,6 +440,7 @@ export default function Settings() {
 
   const handleSaveTemplate = async (index) => {
       const template = emailTemplates[index];
+      setIsSavingTemplate(true);
       try {
           const templateRef = doc(db, 'email_templates', template.id);
           await setDoc(templateRef, { name: template.name, subject: template.subject, body: template.body }, { merge: true });
@@ -421,6 +451,8 @@ export default function Settings() {
           logActivity(db, user, 'template_saved', `Email template "${template.name}" was saved.`, { templateId: template.id, templateName: template.name });
       } catch (error) {
           toast.error(`Failed to save ${template.name} template.`);
+      } finally {
+        setIsSavingTemplate(false);
       }
   };
 
@@ -446,7 +478,7 @@ export default function Settings() {
     } else if (!otpVerified) {
       return <Button onClick={handleVerifyOtp} className={styles.saveButton} variant="contained" disabled={verifyingOtp}>{verifyingOtp ? <CircularProgress size={24} /> : "Verify OTP"}</Button>;
     } else {
-      return <Button onClick={handleCreateUser} className={styles.saveButton} variant="contained" disabled={!newUsername || !newUserPassword}>Add User</Button>;
+      return <Button onClick={handleCreateUser} className={styles.saveButton} variant="contained" disabled={!newUsername || !newUserPassword || isCreatingUser}>{isCreatingUser ? <CircularProgress size={24} /> : "Add User"}</Button>;
     }
   };
 
@@ -478,15 +510,15 @@ export default function Settings() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>Loading...</td></tr>
+                <tr><td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}><CircularProgress /></td></tr>
               ) : roles.map(role => (
                 <tr key={role.id}>
                   <td>{role.name}</td>
                   <td><PermissionChips permissions={role.permissions} /></td>
                   <td>
                     <div className={styles.actions}>
-                      <IconButton className={styles.editButton} onClick={() => handleOpenModal(role)}><Edit /></IconButton>
-                      <IconButton className={styles.deleteButton} onClick={() => handleDeleteRole(role.id)}><Delete /></IconButton>
+                      <IconButton className={styles.editButton} onClick={() => handleOpenModal(role)} disabled={isDeletingRole}><Edit /></IconButton>
+                      <IconButton className={styles.deleteButton} onClick={() => handleDeleteRole(role.id)} disabled={isDeletingRole}>{isDeletingRole ? <CircularProgress size={20} /> : <Delete />}</IconButton>
                     </div>
                   </td>
                 </tr>
@@ -514,22 +546,22 @@ export default function Settings() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px' }}>Loading...</td></tr>
+                <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px' }}><CircularProgress /></td></tr>
               ) : users.map(user => (
                 <tr key={user.uid}>
                   <td>{user.displayName || '-'}</td>
                   <td>{user.email}</td>
                   <td>
-                    <Select value={user.roleId || ''} onChange={(e) => handleAssignRole(user.email, e.target.value)} displayEmpty size="small" sx={{ minWidth: 150, backgroundColor: '#f9f9f9' }}>
+                    <Select value={user.roleId || ''} onChange={(e) => handleAssignRole(user.email, e.target.value)} displayEmpty size="small" sx={{ minWidth: 150, backgroundColor: '#f9f9f9' }} disabled={isAssigningRole}>
                       <MenuItem value=""><em>None</em></MenuItem>
                       {roles.map((role) => <MenuItem key={role.id} value={role.id}>{role.name}</MenuItem>)}
                     </Select>
                   </td>
                   <td>
                     <div className={styles.actions}>
-                      <IconButton className={styles.editButton} onClick={() => handleOpenEditUserModal(user)}><Edit /></IconButton>
-                      <IconButton className={styles.editButton} onClick={() => handleOpenResetPasswordModal(user)}><LockReset /></IconButton>
-                      <IconButton className={styles.deleteButton} onClick={() => handleDeleteUser(user.uid)}><Delete /></IconButton>
+                      <IconButton className={styles.editButton} onClick={() => handleOpenEditUserModal(user)} disabled={isDeletingUser}><Edit /></IconButton>
+                      <IconButton className={styles.editButton} onClick={() => handleOpenResetPasswordModal(user)} disabled={isDeletingUser}><LockReset /></IconButton>
+                      <IconButton className={styles.deleteButton} onClick={() => handleDeleteUser(user.uid)} disabled={isDeletingUser}>{isDeletingUser ? <CircularProgress size={20} /> : <Delete />}</IconButton>
                     </div>
                   </td>
                 </tr>
@@ -545,7 +577,7 @@ export default function Settings() {
       {hasPermission('settings:manage_templates') && (
       <div className={styles.rolesSection}>
         <h2>Email Templates</h2>
-        {loading ? <p>Loading templates...</p> : emailTemplates.map((template, index) => (
+        {loading ? <CircularProgress /> : emailTemplates.map((template, index) => (
             <div key={template.id} className={styles.templateEditor}>
             <h3>{template.name}</h3>
             <TextField
@@ -566,7 +598,7 @@ export default function Settings() {
                 onChange={(e) => handleTemplateChange(index, 'body', e.target.value)}
                 sx={{ mb: 2 }}
             />
-            <Button onClick={() => handleSaveTemplate(index)} variant="contained" className={styles.saveButton}>Save Template</Button>
+            <Button onClick={() => handleSaveTemplate(index)} variant="contained" className={styles.saveButton} disabled={isSavingTemplate}>{isSavingTemplate ? <CircularProgress size={24} /> : "Save Template"}</Button>
             </div>
         ))}
       </div>
@@ -644,8 +676,8 @@ export default function Settings() {
         </DialogContent>
         <DialogActions>
             <div className={styles.modalActions}>
-                <Button onClick={handleCloseModal}>Cancel</Button>
-                <Button onClick={handleSaveRole} className={styles.saveButton} variant="contained">Save</Button>
+                <Button onClick={handleCloseModal} disabled={isSavingRole}>Cancel</Button>
+                <Button onClick={handleSaveRole} className={styles.saveButton} variant="contained" disabled={isSavingRole}>{isSavingRole ? <CircularProgress size={24} /> : "Save"}</Button>
             </div>
         </DialogActions>
       </Dialog>
@@ -671,8 +703,8 @@ export default function Settings() {
           </DialogContent>
           <DialogActions>
               <div className={styles.modalActions}>
-                  <Button onClick={handleCloseEditUserModal}>Cancel</Button>
-                  <Button onClick={handleUpdateUser} className={styles.saveButton} variant="contained">Save</Button>
+                  <Button onClick={handleCloseEditUserModal} disabled={isUpdatingUser}>Cancel</Button>
+                  <Button onClick={handleUpdateUser} className={styles.saveButton} variant="contained" disabled={isUpdatingUser}>{isUpdatingUser ? <CircularProgress size={24} /> : "Save"}</Button>
               </div>
           </DialogActions>
         </Dialog>
@@ -690,8 +722,8 @@ export default function Settings() {
           </DialogContent>
           <DialogActions>
               <div className={styles.modalActions}>
-                  <Button onClick={handleCloseResetPasswordModal}>Cancel</Button>
-                  <Button onClick={handleAdminSetPassword} className={styles.saveButton} variant="contained" disabled={!newPasswordForReset}>Set Password</Button>
+                  <Button onClick={handleCloseResetPasswordModal} disabled={isResettingPassword}>Cancel</Button>
+                  <Button onClick={handleAdminSetPassword} className={styles.saveButton} variant="contained" disabled={!newPasswordForReset || isResettingPassword}>{isResettingPassword ? <CircularProgress size={24} /> : "Set Password"}</Button>
               </div>
           </DialogActions>
         </Dialog>

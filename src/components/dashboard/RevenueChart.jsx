@@ -51,25 +51,26 @@ const RevenueChart = () => {
                         invoices.forEach(invoice => {
                             if (invoice.date && typeof invoice.date.toDate === 'function') {
                                 const invoiceDate = invoice.date.toDate();
-                                const day = invoiceDate.getDay();
+                                const day = invoiceDate.getUTCDay(); // Use UTC day
                                 dayRevenues[day] += parseFloat(invoice.totalPrice) || 0;
                             }
                         });
                         for (let i = 0; i < 7; i++) {
-                            chartData.push({ label: days[(now.getDay() - 6 + i + 7) % 7], revenue: dayRevenues[(now.getDay() - 6 + i + 7) % 7] });
+                            // Align labels with UTC days for consistency
+                            chartData.push({ label: days[(now.getUTCDay() - 6 + i + 7) % 7], revenue: dayRevenues[(now.getUTCDay() - 6 + i + 7) % 7] });
                         }
                     } else if (period === 'month') {
-                        const monthDayRevenues = new Array(now.getDate()).fill(0);
+                        const monthDayRevenues = new Array(now.getUTCDate()).fill(0); // Use UTC date for array size
                         invoices.forEach(invoice => {
                             if (invoice.date && typeof invoice.date.toDate === 'function') {
                                 const invoiceDate = invoice.date.toDate();
-                                if (invoiceDate.getMonth() === now.getMonth() && invoiceDate.getFullYear() === now.getFullYear()) {
-                                    const day = invoiceDate.getDate() - 1;
+                                if (invoiceDate.getUTCMonth() === now.getUTCMonth() && invoiceDate.getUTCFullYear() === now.getUTCFullYear()) {
+                                    const day = invoiceDate.getUTCDate() - 1; // Use UTC date
                                     monthDayRevenues[day] += parseFloat(invoice.totalPrice) || 0;
                                 }
                             }
                         });
-                        for (let i = 0; i < now.getDate(); i++) {
+                        for (let i = 0; i < now.getUTCDate(); i++) { // Use UTC date for loop
                             chartData.push({ label: String(i + 1), revenue: monthDayRevenues[i] });
                         }
                     } else { // year
@@ -77,8 +78,8 @@ const RevenueChart = () => {
                         invoices.forEach(invoice => {
                             if (invoice.date && typeof invoice.date.toDate === 'function') {
                                 const invoiceDate = invoice.date.toDate();
-                                if (invoiceDate.getFullYear() === now.getFullYear()) {
-                                    const month = invoiceDate.getMonth();
+                                if (invoiceDate.getUTCFullYear() === now.getUTCFullYear()) {
+                                    const month = invoiceDate.getUTCMonth(); // Use UTC month
                                     monthRevenues[month] += parseFloat(invoice.totalPrice) || 0;
                                 }
                             }
