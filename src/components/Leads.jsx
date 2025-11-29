@@ -45,8 +45,6 @@ export default function Leads() {
       currentLeads = currentLeads.filter(
         (lead) =>
           (lead.name && lead.name.toLowerCase().includes(query)) ||
-          (lead.email && lead.email.toLowerCase().includes(query)) || // Assuming lead object has an email field
-          (lead.convertedEmail && lead.convertedEmail.toLowerCase().includes(query)) || // Assuming lead object has a convertedEmail field
           (lead.phone && lead.phone.toLowerCase().includes(query)) ||
           (lead.convertedWhatsapp && lead.convertedWhatsapp.toLowerCase().includes(query))
       );
@@ -209,7 +207,6 @@ export default function Leads() {
                 <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Purpose of Visit</TableCell>
                 <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Phone</TableCell>
                 <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Whatsapp</TableCell>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Email</TableCell>
                 <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Source</TableCell>
                 <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Actions</TableCell>
               </TableRow>
@@ -233,7 +230,6 @@ export default function Leads() {
                   </TableCell>
                   <TableCell onClick={() => handleRowClick(lead.id)}><Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.phone}</Typography></TableCell>
                   <TableCell onClick={() => handleRowClick(lead.id)}><Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.convertedWhatsapp}</Typography></TableCell>
-                  <TableCell onClick={() => handleRowClick(lead.id)}><Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.convertedEmail}</Typography></TableCell>
                   <TableCell onClick={() => handleRowClick(lead.id)}>
                     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                       <Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.sourceType}</Typography>
@@ -251,7 +247,7 @@ export default function Leads() {
               ))}
               {filteredLeads.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4, fontSize: '14px', color: '#757575' }}>
+                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4, fontSize: '14px', color: '#757575' }}>
                     No leads found matching your filters.
                   </TableCell>
                 </TableRow>
