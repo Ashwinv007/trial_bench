@@ -205,7 +205,7 @@ export default function AddLead() {
         clientAuthorizorTitle: "", 
         agreementLength: "", 
         convertedEmail: memberData.email,
-        ccEmail: memberData.ccEmail, 
+        ccEmail: memberData.ccEmail || '', 
         phone: memberData.whatsapp, 
         purposeOfVisit: memberData.package, 
         status: "active", 

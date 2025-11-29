@@ -11,6 +11,7 @@ export default function ConversionModal({ open, onClose, leadData, onConvert }) 
     birthdayMonth: '',
     whatsapp: '+91',
     email: '',
+    ccEmail: '',
   });
   const [birthdayData, setBirthdayData] = useState({ day: '', month: '' });
   const [birthdayErrors, setBirthdayErrors] = useState({});
@@ -27,6 +28,7 @@ export default function ConversionModal({ open, onClose, leadData, onConvert }) 
         birthdayMonth: '',
         whatsapp: '+91',
         email: '',
+        ccEmail: '',
       });
       setBirthdayData({ day: '', month: '' });
       setBirthdayErrors({});
@@ -53,6 +55,7 @@ export default function ConversionModal({ open, onClose, leadData, onConvert }) 
       package: leadPackage,
       company: leadData.companyName || '',
       email: leadData.ccEmail || leadData.convertedEmail || '',
+      ccEmail: leadData.ccEmail || '', // Carry over the ccEmail
     }));
     setStep('form');
   };
