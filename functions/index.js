@@ -628,12 +628,14 @@ exports.replacePrimaryMember = onCall(async (request) => {
   }
 
   const { oldPrimaryMemberId, mode, promotionTarget } = request.data;
+  const { uid, token } = request.auth;
 
   if (!oldPrimaryMemberId || !mode || !promotionTarget) {
     throw new HttpsError("invalid-argument", "Missing required arguments for replacement.");
   }
 
   const db = admin.firestore();
+  let leadIdToLog; // Variable to hold leadId for logging
 
   try {
     await db.runTransaction(async (transaction) => {
@@ -655,6 +657,7 @@ exports.replacePrimaryMember = onCall(async (request) => {
 
       const emailToTransfer = oldPrimaryMemberData.email || "";
       const leadId = oldPrimaryMemberData.leadId;
+      leadIdToLog = leadId; // Capture leadId for logging outside transaction
 
       const originalSubMemberIds = subMembersSnapshot.docs.map((doc) => doc.id);
       const newSubMemberIds = [];
@@ -743,6 +746,22 @@ exports.replacePrimaryMember = onCall(async (request) => {
           transaction.update(subMemberRef, { primaryMemberId: newPrimaryMemberId });
         }
       });
+    });
+
+    // Add to logs after successful transaction
+    await db.collection("logs").add({
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      user: {
+        uid: uid,
+        displayName: token.name || token.email || "Unknown User",
+      },
+      action: "member_replaced",
+      message: `Replaced primary member (ID: ${oldPrimaryMemberId})`,
+      details: {
+        oldPrimaryMemberId: oldPrimaryMemberId,
+        leadId: leadIdToLog,
+        mode: mode,
+      },
     });
 
     console.log("Primary member replacement transaction completed successfully.");

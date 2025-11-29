@@ -27,6 +27,7 @@ import styles from './AddLead.module.css';
 import ConversionModal from './ConversionModal'; // Import the new modal
 import { usePermissions } from '../auth/usePermissions'; // Import usePermissions
 import { toast } from 'sonner';
+import { logActivity } from '../utils/logActivity';
 
 // Helper function to format birthday
 const formatBirthday = (day, month) => {
@@ -156,7 +157,8 @@ export default function AddLead() {
     } catch (error) {
       console.error("Error processing lead: ", error);
       toast.error("Failed to save lead.");
-    } finally {
+    }
+    finally {
       setIsSaving(false);
     }
   };
@@ -165,12 +167,21 @@ export default function AddLead() {
     setIsConverting(true);
     try {
       const membersCollection = collection(db, 'members');
-      await addDoc(membersCollection, {
+      const newMemberRef = await addDoc(membersCollection, {
         ...memberData,
         leadId: newlyCreatedLeadId, // Use the newly created lead's ID
         primary: true,
         createdAt: new Date().toISOString(),
       });
+
+      // Log the activity
+      logActivity(
+        db, 
+        user, 
+        'member_added', 
+        `Converted lead "${formData.name}" to new member "${memberData.name}".`,
+        { memberId: newMemberRef.id, leadId: newlyCreatedLeadId }
+      );
 
       // Update the lead's status to 'Converted' in Firestore (if not already)
       // This is important if the modal was opened but the lead wasn't marked converted yet

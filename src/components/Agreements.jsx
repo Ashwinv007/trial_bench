@@ -379,6 +379,14 @@ export default function Agreements() {
         const agreementRef = doc(db, 'agreements', selectedAgreement.id);
         await deleteDoc(agreementRef);
 
+        logActivity(
+          db,
+          user,
+          'agreement_deleted',
+          `Deleted agreement "${selectedAgreement.agreementNumber}" for member "${selectedAgreement.name}".`,
+          { agreementId: selectedAgreement.id, agreementNumber: selectedAgreement.agreementNumber, memberName: selectedAgreement.name }
+        );
+
         setAllAgreements(prev => prev.filter(a => a.id !== selectedAgreement.id));
         toast.success("Agreement deleted successfully.");
         handleCloseModal();

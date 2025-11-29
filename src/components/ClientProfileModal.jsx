@@ -1,18 +1,29 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useMemo } from 'react';
 import { Dialog, DialogContent, IconButton, Tabs, Tab, Card, CardContent, Button, Chip, Typography, Box, CircularProgress } from '@mui/material';
-import { Close, Email, Phone, Cake, Business } from '@mui/icons-material';
+import { Close, Email, Phone, Cake, Business, Lock } from '@mui/icons-material';
 import styles from './ClientProfile.module.css';
 import { FirebaseContext } from '../store/Context';
 import { doc, getDoc, collection, getDocs, query, where, documentId } from 'firebase/firestore';
+import { usePermissions } from '../auth/usePermissions'; // Import usePermissions
 
 export default function ClientProfileModal({ open, onClose, clientId }) {
   const { db } = useContext(FirebaseContext);
+  const { hasPermission } = usePermissions(); // Initialize usePermissions
   const [client, setClient] = useState(null);
   const [agreements, setAgreements] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
+
+  // Define tabs and their required permissions
+  const allTabs = useMemo(() => [
+    { label: 'AGREEMENTS', permission: 'agreements:view' },
+    { label: 'INVOICES', permission: 'invoices:view' },
+    { label: 'MEMBERS', permission: 'members:view' }
+  ], []);
+
+  const visibleTabs = useMemo(() => allTabs.filter(tab => hasPermission(tab.permission)), [allTabs, hasPermission]);
 
   useEffect(() => {
     const fetchClientData = async () => {
@@ -24,7 +35,7 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
       
       setLoading(true);
       try {
-        // 1. Fetch the lead document
+        // 1. Fetch the lead document (assuming this is always allowed if the modal is open)
         const clientDocRef = doc(db, 'leads', clientId);
         const clientDocSnap = await getDoc(clientDocRef);
 
@@ -37,56 +48,65 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
           return;
         }
 
-        // 2. Fetch agreements for the current client
-        const agreementsQuery = query(collection(db, 'agreements'), where('leadId', '==', clientId));
-        const agreementsSnapshot = await getDocs(agreementsQuery);
-        const clientAgreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setAgreements(clientAgreementsData);
+        // 2. Conditionally fetch agreements
+        if (hasPermission('agreements:view')) {
+          const agreementsQuery = query(collection(db, 'agreements'), where('leadId', '==', clientId));
+          const agreementsSnapshot = await getDocs(agreementsQuery);
+          const clientAgreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setAgreements(clientAgreementsData);
 
-        // 3. Fetch invoices based on the fetched agreements
-        if (clientAgreementsData.length > 0) {
-          const agreementIds = clientAgreementsData.map(a => a.id);
-          const invoicesQuery = query(collection(db, 'invoices'), where('agreementId', 'in', agreementIds));
-          const invoicesSnapshot = await getDocs(invoicesQuery);
-          const clientInvoicesData = invoicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setInvoices(clientInvoicesData);
+          // 3. Conditionally fetch invoices (dependent on agreements)
+          if (hasPermission('invoices:view') && clientAgreementsData.length > 0) {
+            const agreementIds = clientAgreementsData.map(a => a.id);
+            const invoicesQuery = query(collection(db, 'invoices'), where('agreementId', 'in', agreementIds));
+            const invoicesSnapshot = await getDocs(invoicesQuery);
+            const clientInvoicesData = invoicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setInvoices(clientInvoicesData);
+          } else {
+            setInvoices([]);
+          }
         } else {
+          setAgreements([]);
           setInvoices([]);
         }
         
-        // 4. Fetch members related to the lead (primary and sub-members)
-        const primaryMembersQuery = query(collection(db, 'members'), where('leadId', '==', clientId));
-        const primaryMembersSnapshot = await getDocs(primaryMembersQuery);
-        const primaryMembers = primaryMembersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // 4. Conditionally fetch members
+        if (hasPermission('members:view')) {
+          const primaryMembersQuery = query(collection(db, 'members'), where('leadId', '==', clientId));
+          const primaryMembersSnapshot = await getDocs(primaryMembersQuery);
+          const primaryMembers = primaryMembersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        const subMemberIds = primaryMembers.flatMap(member => member.subMembers || []);
-        let subMembers = [];
+          const subMemberIds = primaryMembers.flatMap(member => member.subMembers || []);
+          let subMembers = [];
 
-        if (subMemberIds.length > 0) {
-            const chunks = [];
-            for (let i = 0; i < subMemberIds.length; i += 30) {
-                chunks.push(subMemberIds.slice(i, i + 30));
-            }
-            
-            const subMemberPromises = chunks.map(chunk => {
-                const subMembersQuery = query(collection(db, 'members'), where(documentId(), 'in', chunk));
-                return getDocs(subMembersQuery);
-            });
+          if (subMemberIds.length > 0) {
+              const chunks = [];
+              for (let i = 0; i < subMemberIds.length; i += 30) {
+                  chunks.push(subMemberIds.slice(i, i + 30));
+              }
+              
+              const subMemberPromises = chunks.map(chunk => {
+                  const subMembersQuery = query(collection(db, 'members'), where(documentId(), 'in', chunk));
+                  return getDocs(subMembersQuery);
+              });
 
-            const subMemberSnapshots = await Promise.all(subMemberPromises);
-            subMembers = subMemberSnapshots.flatMap(snapshot => snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+              const subMemberSnapshots = await Promise.all(subMemberPromises);
+              subMembers = subMemberSnapshots.flatMap(snapshot => snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+          }
+
+          const allRelatedMembers = [...primaryMembers, ...subMembers];
+          const uniqueMembers = Array.from(new Map(allRelatedMembers.map(m => [m.id, m])).values());
+          
+          uniqueMembers.sort((a, b) => {
+              if (a.primary && !b.primary) return -1;
+              if (!a.primary && b.primary) return 1;
+              return (a.name || '').localeCompare(b.name || '');
+          });
+
+          setMembers(uniqueMembers);
+        } else {
+          setMembers([]);
         }
-
-        const allRelatedMembers = [...primaryMembers, ...subMembers];
-        const uniqueMembers = Array.from(new Map(allRelatedMembers.map(m => [m.id, m])).values());
-        
-        uniqueMembers.sort((a, b) => {
-            if (a.primary && !b.primary) return -1;
-            if (!a.primary && b.primary) return 1;
-            return (a.name || '').localeCompare(b.name || '');
-        });
-
-        setMembers(uniqueMembers);
 
       } catch (error) {
         console.error("Error fetching client data:", error);
@@ -98,7 +118,7 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
     if (open) {
       fetchClientData();
     }
-  }, [open, clientId, db]);
+  }, [open, clientId, db, hasPermission]);
 
   // Reset state when modal is closed
   useEffect(() => {
@@ -162,6 +182,7 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
 
     const displayName = client.memberLegalName || client.name;
     const secondaryText = client.memberLegalName ? client.name : client.companyName;
+    const activeTabLabel = visibleTabs[activeTab]?.label;
 
     return (
       <div className={styles.container}>
@@ -194,13 +215,13 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
           </div>
 
           <div className={styles.tabsSection}>
-            <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} className={styles.tabs}>
-              <Tab label="AGREEMENTS" />
-              <Tab label="INVOICES" />
-              <Tab label="MEMBERS" />
+            <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} className={styles.tabs} variant="fullWidth">
+              {visibleTabs.map((tab, index) => (
+                <Tab key={index} label={tab.label} />
+              ))}
             </Tabs>
 
-            {activeTab === 0 && (
+            {activeTabLabel === 'AGREEMENTS' && (
               <div className={styles.tabContent}>
                 <h4 className={styles.tabSectionTitle}>Recent Agreements</h4>
                 {agreements.length === 0 ? (
@@ -228,7 +249,7 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
               </div>
             )}
 
-            {activeTab === 1 && (
+            {activeTabLabel === 'INVOICES' && (
               <div className={styles.tabContent}>
                 <h4 className={styles.tabSectionTitle}>Recent Invoices</h4>
                 {invoices.length === 0 ? (
@@ -264,15 +285,15 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
               </div>
             )}
             
-            {activeTab === 2 && (
+            {activeTabLabel === 'MEMBERS' && (
               <div className={styles.tabContent}>
                 <h4 className={styles.tabSectionTitle}>Associated Members</h4>
                 {members.length === 0 ? (
-                  <div className={styles.emptyState}><p>No members found for this client</p></div>
+                  <div className={styles.emptyState}><p>No members found for this client.</p></div>
                 ) : (
-                  <div className={styles.agreementsList}>
+                  <div className={styles.membersList}>
                     {members.map((member) => (
-                      <Card key={member.id} className={styles.agreementCard}>
+                      <Card key={member.id} className={styles.memberCard}>
                         <CardContent>
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                             <Typography variant="h6">{member.name}</Typography>

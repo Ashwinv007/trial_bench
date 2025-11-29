@@ -233,7 +233,7 @@ export default function Leads() {
                   </TableCell>
                   <TableCell onClick={() => handleRowClick(lead.id)}><Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.phone}</Typography></TableCell>
                   <TableCell onClick={() => handleRowClick(lead.id)}><Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.convertedWhatsapp}</Typography></TableCell>
-                  <TableCell onClick={() => handleRowClick(lead.id)}><Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.ccEmail}</Typography></TableCell>
+                  <TableCell onClick={() => handleRowClick(lead.id)}><Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.convertedEmail}</Typography></TableCell>
                   <TableCell onClick={() => handleRowClick(lead.id)}>
                     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                       <Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.sourceType}</Typography>

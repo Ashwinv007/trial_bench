@@ -28,6 +28,7 @@ import ConversionModal from './ConversionModal'; // Import the new modal
 import ClientProfileModal from './ClientProfileModal';
 import { usePermissions } from '../auth/usePermissions'; // Use the new usePermissions hook
 import { toast } from 'sonner';
+import { logActivity } from '../utils/logActivity';
 
 // Helper function to format birthday
 const formatBirthday = (day, month) => {
@@ -257,12 +258,21 @@ export default function EditLead() {
     try {
       // Create Member
       const membersCollection = collection(db, 'members');
-      await addDoc(membersCollection, {
+      const newMemberRef = await addDoc(membersCollection, {
         ...memberData,
         leadId: id,
         primary: true,
         createdAt: new Date().toISOString(),
       });
+
+      // Log the activity
+      logActivity(
+        db,
+        user,
+        'member_added',
+        `Converted lead "${formData.name}" to new member "${memberData.name}".`,
+        { memberId: newMemberRef.id, leadId: id }
+      );
 
       // Update Lead Status
       const leadRef = doc(db, "leads", id);
