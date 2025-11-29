@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect } from 'react';
 import { FirebaseContext, AuthContext } from '../store/Context';
-import { doc, getDoc, updateDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore'; // Added serverTimestamp
+import { doc, getDoc, updateDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore'; // Added serverTimestamp
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   CheckCircle, 
@@ -239,6 +239,42 @@ export default function EditLead() {
         activities: newActivities,
         lastEditedAt: serverTimestamp(), // Update last edited timestamp
       });
+
+      // If the lead is converted, update the primary member's email details
+      if (formData.status === 'Converted') {
+        const membersCollectionRef = collection(db, 'members');
+        const q = query(membersCollectionRef, where('leadId', '==', id), where('primary', '==', true));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          const primaryMemberDoc = querySnapshot.docs[0];
+          const primaryMemberRef = doc(db, 'members', primaryMemberDoc.id);
+
+          let memberEmailToUpdate = formData.convertedEmail;
+          let memberCcEmailToUpdate = formData.ccEmail || '';
+
+          // Apply the same email swap logic as during conversion
+          if (formData.ccEmail) {
+            memberEmailToUpdate = formData.ccEmail;
+            memberCcEmailToUpdate = formData.convertedEmail;
+          }
+
+          await updateDoc(primaryMemberRef, {
+            email: memberEmailToUpdate,
+            ccEmail: memberCcEmailToUpdate,
+            lastEditedAt: serverTimestamp(),
+          });
+          // Log activity for member update
+          logActivity(
+            db,
+            user,
+            'member_updated',
+            `Primary member's email details updated for lead "${formData.name}".`,
+            { memberId: primaryMemberDoc.id, leadId: id }
+          );
+        }
+      }
+
       navigate('/leads');
     } catch (error) {
       console.error("Error updating document: ", error);
@@ -256,6 +292,11 @@ export default function EditLead() {
 
     setIsConverting(true);
     try {
+      if (memberData.ccEmail) {
+        const tempEmail = memberData.email;
+        memberData.email = memberData.ccEmail;
+        memberData.ccEmail = tempEmail;
+      }
       // Create Member
       const membersCollection = collection(db, 'members');
       const newMemberRef = await addDoc(membersCollection, {

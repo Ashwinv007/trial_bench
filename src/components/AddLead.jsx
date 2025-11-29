@@ -166,6 +166,11 @@ export default function AddLead() {
   const handleConvert = async (memberData) => {
     setIsConverting(true);
     try {
+      if (memberData.ccEmail) {
+        const tempEmail = memberData.email;
+        memberData.email = memberData.ccEmail;
+        memberData.ccEmail = tempEmail;
+      }
       const membersCollection = collection(db, 'members');
       const newMemberRef = await addDoc(membersCollection, {
         ...memberData,

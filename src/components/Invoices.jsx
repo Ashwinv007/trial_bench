@@ -687,7 +687,7 @@ export default function Invoices() {
 
       await sendInvoiceEmailCallable({
         toEmail: invoiceGenerated.email,
-        ccEmail: invoiceGenerated.ccEmail || null,
+        ccEmail: invoiceGenerated.ccEmail,
         customerName: invoiceGenerated.name,
         invoiceNumber: invoiceGenerated.invoiceNumber,
         pdfBase64: pdfBase64,

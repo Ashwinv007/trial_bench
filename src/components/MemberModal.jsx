@@ -370,9 +370,9 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
     setIsSendingEmail(true);
     try {
       await sendWelcomeEmailCallable({
-        toEmail: emailToSend, 
-        username: formData.name, 
-        ccEmail: ccEmailToSend || null,
+        toEmail: emailToSend,
+        username: formData.name,
+        ccEmail: ccEmailToSend,
       });
       toast.success('Welcome email sent successfully!');
       logActivity(
