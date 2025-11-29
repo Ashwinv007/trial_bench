@@ -71,6 +71,11 @@ service cloud.firestore {
       allow write: if hasPermission('settings:manage_templates') || isAdmin();
     }
     
+    match /expense_categories/{categoryId} {
+      allow read: if hasPermission('expenses:view') || hasPermission('expenses:manage_categories') || isAdmin();
+      allow write: if hasPermission('expenses:manage_categories') || isAdmin();
+    }
+    
     // OTPs should not be client-accessible
     match /otps/{otpId} {
         allow read, write: if false;

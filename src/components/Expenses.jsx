@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import styles from './Expenses.module.css';
 import { db } from '../firebase/config';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp, query, where, writeBatch } from 'firebase/firestore';
 import { AuthContext } from '../store/Context';
 import * as XLSX from 'xlsx';
 import { usePermissions } from '../auth/usePermissions';
@@ -79,12 +79,12 @@ export default function Expenses() {
   const { user } = useContext(AuthContext);
   const { hasPermission } = usePermissions();
   const [expenses, setExpenses] = useState([]);
-  const [categories, setCategories] = useState(initialCategories);
+  const [categories, setCategories] = useState([]);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isReportsModalOpen, setIsReportsModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
-  const [editingCategoryIndex, setEditingCategoryIndex] = useState(null);
+  const [editingCategory, setEditingCategory] = useState(null);
   const [newCategory, setNewCategory] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   const [dateFrom, setDateFrom] = useState(null);
@@ -111,8 +111,38 @@ export default function Expenses() {
     setExpenses(expensesList);
   };
 
+  const fetchCategories = async () => {
+    if (!hasPermission('expenses:view')) return;
+    const categoriesCollection = collection(db, 'expense_categories');
+    try {
+      const categoriesSnapshot = await getDocs(categoriesCollection);
+      if (categoriesSnapshot.empty) {
+        // First time setup: populate with initial categories
+        const batch = writeBatch(db);
+        initialCategories.forEach(categoryName => {
+          const newCatRef = doc(collection(db, 'expense_categories'));
+          batch.set(newCatRef, { name: categoryName });
+        });
+        await batch.commit();
+        const newSnapshot = await getDocs(categoriesCollection);
+        const categoriesList = newSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setCategories(categoriesList);
+        toast.info('Initial expense categories have been set up.');
+      } else {
+        const categoriesList = categoriesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setCategories(categoriesList);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      toast.error('Failed to load expense categories.');
+    }
+  };
+
   useEffect(() => {
-    fetchExpenses();
+    if (hasPermission('expenses:view')) {
+      fetchExpenses();
+      fetchCategories();
+    }
   }, [hasPermission]);
 
   useEffect(() => {
@@ -232,72 +262,129 @@ export default function Expenses() {
   };
 
   const handleOpenCategoryModal = () => {
+    if (!hasPermission('expenses:manage_categories')) {
+      toast.error("You don't have permission to manage categories.");
+      return;
+    }
     setIsCategoryModalOpen(true);
-    setEditingCategoryIndex(null);
+    setEditingCategory(null);
     setNewCategory('');
   };
 
-  const getCategoryUsageCount = (category) => {
-    return expenses.filter(expense => expense.category === category).length;
+  const getCategoryUsageCount = (categoryName) => {
+    return expenses.filter(expense => expense.category === categoryName).length;
   };
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
+    if (!hasPermission('expenses:manage_categories')) {
+        toast.error("You don't have permission to add categories.");
+        return;
+    }
     if (!newCategory.trim()) {
       toast.error('Category name cannot be empty');
       return;
     }
     
-    if (categories.includes(newCategory.trim())) {
+    if (categories.some(c => c.name.toLowerCase() === newCategory.trim().toLowerCase())) {
       toast.error('Category already exists');
       return;
     }
     
-    setCategories([...categories, newCategory.trim()]);
-    setNewCategory('');
-    toast.success('Category added successfully');
+    try {
+      await addDoc(collection(db, 'expense_categories'), { name: newCategory.trim() });
+      setNewCategory('');
+      toast.success('Category added successfully');
+      fetchCategories();
+    } catch (error) {
+      toast.error('Failed to add category.');
+    }
   };
 
-  const handleEditCategory = (index) => {
-    setEditingCategoryIndex(index);
-    setNewCategory(categories[index]);
+  const handleEditCategory = (category) => {
+    setEditingCategory(category);
+    setNewCategory(category.name);
   };
 
-  const handleUpdateCategory = () => {
+  const handleUpdateCategory = async () => {
+    if (!hasPermission('expenses:manage_categories')) {
+        toast.error("You don't have permission to update categories.");
+        return;
+    }
     if (!newCategory.trim()) {
       toast.error('Category name cannot be empty');
       return;
     }
 
-    if (newCategory.trim() && editingCategoryIndex !== null) {
-      const updatedCategories = [...categories];
-      const oldCategory = categories[editingCategoryIndex];
-      updatedCategories[editingCategoryIndex] = newCategory.trim();
-      setCategories(updatedCategories);
+    if (newCategory.trim() && editingCategory) {
+      const oldCategoryName = editingCategory.name;
+      const newCategoryName = newCategory.trim();
+
+      if (oldCategoryName === newCategoryName) {
+        setEditingCategory(null);
+        setNewCategory('');
+        return;
+      }
       
-      // Update expenses that use this category
-      setExpenses(expenses.map(expense => 
-        expense.category === oldCategory 
-          ? { ...expense, category: newCategory.trim() }
-          : expense
-      ));
-      
-      setEditingCategoryIndex(null);
-      setNewCategory('');
-      toast.success('Category updated successfully');
+      if (categories.some(c => c.name.toLowerCase() === newCategoryName.toLowerCase() && c.id !== editingCategory.id)) {
+        toast.error('A category with this name already exists.');
+        return;
+      }
+
+      setIsSaving(true);
+      try {
+        const batch = writeBatch(db);
+        
+        const categoryDocRef = doc(db, 'expense_categories', editingCategory.id);
+        batch.update(categoryDocRef, { name: newCategoryName });
+
+        const expensesToUpdateQuery = query(collection(db, 'expenses'), where('category', '==', oldCategoryName));
+        const expensesSnapshot = await getDocs(expensesToUpdateQuery);
+        
+        if (!expensesSnapshot.empty) {
+          expensesSnapshot.forEach(expenseDoc => {
+            batch.update(expenseDoc.ref, { category: newCategoryName });
+          });
+        }
+        
+        await batch.commit();
+
+        toast.success(`Category updated successfully. ${expensesSnapshot.size} expense(s) were updated.`);
+        
+        setEditingCategory(null);
+        setNewCategory('');
+        fetchCategories();
+        fetchExpenses();
+
+      } catch (error) {
+        console.error("Error updating category: ", error);
+        toast.error('Failed to update category.');
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
-  const handleDeleteCategory = (index, category) => {
-    const usageCount = getCategoryUsageCount(category);
+  const handleDeleteCategory = async (categoryToDelete) => {
+    if (!hasPermission('expenses:manage_categories')) {
+      toast.error("You don't have permission to delete categories.");
+      return;
+    }
+    
+    const usageCount = getCategoryUsageCount(categoryToDelete.name);
     
     let confirmMessage = 'Are you sure you want to delete this category?';
     if (usageCount > 0) {
-      confirmMessage = `This category is used in ${usageCount} expense${usageCount > 1 ? 's' : ''}. Deleting the category will not delete the expenses. Are you sure you want to proceed?`;
+      confirmMessage = `This category is used in ${usageCount} expense${usageCount > 1 ? 's' : ''}. Deleting it will NOT affect those expenses, but the category will be removed from the list. Are you sure?`;
     }
     
     if (window.confirm(confirmMessage)) {
-      setCategories(categories.filter((_, i) => i !== index));
-      toast.success('Category deleted successfully');
+      try {
+        await deleteDoc(doc(db, 'expense_categories', categoryToDelete.id));
+        toast.success('Category deleted successfully');
+        fetchCategories();
+      } catch (error) {
+        toast.error('Failed to delete category.');
+      }
     }
   };
 
@@ -609,8 +696,8 @@ export default function Expenses() {
           >
             <MenuItem value="All">All Categories</MenuItem>
             {categories.map((category) => (
-              <MenuItem key={category} value={category}>
-                {category}
+              <MenuItem key={category.id} value={category.name}>
+                {category.name}
               </MenuItem>
             ))}
           </Select>
@@ -805,8 +892,8 @@ export default function Expenses() {
                 label="Category"
               >
                 {categories.map((category) => (
-                  <MenuItem key={category} value={category}>
-                    {category}
+                  <MenuItem key={category.id} value={category.name}>
+                    {category.name}
                   </MenuItem>
                 ))}
               </Select>
@@ -895,25 +982,25 @@ export default function Expenses() {
           <div className={styles.categoryForm}>
             <div className={styles.categoryInput}>
               <TextField
-                label={editingCategoryIndex !== null ? 'Edit Category' : 'New Category'}
+                label={editingCategory ? 'Edit Category' : 'New Category'}
                 fullWidth
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
                 placeholder="Enter category name"
               />
-              {editingCategoryIndex !== null ? (
+              {editingCategory ? (
                 <div className={styles.categoryInputActions}>
                   <Button 
                     onClick={handleUpdateCategory}
                     variant="contained"
                     size="small"
-                    disabled={!newCategory.trim()}
+                    disabled={!newCategory.trim() || isSaving}
                   >
-                    Update
+                    {isSaving ? <CircularProgress size={20}/> : 'Update'}
                   </Button>
                   <Button 
                     onClick={() => {
-                      setEditingCategoryIndex(null);
+                      setEditingCategory(null);
                       setNewCategory('');
                     }}
                     variant="outlined"
@@ -935,12 +1022,12 @@ export default function Expenses() {
 
             <div className={styles.categoryList}>
               <h3>Existing Categories</h3>
-              {categories.map((category, index) => {
-                const usageCount = getCategoryUsageCount(category);
+              {categories.map((category) => {
+                const usageCount = getCategoryUsageCount(category.name);
                 return (
-                  <div key={category} className={styles.categoryItem}>
+                  <div key={category.id} className={styles.categoryItem}>
                     <div className={styles.categoryInfo}>
-                      <span>{category}</span>
+                      <span>{category.name}</span>
                       {usageCount > 0 && (
                         <span className={styles.usageCount}>
                           {usageCount} expense{usageCount > 1 ? 's' : ''}
@@ -950,15 +1037,15 @@ export default function Expenses() {
                     <div className={styles.categoryItemActions}>
                       <IconButton 
                         size="small"
-                        onClick={() => handleEditCategory(index)}
-                        disabled={editingCategoryIndex !== null}
+                        onClick={() => handleEditCategory(category)}
+                        disabled={editingCategory !== null}
                       >
                         <Edit fontSize="small" />
                       </IconButton>
                       <IconButton 
                         size="small"
-                        onClick={() => handleDeleteCategory(index, category)}
-                        disabled={editingCategoryIndex !== null}
+                        onClick={() => handleDeleteCategory(category)}
+                        disabled={editingCategory !== null}
                         className={styles.deleteButton}
                       >
                         <Delete fontSize="small" />
