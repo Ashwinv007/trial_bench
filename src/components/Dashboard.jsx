@@ -65,35 +65,24 @@ export default function Dashboard() {
 
                 {/* Main Content Grid */}
                 <div className={styles.mainGrid}>
-                    {/* Left Column - Lists */}
-                    {(showBirthdayList || showExpiringAgreements) && (
-                        <div className={styles.leftColumn}>
-                            {showBirthdayList && (
-                                <div className={styles.listCard}>
-                                    <BirthdayList />
-                                </div>
-                            )}
-                            {showExpiringAgreements && (
-                                <div className={styles.listCard}>
-                                    <ExpiringAgreements />
-                                </div>
-                            )}
+                    {showBirthdayList && (
+                        <div className={styles.listCard}>
+                            <BirthdayList />
                         </div>
                     )}
-
-                    {/* Right Column - Invoices & Clients */}
-                    {(showUnpaidInvoices || showRecentClients) && (
-                        <div className={styles.rightColumn}>
-                            {showUnpaidInvoices && (
-                                <div className={styles.listCard}>
-                                    <UnpaidInvoices />
-                                </div>
-                            )}
-                            {showRecentClients && (
-                                <div className={styles.listCard}>
-                                    <RecentClients />
-                                </div>
-                            )}
+                    {showUnpaidInvoices && (
+                        <div className={styles.listCard}>
+                            <UnpaidInvoices />
+                        </div>
+                    )}
+                    {showExpiringAgreements && (
+                        <div className={styles.listCard}>
+                            <ExpiringAgreements />
+                        </div>
+                    )}
+                    {showRecentClients && (
+                        <div className={styles.listCard}>
+                            <RecentClients />
                         </div>
                     )}
                 </div>

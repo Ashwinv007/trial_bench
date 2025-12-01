@@ -36,9 +36,8 @@
 
 /* Main Content Grid */
 .mainGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
+  column-count: 2;
+  column-gap: 24px;
   margin-bottom: 32px;
 }
 
@@ -55,6 +54,9 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--color-gray-200);
   padding: var(--spacing-xl);
+  -webkit-column-break-inside: avoid;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 .chartCard {
