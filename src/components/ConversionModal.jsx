@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Typography, Box, Select, MenuItem, FormControl, InputLabel, FormHelperText } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Typography, Box, Select, MenuItem, FormControl, InputLabel, FormHelperText, CircularProgress } from '@mui/material';
 
-export default function ConversionModal({ open, onClose, leadData, onConvert }) {
+export default function ConversionModal({ open, onClose, leadData, onConvert, isConverting }) {
   const [step, setStep] = useState('initial'); // 'initial', 'birthday', 'form'
   const [primaryMemberData, setPrimaryMemberData] = useState({
     name: '',
@@ -233,14 +233,18 @@ export default function ConversionModal({ open, onClose, leadData, onConvert }) 
         )}
         {step === 'birthday' && (
             <>
-                <Button onClick={() => setStep('initial')} variant="outlined">Back</Button>
-                <Button onClick={handleConfirmConversion} variant="contained">Confirm Conversion</Button>
+                <Button onClick={() => setStep('initial')} variant="outlined" disabled={isConverting}>Back</Button>
+                <Button onClick={handleConfirmConversion} variant="contained" disabled={isConverting}>
+                    {isConverting ? <CircularProgress size={24} color="inherit" /> : 'Confirm Conversion'}
+                </Button>
             </>
         )}
         {step === 'form' && (
           <>
-            <Button onClick={onClose} variant="outlined">Cancel</Button>
-            <Button onClick={handleAddPrimaryMember} variant="contained">Add Primary Member</Button>
+            <Button onClick={onClose} variant="outlined" disabled={isConverting}>Cancel</Button>
+            <Button onClick={handleAddPrimaryMember} variant="contained" disabled={isConverting}>
+                {isConverting ? <CircularProgress size={24} color="inherit" /> : 'Add Primary Member'}
+            </Button>
           </>
         )}
       </DialogActions>
