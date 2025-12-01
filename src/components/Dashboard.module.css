@@ -36,9 +36,15 @@
 
 /* Main Content Grid */
 .mainGrid {
-  column-count: 2;
-  column-gap: 24px;
+  display: flex;
+  gap: 24px;
   margin-bottom: 32px;
+}
+.mainGrid_column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background-clip: padding-box;
 }
 
 .leftColumn,

@@ -1,4 +1,5 @@
 import React from 'react';
+import Masonry from 'react-masonry-css';
 import styles from './Dashboard.module.css';
 import BirthdayList from './dashboard/BirthdayList';
 import PastMembersBirthday from './dashboard/PastMembersBirthday';
@@ -25,6 +26,13 @@ export default function Dashboard() {
     const showLeadConversionsChart = permissions.hasPermission('leads:view');
     const showRevenueChart = permissions.hasPermission('invoices:view');
     const showExpenseChart = permissions.hasPermission('expenses:view');
+
+    const breakpointColumnsObj = {
+        default: 2,
+        1100: 2,
+        700: 1,
+        500: 1
+    };
 
 
     return (
@@ -66,7 +74,10 @@ export default function Dashboard() {
                 )}
 
                 {/* Main Content Grid */}
-                <div className={styles.mainGrid}>
+                <Masonry
+                    breakpointCols={breakpointColumnsObj}
+                    className={styles.mainGrid}
+                    columnClassName={styles.mainGrid_column}>
                     {showBirthdayList && (
                         <div className={styles.listCard}>
                             <BirthdayList />
@@ -92,7 +103,7 @@ export default function Dashboard() {
                             <RecentClients />
                         </div>
                     )}
-                </div>
+                </Masonry>
 
                 {/* Lead Conversions Chart - Full Width */}
                 {showLeadConversionsChart && (
