@@ -1,6 +1,7 @@
 import React from 'react';
 import styles from './Dashboard.module.css';
 import BirthdayList from './dashboard/BirthdayList';
+import PastMembersBirthday from './dashboard/PastMembersBirthday';
 import ExpiringAgreements from './dashboard/ExpiringAgreements';
 import UnpaidInvoices from './dashboard/UnpaidInvoices';
 import RecentClients from './dashboard/RecentClients';
@@ -17,6 +18,7 @@ export default function Dashboard() {
     const permissions = usePermissions();
 
     const showBirthdayList = permissions.hasPermission('members:view');
+    const showPastMembersBirthday = permissions.hasPermission('members:view');
     const showExpiringAgreements = permissions.hasPermission('agreements:view');
     const showUnpaidInvoices = permissions.hasPermission('invoices:view');
     const showRecentClients = permissions.hasPermission('agreements:view'); // This was changed from members:view
@@ -68,6 +70,11 @@ export default function Dashboard() {
                     {showBirthdayList && (
                         <div className={styles.listCard}>
                             <BirthdayList />
+                        </div>
+                    )}
+                    {showPastMembersBirthday && (
+                        <div className={styles.listCard}>
+                            <PastMembersBirthday />
                         </div>
                     )}
                     {showUnpaidInvoices && (

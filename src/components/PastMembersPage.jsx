@@ -24,20 +24,53 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import UploadFile from '@mui/icons-material/UploadFile';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import { useLocation } from 'react-router-dom';
 
 // Helper function to format birthday for display
-const formatBirthdayDisplay = (birthday) => {
-  if (!birthday) return '-';
-  return birthday;
+const formatBirthdayDisplay = (day, month) => {
+  if (!day || !month) return '-';
+
+  const monthNamesFull = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const dayNum = parseInt(day, 10);
+  const monthNum = parseInt(month, 10);
+
+  if (isNaN(dayNum) || isNaN(monthNum) || dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) {
+    return '-';
+  }
+
+  let suffix = 'th';
+  if (dayNum === 1 || dayNum === 21 || dayNum === 31) {
+    suffix = 'st';
+  } else if (dayNum === 2 || dayNum === 22) {
+    suffix = 'nd';
+  } else if (dayNum === 3 || dayNum === 23) {
+    suffix = 'rd';
+  }
+
+  return `${dayNum}${suffix} ${monthNamesFull[monthNum - 1]}`;
 };
 
 export default function PastMembersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [packageFilter, setPackageFilter] = useState('All Packages');
+  const [birthdayMonthFilter, setBirthdayMonthFilter] = useState('All Months');
   const { db } = useContext(FirebaseContext);
   const { user, hasPermission } = useContext(AuthContext);
   const [allMembers, setAllMembers] = useState([]);
   const [deletingMemberId, setDeletingMemberId] = useState(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const month = params.get('birthdayMonth');
+    if (month) {
+        setBirthdayMonthFilter(month);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -73,8 +106,12 @@ export default function PastMembersPage() {
       members = members.filter((member) => member.package === packageFilter);
     }
 
+    if (birthdayMonthFilter !== 'All Months') {
+        members = members.filter((member) => String(member.birthdayMonth) === birthdayMonthFilter);
+    }
+
     return members;
-  }, [searchQuery, packageFilter, allMembers]);
+  }, [searchQuery, packageFilter, birthdayMonthFilter, allMembers]);
 
   const handlePermanentDelete = async (memberId) => {
     if (window.confirm('Are you sure you want to permanently delete this member? This action cannot be undone.')) {
@@ -107,7 +144,7 @@ export default function PastMembersPage() {
       Name: member.name,
       Package: member.package,
       Company: member.company,
-      Birthday: formatBirthdayDisplay(member.birthday),
+      Birthday: formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth),
       WhatsApp: member.whatsapp,
       Email: member.email,
       'Date Removed': member.removedAt?.toDate().toLocaleDateString() || '-',
@@ -129,7 +166,7 @@ export default function PastMembersPage() {
         </TableCell>
         <TableCell>{member.package}</TableCell>
         <TableCell>{member.clientType === 'individual' && !member.company ? 'N/A' : member.company}</TableCell>
-        <TableCell>{formatBirthdayDisplay(member.birthday)}</TableCell>
+        <TableCell>{formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth)}</TableCell>
         <TableCell>{member.whatsapp}</TableCell>
         <TableCell>{member.email}</TableCell>
         <TableCell>{member.removedAt?.toDate().toLocaleDateString()}</TableCell>
@@ -176,6 +213,7 @@ export default function PastMembersPage() {
             onClick={() => {
               setSearchQuery('');
               setPackageFilter('All Packages');
+              setBirthdayMonthFilter('All Months');
             }}
             sx={{ textTransform: 'none', fontSize: '14px', color: '#424242', borderColor: '#e0e0e0', bgcolor: '#ffffff', px: 2, '&:hover': { borderColor: '#2b7a8e', bgcolor: '#ffffff' } }}
           >
@@ -193,6 +231,26 @@ export default function PastMembersPage() {
             <MenuItem value="Cabin">Cabin</MenuItem>
             <MenuItem value="Virtual Office">Virtual Office</MenuItem>
             <MenuItem value="Meeting Room">Meeting Room</MenuItem>
+          </Select>
+          <Select
+            value={birthdayMonthFilter}
+            onChange={(e) => setBirthdayMonthFilter(e.target.value)}
+            size="small"
+            sx={{ minWidth: '150px', bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } }}
+          >
+            <MenuItem value="All Months">All Months</MenuItem>
+            <MenuItem value="1">January</MenuItem>
+            <MenuItem value="2">February</MenuItem>
+            <MenuItem value="3">March</MenuItem>
+            <MenuItem value="4">April</MenuItem>
+            <MenuItem value="5">May</MenuItem>
+            <MenuItem value="6">June</MenuItem>
+            <MenuItem value="7">July</MenuItem>
+            <MenuItem value="8">August</MenuItem>
+            <MenuItem value="9">September</MenuItem>
+            <MenuItem value="10">October</MenuItem>
+            <MenuItem value="11">November</MenuItem>
+            <MenuItem value="12">December</MenuItem>
           </Select>
           <Button
             variant="contained"
