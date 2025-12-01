@@ -16,14 +16,13 @@ const ExpiringAgreements = () => {
                 try {
                     const oneWeekFromNow = new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
                     const agreementsCollection = collection(db, 'agreements');
-                    // endDate is typically stored as a string or Timestamp.
-                    // Assuming it's a Firestore Timestamp for comparison, though the original code implies string comparison.
-                    // To compare with Timestamp, it should be Timestamp.fromDate(oneWeekFromNow)
-                    // If it's a string, the comparison 'endDate', '<=', oneWeekFromNow.toISOString().split('T')[0] would be more appropriate
-                    // For now, let's assume direct comparison with Timestamp.fromDate is intended if endDate is a Timestamp.
-                    // If endDate is a string, it needs to be fetched and converted.
-                    // Given the previous error context, let's keep the existing query with Timestamp.fromDate, as it's more robust for Firestore.
-                    const q = query(agreementsCollection, where('endDate', '<=', Timestamp.fromDate(oneWeekFromNow)));
+
+                    const q = query(
+                        agreementsCollection,
+                        where('endDate', '<=', Timestamp.fromDate(oneWeekFromNow)),
+                        where('endDate', '>=', Timestamp.now())
+                    );
+                    
                     const agreementsSnapshot = await getDocs(q);
                     const expiringAgreements = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     setAgreements(expiringAgreements);
