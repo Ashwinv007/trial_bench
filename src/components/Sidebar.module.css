@@ -20,6 +20,7 @@
   padding: 20px;
   border-bottom: 1px solid var(--color-gray-200);
   justify-content: center; /* Center logo when sidebar is expanded */
+  height: 80px;
 }
 
 .logoContainer {
