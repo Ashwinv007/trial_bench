@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { usePermissions } from '../../auth/usePermissions';
 
@@ -46,8 +46,16 @@ export const useStatsData = () => {
             }
 
             const today = new Date();
-            const thirtyDaysAgo = new Date(new Date().setHours(0,0,0,0)).setDate(today.getDate() - 30);
-            const sixtyDaysAgo = new Date(new Date().setHours(0,0,0,0)).setDate(today.getDate() - 60);
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setHours(0, 0, 0, 0);
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+            const sixtyDaysAgo = new Date();
+            sixtyDaysAgo.setHours(0, 0, 0, 0);
+            sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+            const firestoreThirtyDaysAgo = Timestamp.fromDate(thirtyDaysAgo);
+            const firestoreSixtyDaysAgo = Timestamp.fromDate(sixtyDaysAgo);
 
             let revenueCurrent = 0, revenuePrevious = 0;
             let newMembersCurrent = 0, newMembersPrevious = 0;
@@ -55,18 +63,28 @@ export const useStatsData = () => {
 
             if (hasPermission('invoices:view')) {
                 const invCol = collection(db, 'invoices');
-                const invSnap = await getDocs(query(invCol, where('paymentStatus', '==', 'Paid')));
-                invSnap.forEach(doc => {
+                
+                // Current period (last 30 days)
+                const qCurrent = query(invCol, 
+                    where('paymentStatus', '==', 'Paid'),
+                    where('date', '>=', firestoreThirtyDaysAgo)
+                );
+                const invSnapCurrent = await getDocs(qCurrent);
+                invSnapCurrent.forEach(doc => {
                     const invoice = doc.data();
-                    const invoiceDate = parseDate(invoice.invoiceDate);
-                    if (!invoiceDate) return;
+                    revenueCurrent += parseFloat(invoice.totalPrice) || 0;
+                });
 
-                    const price = parseFloat(invoice.totalPrice) || 0;
-                    if (invoiceDate >= thirtyDaysAgo) {
-                        revenueCurrent += price;
-                    } else if (invoiceDate >= sixtyDaysAgo && invoiceDate < thirtyDaysAgo) {
-                        revenuePrevious += price;
-                    }
+                // Previous period (30-60 days ago)
+                const qPrevious = query(invCol, 
+                    where('paymentStatus', '==', 'Paid'),
+                    where('date', '>=', firestoreSixtyDaysAgo),
+                    where('date', '<', firestoreThirtyDaysAgo)
+                );
+                const invSnapPrevious = await getDocs(qPrevious);
+                invSnapPrevious.forEach(doc => {
+                    const invoice = doc.data();
+                    revenuePrevious += parseFloat(invoice.totalPrice) || 0;
                 });
             }
 
