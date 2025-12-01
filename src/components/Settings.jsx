@@ -185,6 +185,11 @@ export default function Settings() {
     if (role && role.name.toLowerCase() === 'admin') {
         return; // Admin role cannot be edited. The UI should prevent this.
     }
+    const currentUserInList = users.find(u => u.uid === user.uid);
+    if (role && currentUserInList && currentUserInList.roleId === role.id) {
+        toast.error("You cannot edit your own assigned role.");
+        return;
+    }
     if (role) {
       setEditingRole(role);
       setRoleName(role.name);
@@ -247,6 +252,13 @@ export default function Settings() {
         toast.error('The "admin" role cannot be deleted.');
         return;
     }
+
+    const currentUserInList = users.find(u => u.uid === user.uid);
+    if (currentUserInList && currentUserInList.roleId === id) {
+        toast.error("You cannot delete your own assigned role.");
+        return;
+    }
+
     if (window.confirm('Are you sure you want to delete this role?')) {
       setIsDeletingRole(true);
       try {
@@ -292,6 +304,17 @@ export default function Settings() {
 
   // User Management Handlers
   const handleAssignRole = async (userEmail, roleId) => {
+    const currentUserInList = users.find(u => u.uid === user.uid);
+    const currentUserRoleName = roles.find(r => r.id === currentUserInList?.roleId)?.name;
+    const isCurrentUserAdmin = currentUserRoleName?.toLowerCase() === 'admin';
+
+    const userToModify = users.find(u => u.email === userEmail);
+    const roleOfUserToModify = roles.find(r => r.id === userToModify?.roleId)?.name;
+
+    if (roleOfUserToModify?.toLowerCase() === 'admin' && !isCurrentUserAdmin) {
+        toast.error("You do not have permission to modify an admin user.");
+        return;
+    }
     setIsAssigningRole(true);
     try {
       const result = await setUserRole({ email: userEmail, roleId: roleId });
@@ -383,6 +406,18 @@ export default function Settings() {
 
   const handleUpdateUser = async () => {
     if (!editingUser || !editingUser.newUsername) return toast.error("Username cannot be empty.");
+    
+    const currentUserInList = users.find(u => u.uid === user.uid);
+    const currentUserRoleName = roles.find(r => r.id === currentUserInList?.roleId)?.name;
+    const isCurrentUserAdmin = currentUserRoleName?.toLowerCase() === 'admin';
+
+    const roleOfUserToModify = roles.find(r => r.id === editingUser.roleId)?.name;
+
+    if (roleOfUserToModify?.toLowerCase() === 'admin' && !isCurrentUserAdmin) {
+        toast.error("You do not have permission to modify an admin user.");
+        return;
+    }
+
     setIsUpdatingUser(true);
     try {
       await updateUser({ uid: editingUser.uid, username: editingUser.newUsername });
@@ -410,6 +445,18 @@ export default function Settings() {
 
   const handleAdminSetPassword = async () => {
     if (!resettingUser || !newPasswordForReset) return toast.error("Password cannot be empty.");
+
+    const currentUserInList = users.find(u => u.uid === user.uid);
+    const currentUserRoleName = roles.find(r => r.id === currentUserInList?.roleId)?.name;
+    const isCurrentUserAdmin = currentUserRoleName?.toLowerCase() === 'admin';
+    
+    const roleOfUserToModify = roles.find(r => r.id === resettingUser.roleId)?.name;
+
+    if (roleOfUserToModify?.toLowerCase() === 'admin' && !isCurrentUserAdmin) {
+        toast.error("You do not have permission to modify an admin user.");
+        return;
+    }
+
     setIsResettingPassword(true);
     try {
       await adminSetUserPassword({ uid: resettingUser.uid, newPassword: newPasswordForReset });
@@ -424,6 +471,23 @@ export default function Settings() {
   };
 
   const handleDeleteUser = async (uid) => {
+    if (user && user.uid === uid) {
+      toast.error("You cannot delete your own account.");
+      return;
+    }
+
+    const currentUserInList = users.find(u => u.uid === user.uid);
+    const currentUserRoleName = roles.find(r => r.id === currentUserInList?.roleId)?.name;
+    const isCurrentUserAdmin = currentUserRoleName?.toLowerCase() === 'admin';
+
+    const userToDelete = users.find(u => u.uid === uid);
+    const roleOfUserToDelete = roles.find(r => r.id === userToDelete?.roleId)?.name;
+
+    if (roleOfUserToDelete?.toLowerCase() === 'admin' && !isCurrentUserAdmin) {
+        toast.error("You do not have permission to delete an admin user.");
+        return;
+    }
+    
     if (window.confirm('Are you sure you want to permanently delete this user? This action cannot be undone.')) {
       setIsDeletingUser(true);
       try {
@@ -522,18 +586,26 @@ export default function Settings() {
             <tbody>
               {loading ? (
                 <tr><td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}><CircularProgress /></td></tr>
-              ) : roles.map(role => (
-                <tr key={role.id}>
-                  <td>{role.name}</td>
-                  <td><PermissionChips permissions={role.permissions} /></td>
-                  <td>
-                    <div className={styles.actions}>
-                      <IconButton className={styles.editButton} onClick={() => handleOpenModal(role)} disabled={role.name.toLowerCase() === 'admin' || isDeletingRole}><Edit /></IconButton>
-                      <IconButton className={styles.deleteButton} onClick={() => handleDeleteRole(role.id)} disabled={role.name.toLowerCase() === 'admin' || isDeletingRole}>{isDeletingRole ? <CircularProgress size={20} /> : <Delete />}</IconButton>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              ) : (() => {
+                  const currentUserInList = users.find(u => u.uid === user?.uid);
+                  const currentUserRoleId = currentUserInList?.roleId;
+
+                  return roles.map(role => {
+                    const isCurrentUserRole = role.id === currentUserRoleId;
+                    return (
+                      <tr key={role.id}>
+                        <td>{role.name}</td>
+                        <td><PermissionChips permissions={role.permissions} /></td>
+                        <td>
+                          <div className={styles.actions}>
+                            <IconButton className={styles.editButton} onClick={() => handleOpenModal(role)} disabled={role.name.toLowerCase() === 'admin' || isDeletingRole || isCurrentUserRole}><Edit /></IconButton>
+                            <IconButton className={styles.deleteButton} onClick={() => handleDeleteRole(role.id)} disabled={role.name.toLowerCase() === 'admin' || isDeletingRole || isCurrentUserRole}>{isDeletingRole ? <CircularProgress size={20} /> : <Delete />}</IconButton>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  });
+              })()}
             </tbody>
           </table>
         </div>
@@ -558,25 +630,44 @@ export default function Settings() {
             <tbody>
               {loading ? (
                 <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px' }}><CircularProgress /></td></tr>
-              ) : users.map(user => (
-                <tr key={user.uid}>
-                  <td>{user.displayName || '-'}</td>
-                  <td>{user.email}</td>
-                  <td>
-                    <Select value={user.roleId || ''} onChange={(e) => handleAssignRole(user.email, e.target.value)} displayEmpty size="small" sx={{ minWidth: 150, backgroundColor: '#f9f9f9' }} disabled={isAssigningRole}>
-                      <MenuItem value=""><em>None</em></MenuItem>
-                      {roles.map((role) => <MenuItem key={role.id} value={role.id}>{role.name}</MenuItem>)}
-                    </Select>
-                  </td>
-                  <td>
-                    <div className={styles.actions}>
-                      <IconButton className={styles.editButton} onClick={() => handleOpenEditUserModal(user)} disabled={isDeletingUser}><Edit /></IconButton>
-                      <IconButton className={styles.editButton} onClick={() => handleOpenResetPasswordModal(user)} disabled={isDeletingUser}><LockReset /></IconButton>
-                      <IconButton className={styles.deleteButton} onClick={() => handleDeleteUser(user.uid)} disabled={isDeletingUser}>{isDeletingUser ? <CircularProgress size={20} /> : <Delete />}</IconButton>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              ) : (() => {
+                const currentUserInList = users.find(u => u.uid === user?.uid);
+                const currentUserRoleName = roles.find(r => r.id === currentUserInList?.roleId)?.name;
+                const isCurrentUserAdmin = currentUserRoleName?.toLowerCase() === 'admin';
+
+                return users.map(rowUser => {
+                  const isRowUserAdmin = roles.find(r => r.id === rowUser.roleId)?.name.toLowerCase() === 'admin';
+                  const canModify = isCurrentUserAdmin || !isRowUserAdmin;
+                  const isCurrentUserRow = user && rowUser.uid === user.uid;
+
+                  return (
+                    <tr key={rowUser.uid}>
+                      <td>{rowUser.displayName || '-'}</td>
+                      <td>{rowUser.email}</td>
+                      <td>
+                        <Select
+                          value={rowUser.roleId || ''}
+                          onChange={(e) => handleAssignRole(rowUser.email, e.target.value)}
+                          displayEmpty
+                          size="small"
+                          sx={{ minWidth: 150, backgroundColor: '#f9f9f9' }}
+                          disabled={isAssigningRole || !canModify || isCurrentUserRow}
+                        >
+                          <MenuItem value=""><em>None</em></MenuItem>
+                          {roles.map((role) => <MenuItem key={role.id} value={role.id}>{role.name}</MenuItem>)}
+                        </Select>
+                      </td>
+                      <td>
+                        <div className={styles.actions}>
+                          <IconButton className={styles.editButton} onClick={() => handleOpenEditUserModal(rowUser)} disabled={isDeletingUser || !canModify}><Edit /></IconButton>
+                          <IconButton className={styles.editButton} onClick={() => handleOpenResetPasswordModal(rowUser)} disabled={isDeletingUser || !canModify}><LockReset /></IconButton>
+                          <IconButton className={styles.deleteButton} onClick={() => handleDeleteUser(rowUser.uid)} disabled={isDeletingUser || (user && rowUser.uid === user.uid) || !canModify}>{isDeletingUser ? <CircularProgress size={20} /> : <Delete />}</IconButton>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                });
+              })()}
             </tbody>
           </table>
         </div>
