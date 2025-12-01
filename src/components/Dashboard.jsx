@@ -48,7 +48,7 @@ export default function Dashboard() {
                     <div className={styles.statsGrid}>
                         {statsData
                             .filter(stat => {
-                                if (stat.title === 'Total Revenue (30d)' || stat.title === 'Pending Invoices') {
+                                if (stat.title === 'Total Revenue (30d)' || stat.title === 'Pending Amount') {
                                     return permissions.hasPermission('invoices:view');
                                 }
                                 if (stat.title === 'Active Members') {
