@@ -12,35 +12,38 @@ const BirthdayList = () => {
 
     useEffect(() => {
         const fetchBirthdays = async () => {
-            if (hasPermission('members:view')) {
-                try {
-                    const membersCollection = collection(db, 'leads');
-                    const q = query(membersCollection, where('status', '==', 'Converted'));
-                    const membersSnapshot = await getDocs(q);
-                    const birthdays = [];
-                    const currentMonth = new Date().getMonth() + 1; // 1-indexed
-                    const monthNames = ["January", "February", "March", "April", "May", "June",
-                        "July", "August", "September", "October", "November", "December"
-                    ];
+            try {
+                const membersCollection = collection(db, 'leads');
+                const q = query(membersCollection, where('status', '==', 'Converted'));
+                const membersSnapshot = await getDocs(q);
+                const fetchedBirthdays = [];
+                const currentMonth = new Date().getMonth() + 1; // 1-indexed
+                const monthNames = ["January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December"
+                ];
 
-                    membersSnapshot.forEach(doc => {
-                        const member = doc.data();
-                        if (parseInt(member.birthdayMonth, 10) === currentMonth) {
-                            const monthName = monthNames[parseInt(member.birthdayMonth, 10) - 1];
-                            birthdays.push({ name: member.name, date: `${monthName} ${member.birthdayDay}` });
-                        }
-                    });
-                    setBirthdays(birthdays);
-                } catch (error) {
-                    console.error("Firebase permission error fetching birthdays:", error);
-                    // Set birthdays to empty array so the component returns null if no data
-                    setBirthdays([]);
-                }
+                membersSnapshot.forEach(doc => {
+                    const member = doc.data();
+                    if (parseInt(member.birthdayMonth, 10) === currentMonth) {
+                        const monthName = monthNames[parseInt(member.birthdayMonth, 10) - 1];
+                        fetchedBirthdays.push({ name: member.name, date: `${monthName} ${member.birthdayDay}` });
+                    }
+                });
+                setBirthdays(fetchedBirthdays);
+            } catch (error) {
+                console.error("Firebase permission error fetching birthdays:", error);
+                setBirthdays([]); // Set birthdays to empty array on error
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
 
-        fetchBirthdays();
+        if (hasPermission('members:view')) {
+            fetchBirthdays();
+        } else {
+            setLoading(false);
+            setBirthdays([]);
+        }
     }, [hasPermission]);
 
     const getInitials = (name) => {
@@ -49,10 +52,10 @@ const BirthdayList = () => {
     };
 
     if (loading) {
-        return <p>Loading birthdays...</p>;
+        return null;
     }
 
-    if (birthdays.length === 0 && !loading) {
+    if (!hasPermission('members:view') || birthdays.length === 0) {
         return null;
     }
 

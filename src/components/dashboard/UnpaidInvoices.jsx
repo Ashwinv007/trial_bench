@@ -22,28 +22,32 @@ const UnpaidInvoices = () => {
 
     useEffect(() => {
         const fetchUnpaidInvoices = async () => {
-            if (hasPermission('invoices:view')) {
-                try {
-                    const invoicesCollection = collection(db, 'invoices');
-                    const invoicesSnapshot = await getDocs(invoicesCollection);
-                    const allInvoices = invoicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    const unpaid = allInvoices.filter(invoice => invoice.paymentStatus !== 'Paid');
-                    setUnpaidInvoices(unpaid);
-                } catch (error) {
-                    console.error("Firebase permission error fetching unpaid invoices:", error);
-                    setUnpaidInvoices([]); // Set to empty array on error
-                }
+            try {
+                const invoicesCollection = collection(db, 'invoices');
+                const invoicesSnapshot = await getDocs(invoicesCollection);
+                const allInvoices = invoicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const unpaid = allInvoices.filter(invoice => invoice.paymentStatus !== 'Paid');
+                setUnpaidInvoices(unpaid);
+            } catch (error) {
+                console.error("Firebase permission error fetching unpaid invoices:", error);
+                setUnpaidInvoices([]); // Set to empty array on error
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
 
-        fetchUnpaidInvoices();
+        if (hasPermission('invoices:view')) {
+            fetchUnpaidInvoices();
+        } else {
+            setLoading(false);
+            setUnpaidInvoices([]);
+        }
     }, [hasPermission]);
 
     if (loading) {
-        return <p>Loading unpaid invoices...</p>;
+        return null;
     }
-
+    
     if (!hasPermission('invoices:view') || unpaidInvoices.length === 0) {
         return null;
     }

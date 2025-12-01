@@ -108,12 +108,13 @@ const RecentClients = () => {
 
 
     if (loading) {
-        return <p>Loading recent clients...</p>;
-    }
-
-    if (recentClients.length === 0) {
         return null;
     }
+
+    if (!hasPermission('agreements:view') || recentClients.length === 0) {
+        return null;
+    }
+
 
     return (
         <div className={styles.card}>

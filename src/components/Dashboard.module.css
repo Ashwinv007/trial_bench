@@ -727,4 +727,9 @@
   font-weight: 600;
 }
 
+.listCard:empty,
+.chartCard:empty {
+  display: none;
+}
+
 

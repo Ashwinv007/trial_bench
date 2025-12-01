@@ -101,14 +101,12 @@ const LeadConversionsChart = () => {
             year: 'This Year'
         };
     
-        if (loading) {
-            return <p>Loading...</p>;
-        }
-    
-        if (data.length === 0 && !loading) {
-            return null;
-        }
-    
+                if (loading && data.length === 0) {
+                    return null;
+                }        
+            if (!hasPermission('leads:view') || data.length === 0) {
+                return null;
+            }    
         return (
             <div className={styles.card}>            <div className={styles.header}>
                 <div>

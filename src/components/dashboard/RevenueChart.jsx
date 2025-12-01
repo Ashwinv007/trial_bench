@@ -118,8 +118,8 @@ const RevenueChart = () => {
         year: 'This Year'
     };
     
-    if (loading) {
-        return <p>Loading revenue chart...</p>; // Updated loading message
+    if (loading && data.length === 0) {
+        return null;
     }
 
     if (!hasPermission('invoices:view') || data.length === 0 || error) { // Also check for error

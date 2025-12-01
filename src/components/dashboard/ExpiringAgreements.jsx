@@ -46,13 +46,14 @@ const ExpiringAgreements = () => {
         return diffDays;
     };
 
-    if (loading) {
-        return <p>Loading expiring agreements...</p>;
-    }
-
     if (!hasPermission('agreements:view') || agreements.length === 0) {
         return null;
     }
+
+    if (loading) {
+        return null; // Don't show loading placeholder, just wait for data
+    }
+
 
     return (
         <div className={styles.card}>
