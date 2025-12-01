@@ -170,7 +170,7 @@ export default function PastMembersPage() {
         <TableCell>{member.whatsapp}</TableCell>
         <TableCell>{member.email}</TableCell>
         <TableCell>{member.removedAt?.toDate().toLocaleDateString()}</TableCell>
-        {hasPermission('manage_settings') && (
+        {/* {hasPermission('manage_settings') && (
             <TableCell>
                 <Button
                     size="small"
@@ -181,7 +181,7 @@ export default function PastMembersPage() {
                     {deletingMemberId === member.id ? <CircularProgress size={20} /> : 'Delete'}
                 </Button>
             </TableCell>
-        )}
+        )} */}
       </TableRow>
     ))
   );
@@ -273,14 +273,14 @@ export default function PastMembersPage() {
                 <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>WhatsApp</TableCell>
                 <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Email</TableCell>
                 <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Date Removed</TableCell>
-                {hasPermission('manage_settings') && <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Actions</TableCell>}
+                {/* {hasPermission('manage_settings') && <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Actions</TableCell>} */}
               </TableRow>
             </TableHead>
             <TableBody>
               {renderAllMembersView()}
               {filteredMembers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={hasPermission('manage_settings') ? 8 : 7} sx={{ textAlign: 'center', py: 4, fontSize: '14px', color: '#757575' }}>
+                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4, fontSize: '14px', color: '#757575' }}>
                     No past members found
                   </TableCell>
                 </TableRow>
