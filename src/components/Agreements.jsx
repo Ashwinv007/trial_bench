@@ -3,7 +3,7 @@ import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, Menu
 import { Close } from '@mui/icons-material';
 import styles from './Agreements.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
-import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'; // Added serverTimestamp
+import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore'; // Added serverTimestamp
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
@@ -320,7 +320,11 @@ export default function Agreements() {
             serviceAgreementType: serviceAgreementType,
             clientAuthorizorName: formData.clientAuthorizorName,
             clientAuthorizorTitle: formData.clientAuthorizorTitle,
-            lastEditedAt: serverTimestamp(), // Update last edited timestamp
+            lastEditedAt: serverTimestamp(),
+            // Convert date strings to Firestore Timestamps
+            agreementDate: formData.agreementDate ? Timestamp.fromDate(new Date(formData.agreementDate)) : '',
+            startDate: formData.startDate ? Timestamp.fromDate(new Date(formData.startDate)) : '',
+            endDate: formData.endDate ? Timestamp.fromDate(new Date(formData.endDate)) : '',
         };
 
         const agreementRef = doc(db, 'agreements', selectedAgreement.id);

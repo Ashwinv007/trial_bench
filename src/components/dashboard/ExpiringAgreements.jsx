@@ -14,14 +14,17 @@ const ExpiringAgreements = () => {
         const fetchExpiringAgreements = async () => {
             if (hasPermission('agreements:view')) {
                 try {
-                    const oneWeekFromNow = new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0); // Start of today
+                    const oneWeekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+
                     const agreementsCollection = collection(db, 'agreements');
 
                     const q = query(
                         agreementsCollection,
                         where('status', '==', 'active'),
-                        where('endDate', '<=', Timestamp.fromDate(oneWeekFromNow)),
-                        where('endDate', '>=', Timestamp.now())
+                        where('endDate', '<', Timestamp.fromDate(oneWeekFromNow)),
+                        where('endDate', '>=', Timestamp.fromDate(today))
                     );
                     
                     const agreementsSnapshot = await getDocs(q);
@@ -40,7 +43,9 @@ const ExpiringAgreements = () => {
 
     const calculateDaysLeft = (endDate) => {
         const today = new Date();
+        today.setHours(0, 0, 0, 0); // For consistent day difference
         const end = endDate.toDate();
+        end.setHours(0, 0, 0, 0); // For consistent day difference
         const diffTime = end.getTime() - today.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         return diffDays;
