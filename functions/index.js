@@ -1,5 +1,6 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentDeleted } = require("firebase-functions/v2/firestore");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
 
@@ -515,6 +516,108 @@ exports.adminSetUserPassword = onCall(async (request) => {
   } catch (error) {
     console.error("Error setting user password:", error);
     throw new HttpsError("internal", "An unexpected error occurred while setting the password.");
+  }
+});
+
+exports.scheduledAgreementTermination = onSchedule("every 24 hours", async (event) => {
+  console.log("Running scheduled agreement termination job.");
+  const db = admin.firestore();
+
+  const today = new Date();
+  const todayString = today.toISOString().split("T")[0];
+
+  try {
+    const agreementsQuery = db.collection("agreements")
+      .where("status", "!=", "terminated")
+      .where("endDate", "<=", todayString);
+
+    const expiredAgreementsSnapshot = await agreementsQuery.get();
+
+    if (expiredAgreementsSnapshot.empty) {
+      console.log("No expired agreements to terminate.");
+      return null;
+    }
+
+    const processedLeadIds = new Set();
+    const batch = db.batch();
+
+    for (const agreementDoc of expiredAgreementsSnapshot.docs) {
+      const agreementData = agreementDoc.data();
+      const leadId = agreementData.leadId;
+      const agreementId = agreementDoc.id;
+
+      if (!leadId || processedLeadIds.has(leadId)) {
+        console.log(`Updating agreement ${agreementId} without member move (no leadId or already processed).`);
+        batch.update(agreementDoc.ref, {
+          status: "terminated",
+          exitDate: agreementData.endDate, // Use the agreement's end date
+        });
+        continue;
+      }
+
+      processedLeadIds.add(leadId);
+
+      // Find and move primary member
+      const primaryMemberQuery = db.collection("members").where("leadId", "==", leadId).limit(1);
+      const primaryMemberSnapshot = await primaryMemberQuery.get();
+
+      if (!primaryMemberSnapshot.empty) {
+        const primaryMemberDoc = primaryMemberSnapshot.docs[0];
+        const primaryMemberData = primaryMemberDoc.data();
+
+        const pastPrimaryMemberRef = db.collection("past_members").doc(primaryMemberDoc.id);
+        batch.set(pastPrimaryMemberRef, {
+          ...primaryMemberData,
+          removedAt: new admin.firestore.Timestamp.fromDate(new Date(agreementData.endDate)),
+          reason: "Agreement expired.",
+        });
+        batch.delete(primaryMemberDoc.ref);
+        console.log(`Marked primary member ${primaryMemberDoc.id} for move to past_members.`);
+
+        // Find and move sub-members
+        const subMembersQuery = db.collection("members").where("primaryMemberId", "==", primaryMemberDoc.id);
+        const subMembersSnapshot = await subMembersQuery.get();
+        subMembersSnapshot.docs.forEach((doc) => {
+          const pastSubMemberRef = db.collection("past_members").doc(doc.id);
+          batch.set(pastSubMemberRef, {
+            ...doc.data(),
+            removedAt: new admin.firestore.Timestamp.fromDate(new Date(agreementData.endDate)),
+            reason: "Agreement expired.",
+          });
+          batch.delete(doc.ref);
+          console.log(`Marked sub-member ${doc.id} for move to past_members.`);
+        });
+      }
+
+      // Update agreement status and exitDate
+      batch.update(agreementDoc.ref, {
+        status: "terminated",
+        exitDate: agreementData.endDate,
+      });
+      console.log(`Marked agreement ${agreementId} as terminated.`);
+
+      // Log the automated activity
+      const logRef = db.collection("logs").doc();
+      batch.set(logRef, {
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        user: { uid: "SYSTEM", displayName: "Automated Process" },
+        action: "agreement_terminated_auto",
+        message: `Agreement "${agreementData.agreementNumber}" for "${agreementData.memberLegalName || ""}" automatically terminated on end date.`,
+        details: {
+          agreementId: agreementId,
+          agreementNumber: agreementData.agreementNumber || null,
+          leadId: leadId,
+          endDate: agreementData.endDate,
+        },
+      });
+    }
+
+    await batch.commit();
+    console.log(`Successfully terminated ${expiredAgreementsSnapshot.size} agreement(s).`);
+    return null;
+  } catch (error) {
+    console.error("Error during scheduled agreement termination:", error);
+    return null;
   }
 });
 
