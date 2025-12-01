@@ -19,6 +19,7 @@ const ExpiringAgreements = () => {
 
                     const q = query(
                         agreementsCollection,
+                        where('status', '==', 'active'),
                         where('endDate', '<=', Timestamp.fromDate(oneWeekFromNow)),
                         where('endDate', '>=', Timestamp.now())
                     );
