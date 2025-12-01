@@ -34,7 +34,7 @@ export const useStatsData = () => {
         { id: 1, title: 'Total Revenue (30d)', value: '₹0', change: '+0%', trend: 'up', icon: 'IndianRupee', color: '#2b7a8e' },
         { id: 2, title: 'Active Members', value: '0', change: '+0', trend: 'up', icon: 'Users', color: '#1a4d5c' },
         { id: 3, title: 'Pending Amount', value: '₹0', change: '0', trend: 'down', icon: 'FileText', color: '#2b7a8e' },
-        { id: 4, title: 'New Agreements (30d)', value: '0', change: '+0', trend: 'up', icon: 'FileCheck', color: '#1a4d5c' }
+        { id: 4, title: 'Active Agreements', value: '0', change: '+0', trend: 'up', icon: 'FileCheck', color: '#1a4d5c' }
     ]);
     const [loading, setLoading] = useState(true);
 
@@ -59,10 +59,10 @@ export const useStatsData = () => {
 
             let revenueCurrent = 0, revenuePrevious = 0;
             let newMembersCurrent = 0, newMembersPrevious = 0;
-            let newAgreementsCurrent = 0, newAgreementsPrevious = 0;
             let totalPendingAmount = 0;
-            let pendingAmountCurrent = 0;
-            let pendingAmountPrevious = 0;
+            let pendingAmountCurrent = 0, pendingAmountPrevious = 0;
+            let activeAgreements = 0;
+            let agreementsBecameActiveCurrent = 0;
 
             if (hasPermission('invoices:view')) {
                 const invCol = collection(db, 'invoices');
@@ -118,16 +118,17 @@ export const useStatsData = () => {
             
             if (hasPermission('agreements:view')) {
                 const agrCol = collection(db, 'agreements');
-                const agrSnap = await getDocs(agrCol);
-                 agrSnap.forEach(doc => {
+                const q = query(agrCol, where('status', '==', 'active'));
+                const activeAgrSnap = await getDocs(q);
+                activeAgreements = activeAgrSnap.size;
+
+                activeAgrSnap.forEach(doc => {
                     const agreement = doc.data();
                     const startDate = parseDate(agreement.startDate);
                     if (!startDate) return;
 
                     if (startDate >= thirtyDaysAgo) {
-                        newAgreementsCurrent++;
-                    } else if (startDate >= sixtyDaysAgo && startDate < thirtyDaysAgo) {
-                        newAgreementsPrevious++;
+                        agreementsBecameActiveCurrent++;
                     }
                 });
             }
@@ -141,7 +142,6 @@ export const useStatsData = () => {
             // --- Calculate trends ---
             const revenueTrend = calculateChange(revenueCurrent, revenuePrevious);
             const membersTrend = calculateChange(newMembersCurrent, newMembersPrevious);
-            const agreementsTrend = calculateChange(newAgreementsCurrent, newAgreementsPrevious);
             const pendingTrend = calculateChange(pendingAmountCurrent, pendingAmountPrevious);
             pendingTrend.trend = pendingTrend.trend === 'up' ? 'down' : 'up'; // More pending is bad
 
@@ -152,7 +152,7 @@ export const useStatsData = () => {
                 { id: 1, title: 'Total Revenue (30d)', value: formatRevenue(revenueCurrent), change: revenueTrend.change, trend: revenueTrend.trend, icon: 'IndianRupee', color: '#2b7a8e' },
                 { id: 2, title: 'Active Members', value: totalActiveClients.toString(), change: `+${newMembersCurrent}`, trend: membersTrend.trend, icon: 'Users', color: '#1a4d5c' },
                 { id: 3, title: 'Pending Amount', value: formatRevenue(totalPendingAmount), change: pendingTrend.change, trend: pendingTrend.trend, icon: 'FileText', color: '#2b7a8e' },
-                { id: 4, title: 'New Agreements (30d)', value: newAgreementsCurrent.toString(), change: agreementsTrend.change, trend: agreementsTrend.trend, icon: 'FileCheck', color: '#1a4d5c' }
+                { id: 4, title: 'Active Agreements', value: activeAgreements.toString(), change: `+${agreementsBecameActiveCurrent}`, trend: 'up', icon: 'FileCheck', color: '#1a4d5c' }
             ]);
 
             setLoading(false);

@@ -54,7 +54,7 @@ export default function Dashboard() {
                                 if (stat.title === 'Active Members') {
                                     return permissions.hasPermission('members:view');
                                 }
-                                if (stat.title === 'New Agreements (30d)') {
+                                if (stat.title === 'Active Agreements') {
                                     return permissions.hasPermission('agreements:view');
                                 }
                                 return false; // This should ideally not be reached if all stats are covered
