@@ -156,6 +156,32 @@ function HomePage() {
           }
         });
       }
+
+      // Fetch Birthday Reminders (Past Members)
+      if (hasPermission('members:view')) {
+        const pastMembersCollection = collection(db, 'past_members');
+        const pastMembersSnapshot = await getDocs(pastMembersCollection);
+        pastMembersSnapshot.forEach(doc => {
+          const member = doc.data();
+          if (member.birthdayDay && member.birthdayMonth) {
+            const birthdayMonth = parseInt(member.birthdayMonth, 10) - 1;
+            const birthdayDay = parseInt(member.birthdayDay, 10);
+            const todayMonth = today.getMonth();
+            const todayDay = today.getDate();
+
+            if (birthdayMonth === todayMonth && birthdayDay === todayDay) {
+              allNotifications.push({
+                id: `past-birthday-${doc.id}`,
+                title: 'Past Member Birthday',
+                description: `It's ${member.name}'s birthday today! (Past Member)`,
+                time: 'Today',
+                isRead: false,
+                type: 'birthday'
+              });
+            }
+          }
+        });
+      }
       
       setNotifications(allNotifications);
     };
