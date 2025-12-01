@@ -1,10 +1,12 @@
-import { AddCircleOutline, Person, Delete } from '@mui/icons-material';
+import { AddCircleOutline, Person, Delete, UploadFile } from '@mui/icons-material';
 import styles from './Leads.module.css';
 import { useContext, useEffect, useState, useMemo } from 'react';
 import { FirebaseContext } from '../store/Context';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../auth/usePermissions';
+import * as XLSX from 'xlsx';
+import { toast } from 'sonner';
 import {
   Box,
   TextField,
@@ -33,8 +35,18 @@ export default function Leads() {
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All Statuses'); // New state for status filter
+  const [statusFilter, setStatusFilter] = useState('All Statuses');
+  const [purposeFilter, setPurposeFilter] = useState('All Purposes');
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const purposeOptions = [
+    "Dedicated Desk",
+    "Flexible Desk",
+    "Private Cabin",
+    "Virtual Office",
+    "Meeting Room",
+    "Day Pass",
+  ];
 
   const filteredLeads = useMemo(() => {
     let currentLeads = leads; // Start with all fetched leads
@@ -53,6 +65,19 @@ export default function Leads() {
     // Apply status filter
     if (statusFilter !== 'All Statuses') {
       currentLeads = currentLeads.filter((lead) => lead.status === statusFilter);
+    }
+
+    // Apply purpose of visit filter
+    if (purposeFilter !== 'All Purposes') {
+      if (purposeFilter === 'Others') {
+        currentLeads = currentLeads.filter(
+          (lead) => !purposeOptions.includes(lead.purposeOfVisit)
+        );
+      } else {
+        currentLeads = currentLeads.filter(
+          (lead) => lead.purposeOfVisit === purposeFilter
+        );
+      }
     }
 
     return currentLeads.sort((a, b) => {
@@ -78,7 +103,7 @@ export default function Leads() {
       if (dateB) return 1; // b comes first if a has no date
       return 0;
     });
-  }, [leads, searchQuery, statusFilter]);
+  }, [leads, searchQuery, statusFilter, purposeFilter]);
 
   useEffect(() => {
     if (!hasPermission('leads:view')) return;
@@ -124,6 +149,26 @@ export default function Leads() {
       navigate(`/lead/${leadId}`);
     }
   };
+  
+  const handleExport = () => {
+    if (!hasPermission('leads:export')) {
+        toast.error("You don't have permission to export leads.");
+        return;
+    }
+    const dataToExport = filteredLeads.map(lead => ({
+      'Name': lead.name,
+      'Status': lead.status,
+      'Purpose of Visit': lead.purposeOfVisit,
+      'Phone': lead.phone,
+      'Whatsapp': lead.convertedWhatsapp,
+      'Source': `${lead.sourceType}${lead.sourceDetail ? ` (${lead.sourceDetail})` : ''}`
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Leads");
+    XLSX.writeFile(wb, "leads.xlsx");
+  };
 
   if (!hasPermission('leads:view')) {
     return (
@@ -168,6 +213,7 @@ export default function Leads() {
             onClick={() => {
               setSearchQuery('');
               setStatusFilter('All Statuses');
+              setPurposeFilter('All Purposes');
             }}
             sx={{ textTransform: 'none', fontSize: '14px', color: '#424242', borderColor: '#e0e0e0', bgcolor: '#ffffff', px: 2, '&:hover': { borderColor: '#2b7a8e', bgcolor: '#ffffff' } }}
           >
@@ -185,6 +231,21 @@ export default function Leads() {
             <MenuItem value="Converted">Converted</MenuItem>
             <MenuItem value="Not Interested">Not Interested</MenuItem>
           </Select>
+          <Select
+            value={purposeFilter}
+            onChange={(e) => setPurposeFilter(e.target.value)}
+            size="small"
+            sx={{ minWidth: '150px', bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } } }
+          >
+            <MenuItem value="All Purposes">All Purposes</MenuItem>
+            <MenuItem value="Dedicated Desk">Dedicated Desk</MenuItem>
+            <MenuItem value="Flexible Desk">Flexible Desk</MenuItem>
+            <MenuItem value="Private Cabin">Private Cabin</MenuItem>
+            <MenuItem value="Virtual Office">Virtual Office</MenuItem>
+            <MenuItem value="Meeting Room">Meeting Room</MenuItem>
+            <MenuItem value="Day Pass">Day Pass</MenuItem>
+            <MenuItem value="Others">Others</MenuItem>
+          </Select>
           {hasPermission('leads:add') && (
             <Button
               variant="contained"
@@ -193,6 +254,16 @@ export default function Leads() {
               onClick={() => navigate('/add-lead')}
             >
               Add Lead
+            </Button>
+          )}
+          {hasPermission('leads:export') && (
+            <Button
+                variant="contained"
+                startIcon={<UploadFile />}
+                sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
+                onClick={handleExport}
+            >
+                Export
             </Button>
           )}
         </Box>
