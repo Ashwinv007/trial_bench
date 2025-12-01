@@ -78,7 +78,7 @@ const ExpiringAgreements = () => {
                             </div>
                             <div className={styles.agreementsInfo}>
                                 <div className={styles.agreementsClient}>{agreement.name}</div>
-                                <div className={styles.agreementsDate}>Expires on: {agreement.endDate.toDate().toLocaleDateString()}</div>
+                                <div className={styles.agreementsDate}>Expires on: {agreement.endDate.toDate().toLocaleDateString('en-GB')}</div>
                             </div>
                             <div className={styles.agreementsBadge}>
                                 {calculateDaysLeft(agreement.endDate)} days

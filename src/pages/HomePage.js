@@ -3,7 +3,7 @@ import Sidebar from '../components/Sidebar';
 import { Outlet, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
 import { FirebaseContext } from '../store/Context';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { usePermissions } from '../auth/usePermissions';
 
 const getPageTitle = (pathname) => {
@@ -101,11 +101,20 @@ function HomePage() {
       // Fetch Expiring Agreements
       if (hasPermission('agreements:view')) {
         const agreementsCollection = collection(db, 'agreements');
-        const agreementsSnapshot = await getDocs(agreementsCollection);
+        const q = query(agreementsCollection, where('status', '==', 'active'));
+        const agreementsSnapshot = await getDocs(q);
         agreementsSnapshot.forEach(doc => {
           const agreement = doc.data();
           if (agreement.endDate) {
-            const endDate = new Date(agreement.endDate);
+            // Handle both Timestamp and string formats for graceful migration
+            let endDate;
+            if (typeof agreement.endDate.toDate === 'function') {
+              endDate = agreement.endDate.toDate(); // Firestore Timestamp
+            } else {
+              endDate = new Date(agreement.endDate); // String date
+            }
+            endDate.setHours(0, 0, 0, 0); // Normalize endDate to the start of the day
+            
             const diffTime = endDate.getTime() - today.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
