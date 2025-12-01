@@ -66,6 +66,9 @@ function HomePage() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+
       const allNotifications = [];
 
       // Fetch Follow-ups (Leads)
@@ -140,56 +143,43 @@ function HomePage() {
         });
       }
 
-      // Fetch Birthday Reminders (Members)
+      // Fetch Birthday Reminders
       if (hasPermission('members:view')) {
-        const membersCollection = collection(db, 'members');
-        const membersSnapshot = await getDocs(membersCollection);
-        membersSnapshot.forEach(doc => {
+        const membersPromise = getDocs(collection(db, 'members'));
+        const pastMembersPromise = getDocs(collection(db, 'past_members'));
+        
+        const [membersSnapshot, pastMembersSnapshot] = await Promise.all([membersPromise, pastMembersPromise]);
+
+        const processMember = (doc, isPast = false) => {
           const member = doc.data();
           if (member.birthdayDay && member.birthdayMonth) {
-            const birthdayMonth = parseInt(member.birthdayMonth, 10) - 1;
-            const birthdayDay = parseInt(member.birthdayDay, 10);
-            const todayMonth = today.getMonth();
-            const todayDay = today.getDate();
+            const birthday = new Date(today.getFullYear(), parseInt(member.birthdayMonth, 10) - 1, parseInt(member.birthdayDay, 10));
+            birthday.setHours(0,0,0,0);
 
-            if (birthdayMonth === todayMonth && birthdayDay === todayDay) {
+            if (birthday.getTime() === today.getTime()) {
               allNotifications.push({
-                id: `birthday-${doc.id}`,
-                title: 'Birthday Reminder',
-                description: `It's ${member.name}'s birthday today!`,
+                id: `${isPast ? 'past-' : ''}birthday-${doc.id}`,
+                title: isPast ? 'Past Member Birthday' : 'Birthday Reminder',
+                description: `It's ${member.name}'s birthday today!${isPast ? ' (Past Member)' : ''}`,
                 time: 'Today',
+                isRead: false,
+                type: 'birthday'
+              });
+            } else if (birthday.getTime() === tomorrow.getTime()) {
+              allNotifications.push({
+                id: `${isPast ? 'past-' : ''}birthday-tomorrow-${doc.id}`,
+                title: 'Upcoming Birthday',
+                description: `${member.name}'s birthday is tomorrow!${isPast ? ' (Past Member)' : ''}`,
+                time: 'Tomorrow',
                 isRead: false,
                 type: 'birthday'
               });
             }
           }
-        });
-      }
+        };
 
-      // Fetch Birthday Reminders (Past Members)
-      if (hasPermission('members:view')) {
-        const pastMembersCollection = collection(db, 'past_members');
-        const pastMembersSnapshot = await getDocs(pastMembersCollection);
-        pastMembersSnapshot.forEach(doc => {
-          const member = doc.data();
-          if (member.birthdayDay && member.birthdayMonth) {
-            const birthdayMonth = parseInt(member.birthdayMonth, 10) - 1;
-            const birthdayDay = parseInt(member.birthdayDay, 10);
-            const todayMonth = today.getMonth();
-            const todayDay = today.getDate();
-
-            if (birthdayMonth === todayMonth && birthdayDay === todayDay) {
-              allNotifications.push({
-                id: `past-birthday-${doc.id}`,
-                title: 'Past Member Birthday',
-                description: `It's ${member.name}'s birthday today! (Past Member)`,
-                time: 'Today',
-                isRead: false,
-                type: 'birthday'
-              });
-            }
-          }
-        });
+        membersSnapshot.forEach(doc => processMember(doc, false));
+        pastMembersSnapshot.forEach(doc => processMember(doc, true));
       }
       
       setNotifications(allNotifications);
