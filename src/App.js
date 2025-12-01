@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthContext, FirebaseContext } from './store/Context';
+import { AuthContext } from './store/Context';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import LeadsPage from './pages/LeadsPage';
@@ -18,9 +18,25 @@ import LogsPage from './pages/LogsPage'; // Import LogsPage
 import { Toaster } from 'sonner';
 import ProtectedRoute from './auth/ProtectedRoute';
 import Dashboard from './components/Dashboard';
+import { Box, CircularProgress } from '@mui/material';
 
 function App() {
-  const { user } = useContext(AuthContext);
+  const { user, isAuthLoading } = useContext(AuthContext);
+
+  if (isAuthLoading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Router>

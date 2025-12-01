@@ -14,6 +14,7 @@ export default function Context({ children }) {
   const [customClaims, setCustomClaims] = useState(null);
   const [permissions, setPermissions] = useState([]);
   const [loadingPermissions, setLoadingPermissions] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -29,6 +30,7 @@ export default function Context({ children }) {
         setPermissions([]);
         setLoadingPermissions(false);
       }
+      setIsAuthLoading(false);
     });
 
     return () => unsubscribe(); // Cleanup subscription
@@ -89,7 +91,7 @@ export default function Context({ children }) {
 
   return (
     <FirebaseContext.Provider value={{ auth, db }}>
-      <AuthContext.Provider value={{ user, customClaims, permissions, loadingPermissions, hasPermission, hasAtLeastOnePermission }}>
+      <AuthContext.Provider value={{ user, customClaims, permissions, loadingPermissions, isAuthLoading, hasPermission, hasAtLeastOnePermission }}>
         {children}
       </AuthContext.Provider>
     </FirebaseContext.Provider>
