@@ -84,8 +84,6 @@ export default function MembersPage() {
   const [allMembers, setAllMembers] = useState([]);
   const navigate = useNavigate();
 
-
-
   useEffect(() => {
     const fetchMembers = async () => {
       try {

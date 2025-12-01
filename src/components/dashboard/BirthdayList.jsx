@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import styles from '../Dashboard.module.css';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { usePermissions } from '../../auth/usePermissions';
 import { Cake } from 'lucide-react';
@@ -13,11 +13,10 @@ const BirthdayList = () => {
     useEffect(() => {
         const fetchBirthdays = async () => {
             try {
-                const membersCollection = collection(db, 'leads');
-                const q = query(membersCollection, where('status', '==', 'Converted'));
-                const membersSnapshot = await getDocs(q);
+                const membersCollection = collection(db, 'members');
+                const membersSnapshot = await getDocs(membersCollection);
                 const fetchedBirthdays = [];
-                const currentMonth = new Date().getMonth() + 1; // 1-indexed
+                const currentMonth = new Date().getMonth() + 1;
                 const monthNames = ["January", "February", "March", "April", "May", "June",
                     "July", "August", "September", "October", "November", "December"
                 ];
@@ -32,7 +31,7 @@ const BirthdayList = () => {
                 setBirthdays(fetchedBirthdays);
             } catch (error) {
                 console.error("Firebase permission error fetching birthdays:", error);
-                setBirthdays([]); // Set birthdays to empty array on error
+                setBirthdays([]);
             } finally {
                 setLoading(false);
             }
@@ -51,7 +50,7 @@ const BirthdayList = () => {
         return name.split(' ').map(word => word[0]).join('').toUpperCase().substring(0, 2);
     };
 
-    if (loading) {
+    if (loading && birthdays.length === 0) {
         return null;
     }
 
@@ -71,7 +70,7 @@ const BirthdayList = () => {
             
             <div className={styles.birthdaysList}>
                 {birthdays.length > 0 ? (
-                    birthdays.slice(0, 5).map((birthday, index) => (
+                    birthdays.map((birthday, index) => (
                         <div key={index} className={styles.birthdaysItem}>
                             <div className={styles.birthdaysAvatar}>
                                 {getInitials(birthday.name)}
