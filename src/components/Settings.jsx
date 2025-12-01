@@ -182,6 +182,9 @@ export default function Settings() {
 
   // Role Management Handlers
   const handleOpenModal = (role = null) => {
+    if (role && role.name.toLowerCase() === 'admin') {
+        return; // Admin role cannot be edited. The UI should prevent this.
+    }
     if (role) {
       setEditingRole(role);
       setRoleName(role.name);
@@ -204,6 +207,10 @@ export default function Settings() {
 
   const handleSaveRole = async () => {
     if (!roleName) return toast.error('Role name cannot be empty');
+    if (roleName.toLowerCase() === 'admin' && editingRole?.name.toLowerCase() !== 'admin') {
+        toast.error('The role name "admin" is reserved and cannot be used.');
+        return;
+    }
     
     setIsSavingRole(true);
     let permissionsToSave = [...selectedPermissions];
@@ -235,10 +242,14 @@ export default function Settings() {
   };
   
   const handleDeleteRole = async (id) => {
+    const roleToDelete = roles.find(role => role.id === id);
+    if (roleToDelete && roleToDelete.name.toLowerCase() === 'admin') {
+        toast.error('The "admin" role cannot be deleted.');
+        return;
+    }
     if (window.confirm('Are you sure you want to delete this role?')) {
       setIsDeletingRole(true);
       try {
-        const roleToDelete = roles.find(role => role.id === id);
         await deleteDoc(doc(db, 'roles', id));
         fetchSettingsData();
         toast.success('Role deleted successfully');
@@ -517,8 +528,8 @@ export default function Settings() {
                   <td><PermissionChips permissions={role.permissions} /></td>
                   <td>
                     <div className={styles.actions}>
-                      <IconButton className={styles.editButton} onClick={() => handleOpenModal(role)} disabled={isDeletingRole}><Edit /></IconButton>
-                      <IconButton className={styles.deleteButton} onClick={() => handleDeleteRole(role.id)} disabled={isDeletingRole}>{isDeletingRole ? <CircularProgress size={20} /> : <Delete />}</IconButton>
+                      <IconButton className={styles.editButton} onClick={() => handleOpenModal(role)} disabled={role.name.toLowerCase() === 'admin' || isDeletingRole}><Edit /></IconButton>
+                      <IconButton className={styles.deleteButton} onClick={() => handleDeleteRole(role.id)} disabled={role.name.toLowerCase() === 'admin' || isDeletingRole}>{isDeletingRole ? <CircularProgress size={20} /> : <Delete />}</IconButton>
                     </div>
                   </td>
                 </tr>

@@ -159,3 +159,10 @@
     margin: 0 0 16px 0;
     color: #1a4d5c;
 }
+
+.editButton:disabled,
+.deleteButton:disabled {
+  color: rgba(0, 0, 0, 0.26) !important;
+  background-color: transparent !important;
+  cursor: not-allowed;
+}
