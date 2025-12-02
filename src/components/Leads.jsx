@@ -116,8 +116,16 @@ export default function Leads() {
         return null;
       };
 
-      const dateA = getDate(a.createdAt);
-      const dateB = getDate(b.createdAt);
+      let dateA;
+      let dateB;
+
+      if (dateFilter === 'All Time') {
+        dateA = getDate(a.lastEditedAt || a.createdAt);
+        dateB = getDate(b.lastEditedAt || b.createdAt);
+      } else { // 'This Week' or 'This Month'
+        dateA = getDate(a.createdAt);
+        dateB = getDate(b.createdAt);
+      }
 
       if (dateA && dateB) {
         return dateB.getTime() - dateA.getTime();
