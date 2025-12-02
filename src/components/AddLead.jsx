@@ -257,7 +257,7 @@ export default function AddLead() {
       let newState = {...prev, [name]: value};
 
       if (name === 'clientType' && value === 'Individual') {
-        newState.companyName = '';
+        newState.companyName = 'N/A';
       }
 
       if (name === 'status' && value === 'Converted') {
