@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useContext, useEffect } from 'react';
 import { FirebaseContext } from '../store/Context';
-import { collection, getDocs, addDoc, doc, updateDoc, getDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, getDoc, deleteDoc, serverTimestamp, query, orderBy, limit } from 'firebase/firestore';
 import { logActivity } from '../utils/logActivity';
 import {
   Box,
@@ -77,6 +77,9 @@ export default function MembersPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalMembersCount, setTotalMembersCount] = useState(0);
+  const [allMembersFetched, setAllMembersFetched] = useState(false);
 
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
@@ -85,19 +88,45 @@ export default function MembersPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchMembers = async () => {
-      try {
-        const membersCollection = collection(db, 'members');
-        const membersSnapshot = await getDocs(membersCollection);
-        const membersList = membersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-        setAllMembers(membersList);
-      } catch (error) {
-        console.error("Error fetching data: ", error);
-        toast.error("Failed to fetch members.");
-      }
-    };
-    fetchMembers();
-  }, [db, refreshTrigger]); // Added refreshTrigger to dependencies
+    if (!hasPermission('members:view')) {
+      setIsLoading(false);
+      return;
+    }
+    if (db) {
+      const membersCollection = collection(db, 'members');
+
+      const fetchInitialMembers = async () => {
+        setIsLoading(true);
+        try {
+          const initialQuery = query(membersCollection, orderBy('name'), limit(15));
+          const initialSnapshot = await getDocs(initialQuery);
+          const initialData = initialSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setAllMembers(initialData);
+        } catch (error) {
+          console.error("Error fetching initial members:", error);
+          toast.error("Failed to load initial members.");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      const fetchAllMembers = async () => {
+        try {
+          const allSnapshot = await getDocs(membersCollection);
+          const allData = allSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setAllMembers(allData);
+          setTotalMembersCount(allData.length);
+          setAllMembersFetched(true);
+        } catch (error) {
+          console.error("Error fetching all members:", error);
+        }
+      };
+
+      fetchInitialMembers().then(() => {
+        fetchAllMembers();
+      });
+    }
+  }, [db, hasPermission, refreshTrigger]);
 
   const handleOpenAddModal = (primaryId = null) => {
     if (!hasPermission('members:add')) {
@@ -564,8 +593,18 @@ export default function MembersPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {primaryMemberFilter === 'Primary Members' ? renderPrimaryMembersView() : renderAllMembersView()}
-              {filteredMembers.length === 0 && (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4 }}>
+                    <CircularProgress />
+                  </TableCell>
+                </TableRow>
+              ) : primaryMemberFilter === 'Primary Members' ? (
+                renderPrimaryMembersView()
+              ) : (
+                renderAllMembersView()
+              )}
+              {!isLoading && filteredMembers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4, fontSize: '14px', color: '#757575' }}>
                     No members found matching your filters
@@ -577,7 +616,7 @@ export default function MembersPage() {
         </TableContainer>
 
         <Typography sx={{ mt: 2, fontSize: '13px', color: '#757575' }}>
-          Showing {filteredMembers.length} of {allMembers.length} members
+          {allMembersFetched ? `Showing ${filteredMembers.length} of ${totalMembersCount} members` : `Showing ${filteredMembers.length} members`}
         </Typography>
       </Box>
 

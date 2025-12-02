@@ -15,5 +15,14 @@ Based on the analysis of the codebase, the main reason for the slowdown is that 
     *   Applied on-demand loading for the `xlsx` and `pdf-lib` libraries.
     *   These libraries are now only downloaded by the user's browser when they click the "Export" or "Download PDF" buttons, respectively.
     *   This significantly reduces the initial page load time for pages like Leads, Invoices, and Members, as the browser no longer has to download these large libraries upfront.
+2.  **Progressive Loading for Leads Data:**
+    *   Implemented a two-stage data fetching strategy for the `Leads` page.
+    *   An initial small subset of leads (e.g., 25 items) is loaded quickly to display content to the user immediately.
+    *   The remaining full dataset is then fetched in the background without user interruption.
+    *   This greatly improves the *perceived performance* and responsiveness of the `Leads` page, reducing initial wait times.
+3.  **Progressive Loading for Members Data:**
+    *   Similarly, applied the two-stage data fetching strategy to the `MembersPage`.
+    *   The page now loads an initial batch of members for immediate display and then fetches the rest in the background.
+    *   This makes the Members page feel much more responsive, especially with a large number of members.
 
 This will make your app much faster and more scalable.
