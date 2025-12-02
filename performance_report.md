@@ -8,6 +8,7 @@ Based on the analysis of the codebase, the main reason for the slowdown is that 
 2.  **Client-Side Filtering:** Your application is doing all the heavy lifting of filtering and sorting data. This is slow and inefficient for the user's browser, especially with 500+ items.
 3.  **No Pagination:** All data is loaded and rendered at once, which leads to long initial load times and high memory use.
 4.  **Large Libraries:** Some large libraries are loaded on every page, even if they aren't used, which can slow down the initial startup of your app.
+5.  **Redundant Data Re-fetching on Tab Switch (TODO):** Components (e.g., MembersPage) re-fetch all data from the server every time they are re-mounted (e.g., when switching tabs), even if the data was recently updated or is already present in the local state. This causes unnecessary loading times and server requests. A global state management solution or client-side caching is needed to persist data across component lifecycles.
 
 ## Implemented Improvements:
 
@@ -25,5 +26,9 @@ Based on the analysis of the codebase, the main reason for the slowdown is that 
     *   The page now loads an initial, small batch of members for immediate display, *including an initial loading spinner* to signal that data is being fetched.
     *   It then efficiently fetches the rest of the members in the background using database pagination (`startAfter`) and seamlessly appends them to the list.
     *   This implementation provides a smooth user experience, providing clear loading feedback while minimizing wait times.
+4.  **Progressive Loading for Past Members Data:**
+    *   The same enhanced, two-stage data fetching strategy was applied to the `PastMembersPage`.
+    *   An initial, small batch of past members is loaded with a spinner, followed by an efficient background fetch of the remaining data.
+    *   This significantly improves the responsiveness and user experience of the Past Members page.
 
 This will make your app much faster and more scalable.

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useContext, useEffect } from 'react';
 import { FirebaseContext, AuthContext } from '../store/Context';
-import { collection, getDocs, doc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, deleteDoc, query, orderBy, limit, startAfter } from 'firebase/firestore';
 import { logActivity } from '../utils/logActivity';
 import {
   Box,
@@ -62,6 +62,9 @@ export default function PastMembersPage() {
   const [allMembers, setAllMembers] = useState([]);
   const [deletingMemberId, setDeletingMemberId] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalPastMembersCount, setTotalPastMembersCount] = useState(0);
+  const [allPastMembersFetched, setAllPastMembersFetched] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -73,20 +76,55 @@ export default function PastMembersPage() {
   }, [location.search]);
 
   useEffect(() => {
-    const fetchMembers = async () => {
+    if (!hasPermission('past_members:view')) {
+      setIsLoading(false);
+      return;
+    }
+    if (!db) return;
+
+    setAllMembers([]); // Clear previous members on refresh
+    setAllPastMembersFetched(false);
+    setTotalPastMembersCount(0); // Reset count
+    setIsLoading(true); // Set loading to true at the start of the fetch
+
+    const membersCollection = collection(db, 'past_members');
+
+    const fetchInitialAndRest = async () => {
       try {
-        const membersCollection = collection(db, 'past_members');
-        const membersSnapshot = await getDocs(membersCollection);
-        const membersList = membersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-        membersList.sort((a, b) => (b.removedAt?.toDate() || 0) - (a.removedAt?.toDate() || 0));
-        setAllMembers(membersList);
+        // Fetch initial batch
+        const initialQuery = query(membersCollection, orderBy('removedAt', 'desc'), limit(15));
+        const initialSnapshot = await getDocs(initialQuery);
+        const initialData = initialSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        initialData.sort((a, b) => (b.removedAt?.toDate() || 0) - (a.removedAt?.toDate() || 0)); // Re-sort for consistency
+        setAllMembers(initialData);
+
+        // Now, fetch the rest in the background
+        if (initialSnapshot.docs.length > 0) {
+          const lastVisible = initialSnapshot.docs[initialSnapshot.docs.length - 1];
+          const restQuery = query(membersCollection, orderBy('removedAt', 'desc'), startAfter(lastVisible));
+          const restSnapshot = await getDocs(restQuery);
+          const restData = restSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+
+          // Append the rest of the data
+          setAllMembers(prevMembers => [...prevMembers, ...restData]);
+          setTotalPastMembersCount(initialData.length + restData.length);
+        } else {
+          // No initial members found
+          setTotalPastMembersCount(0);
+        }
+        setAllPastMembersFetched(true);
+
       } catch (error) {
-        console.error("Error fetching data: ", error);
+        console.error("Error fetching past members:", error);
         toast.error("Failed to fetch past members.");
+      } finally {
+        setIsLoading(false); // Set loading to false when fetch is complete
       }
     };
-    fetchMembers();
-  }, [db]);
+
+    fetchInitialAndRest();
+
+  }, [db, hasPermission, location.search]);
 
   const filteredMembers = useMemo(() => {
     let members = allMembers;
@@ -287,8 +325,16 @@ export default function PastMembersPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {renderAllMembersView()}
-              {filteredMembers.length === 0 && (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                    <CircularProgress />
+                  </TableCell>
+                </TableRow>
+              ) : (
+                renderAllMembersView()
+              )}
+              {!isLoading && filteredMembers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4, fontSize: '14px', color: '#757575' }}>
                     No past members found
@@ -300,7 +346,7 @@ export default function PastMembersPage() {
         </TableContainer>
 
         <Typography sx={{ mt: 2, fontSize: '13px', color: '#757575' }}>
-          Showing {filteredMembers.length} of {allMembers.length} past members
+          {allPastMembersFetched ? `Showing ${filteredMembers.length} of ${totalPastMembersCount} past members` : `Showing ${filteredMembers.length} past members`}
         </Typography>
       </Box>
     </Box>

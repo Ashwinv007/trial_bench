@@ -1,9 +1,9 @@
 import { useState, useEffect, useContext, useMemo } from 'react';
-import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, MenuItem, Box, InputAdornment, Select, CircularProgress } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, MenuItem, Box, InputAdornment, Select, CircularProgress, Typography } from '@mui/material';
 import { Close, Visibility } from '@mui/icons-material';
 import styles from './Agreements.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
-import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore'; // Added serverTimestamp
+import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp, query, orderBy, limit, startAfter } from 'firebase/firestore'; // Added serverTimestamp
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { saveAs } from 'file-saver';
 import { toast } from 'sonner';
@@ -54,6 +54,9 @@ export default function Agreements() {
   const { user } = useContext(AuthContext);
   const { hasPermission } = usePermissions();
   const [allAgreements, setAllAgreements] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalAgreementsCount, setTotalAgreementsCount] = useState(0);
+  const [allAgreementsFetched, setAllAgreementsFetched] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('Active');
   const [selectedAgreement, setSelectedAgreement] = useState(null);
@@ -99,73 +102,106 @@ export default function Agreements() {
   const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement');
 
   useEffect(() => {
-    if (!hasPermission('agreements:view')) return;
-    if (db) {
-      const fetchAgreements = async () => {
-        const agreementsCollection = collection(db, 'agreements');
-        const agreementsSnapshot = await getDocs(agreementsCollection);
-        const agreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if (!hasPermission('agreements:view')) {
+        setIsLoading(false);
+        return;
+    };
+    if (!db) return;
 
+    setAllAgreements([]);
+    setAllAgreementsFetched(false);
+    setTotalAgreementsCount(0);
+    setIsLoading(true);
+
+    const processAgreementsWithLeads = async (agreementsData) => {
         const allAgreementsRaw = agreementsData.filter(agreement => agreement.leadId);
+        if (allAgreementsRaw.length === 0) return [];
 
         const leadPromises = allAgreementsRaw.map(agreement => {
-          const leadDocRef = doc(db, 'leads', agreement.leadId);
-          return getDoc(leadDocRef);
+            const leadDocRef = doc(db, 'leads', agreement.leadId);
+            return getDoc(leadDocRef);
         });
         const leadSnapshots = await Promise.all(leadPromises);
         const combinedData = allAgreementsRaw.map((agreement, index) => {
-          const leadData = leadSnapshots[index].data();
-          return leadData ? { ...leadData, ...agreement } : null;
+            const leadData = leadSnapshots[index].data();
+            return leadData ? { ...leadData, ...agreement } : null;
         }).filter(Boolean);
 
-        combinedData.sort((a, b) => {
-          const getDate = (field) => {
-            if (field) {
-              if (typeof field.toDate === 'function') { // Check if it's a Firestore Timestamp
-                return field.toDate();
-              }
-              if (typeof field === 'string') { // Check if it's an ISO date string
-                return new Date(field);
-              }
-            }
-            return null;
-          };
+        return combinedData;
+    };
 
-          const dateA = getDate(a.lastEditedAt || a.createdAt);
-          const dateB = getDate(b.lastEditedAt || b.createdAt);
+    const sortAgreements = (agreements) => {
+        return agreements.sort((a, b) => {
+            const getDate = (field) => {
+                if (field) {
+                    if (typeof field.toDate === 'function') return field.toDate();
+                    if (typeof field === 'string') return new Date(field);
+                }
+                return null;
+            };
 
-          if (dateA && dateB) {
-            return dateB.getTime() - dateA.getTime(); // Descending sort
-          }
-          if (dateA) return -1; // a comes first if b has no date
-          if (dateB) return 1;  // b comes first if a has no date
+            const dateA = getDate(a.lastEditedAt || a.createdAt);
+            const dateB = getDate(b.lastEditedAt || b.createdAt);
 
-          // Fallback to agreementDate if both lastEditedAt and createdAt are missing or invalid
-          const agreementDateA = a.agreementDate ? new Date(a.agreementDate) : null;
-          const agreementDateB = b.agreementDate ? new Date(b.agreementDate) : null;
+            if (dateA && dateB) return dateB.getTime() - dateA.getTime();
+            if (dateA) return -1;
+            if (dateB) return 1;
 
-          if (agreementDateA && agreementDateB) {
-            return agreementDateB.getTime() - agreementDateA.getTime();
-          }
-          if (agreementDateA) return -1;
-          if (agreementDateB) return 1;
-          return 0;
+            const agreementDateA = a.agreementDate ? new Date(a.agreementDate) : null;
+            const agreementDateB = b.agreementDate ? new Date(b.agreementDate) : null;
+
+            if (agreementDateA && agreementDateB) return agreementDateB.getTime() - agreementDateA.getTime();
+            if (agreementDateA) return -1;
+            if (agreementDateB) return 1;
+            return 0;
         });
+    };
 
-        setAllAgreements(combinedData);
+    const fetchAgreements = async () => {
+      const agreementsCollection = collection(db, 'agreements');
+      
+      // Fetch initial 10 agreements
+      const initialQuery = query(agreementsCollection, orderBy("createdAt", "desc"), limit(15));
+      const initialSnapshot = await getDocs(initialQuery);
+      const initialAgreementsData = initialSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        const activeAgreements = combinedData.filter(a => a.status !== 'terminated');
-        if (activeAgreements.length > 0) {
-          const latest = activeAgreements[0];
-          setLatestAuthDetails({
-            authorizorName: latest.authorizorName || '',
-            designation: latest.designation || '',
-            preparedByNew: latest.preparedByNew || '',
-          });
-        }
-      };
-      fetchAgreements();
-    }
+      let initialCombinedData = await processAgreementsWithLeads(initialAgreementsData);
+      
+      setAllAgreements(sortAgreements(initialCombinedData));
+      setIsLoading(false);
+
+      const activeAgreements = initialCombinedData.filter(a => a.status !== 'terminated');
+      if (activeAgreements.length > 0) {
+        const latest = activeAgreements[0]; // Already sorted
+        setLatestAuthDetails({
+          authorizorName: latest.authorizorName || '',
+          designation: latest.designation || '',
+          preparedByNew: latest.preparedByNew || '',
+        });
+      }
+      
+      // Fetch the rest in the background
+      const lastVisible = initialSnapshot.docs[initialSnapshot.docs.length - 1];
+      if (lastVisible) {
+        const restQuery = query(agreementsCollection, orderBy("createdAt", "desc"), startAfter(lastVisible));
+        const restSnapshot = await getDocs(restQuery);
+        const restAgreementsData = restSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        const restCombinedData = await processAgreementsWithLeads(restAgreementsData);
+        
+        setAllAgreements(prevAgreements => {
+            const allData = [...prevAgreements, ...restCombinedData];
+            setTotalAgreementsCount(allData.length);
+            return sortAgreements(allData);
+        });
+        setAllAgreementsFetched(true);
+      } else {
+        setTotalAgreementsCount(initialCombinedData.length);
+        setAllAgreementsFetched(true);
+      }
+    };
+
+    fetchAgreements();
+
   }, [db, hasPermission]);
 
   const displayedAgreements = useMemo(() => {
@@ -653,34 +689,51 @@ export default function Agreements() {
               </tr>
             </thead>
             <tbody>
-              {displayedAgreements.map((agreement) => (
-                <tr 
-                  key={agreement.id} 
-                  onClick={() => handleRowClick(agreement)}
-                  className={hasPermission('agreements:view') ? styles.clickableRow : ''}
-                >
-                  <td>
-                    <span className={styles.nameText}>{agreement.memberLegalName || agreement.name}</span>
-                  </td>
-                  <td>
-                    {agreement.purposeOfVisit}
-                  </td>
-                  <td>{agreement.convertedEmail}</td>
-                  <td>{agreement.phone}</td>
-                  <td>
-                    <IconButton
-                      onClick={(e) => handleViewProfileClick(e, agreement.leadId)}
-                      size="small"
-                      title="View Client Profile"
-                    >
-                      <Visibility />
-                    </IconButton>
+              {isLoading ? (
+                <tr>
+                  <td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>
+                    <CircularProgress />
                   </td>
                 </tr>
-              ))}
+              ) : displayedAgreements.length > 0 ? (
+                displayedAgreements.map((agreement) => (
+                  <tr 
+                    key={agreement.id} 
+                    onClick={() => handleRowClick(agreement)}
+                    className={hasPermission('agreements:view') ? styles.clickableRow : ''}
+                  >
+                    <td>
+                      <span className={styles.nameText}>{agreement.memberLegalName || agreement.name}</span>
+                    </td>
+                    <td>
+                      {agreement.purposeOfVisit}
+                    </td>
+                    <td>{agreement.convertedEmail}</td>
+                    <td>{agreement.phone}</td>
+                    <td>
+                      <IconButton
+                        onClick={(e) => handleViewProfileClick(e, agreement.leadId)}
+                        size="small"
+                        title="View Client Profile"
+                      >
+                        <Visibility />
+                      </IconButton>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>
+                    No agreements found.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
+        <Typography sx={{ mt: 2, fontSize: '13px', color: '#757575' }}>
+          {allAgreementsFetched ? `Showing ${displayedAgreements.length} of ${totalAgreementsCount} agreements` : `Showing ${displayedAgreements.length} agreements`}
+        </Typography>
       </div>
 
       <Dialog 
