@@ -40,8 +40,24 @@ export const useStatsData = () => {
 
     useEffect(() => {
         const fetchStatsData = async () => {
+            setLoading(true); // Ensure loading is true when starting fetch
+
+            const startTime = Date.now(); // Record start time
+            
             if (!hasPermission('invoices:view') && !hasPermission('members:view') && !hasPermission('agreements:view')) {
-                setLoading(false);
+                // Ensure minimum loading time is respected even if no permissions
+                const endTime = Date.now();
+                const elapsedTime = endTime - startTime;
+                const minimumLoadingTime = 500;
+                const remainingTime = minimumLoadingTime - elapsedTime;
+
+                if (remainingTime > 0) {
+                    setTimeout(() => {
+                        setLoading(false);
+                    }, remainingTime);
+                } else {
+                    setLoading(false);
+                }
                 return;
             }
 
@@ -155,7 +171,18 @@ export const useStatsData = () => {
                 { id: 4, title: 'Active Agreements', value: activeAgreements.toString(), change: `+${agreementsBecameActiveCurrent}`, trend: 'up', icon: 'FileCheck', color: '#1a4d5c' }
             ]);
 
-            setLoading(false);
+            const endTime = Date.now();
+            const elapsedTime = endTime - startTime;
+            const minimumLoadingTime = 500; // 500ms minimum loading time
+            const remainingTime = minimumLoadingTime - elapsedTime;
+
+            if (remainingTime > 0) {
+                setTimeout(() => {
+                    setLoading(false);
+                }, remainingTime);
+            } else {
+                setLoading(false);
+            }
         };
 
         fetchStatsData().catch(console.error);
@@ -163,3 +190,4 @@ export const useStatsData = () => {
 
     return { statsData, loading };
 };
+
