@@ -224,6 +224,24 @@ export default function Agreements() {
     setAgreementGenerated(null);
     setSelectedAgreement(agreement);
 
+    // Helper to convert Firestore Timestamp or string to YYYY-MM-DD string
+    const toDateString = (dateField) => {
+      if (!dateField) return '';
+      // Handle Firestore Timestamp
+      if (typeof dateField.toDate === 'function') {
+        return dateField.toDate().toISOString().split('T')[0];
+      }
+      // Handle ISO string
+      if (typeof dateField === 'string') {
+        return dateField.split('T')[0];
+      }
+      // Handle JS Date Object
+      if (dateField instanceof Date) {
+        return dateField.toISOString().split('T')[0];
+      }
+      return ''; // Return empty for other types
+    };
+
     const serviceAgreementType = agreement.serviceAgreementType || '';
     let servicePackage = '';
     let serviceQuantity = 1;
@@ -254,10 +272,10 @@ export default function Agreements() {
       memberPAN: agreement.memberPAN || 'Not Applicable',
       memberKYC: agreement.memberKYC || 'Not Applicable',
       memberAddress: agreement.memberAddress || '',
-      agreementDate: agreement.agreementDate || '',
+      agreementDate: toDateString(agreement.agreementDate),
       agreementNumber: agreement.agreementNumber || '',
-      startDate: agreement.startDate || '',
-      endDate: agreement.endDate || '',
+      startDate: toDateString(agreement.startDate),
+      endDate: toDateString(agreement.endDate),
       servicePackage: servicePackage,
       serviceQuantity: serviceQuantity,
       totalMonthlyPayment: agreement.totalMonthlyPayment || '',
