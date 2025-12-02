@@ -272,6 +272,30 @@ export default function EditLead() {
             `Primary member's email details updated for lead "${formData.name}".`,
             { memberId: primaryMemberDoc.id, leadId: id }
           );
+
+          // Find the agreement associated with this lead and update its email details
+          const agreementsCollectionRef = collection(db, 'agreements');
+          const qAgreement = query(agreementsCollectionRef, where('leadId', '==', id));
+          const agreementSnapshot = await getDocs(qAgreement);
+
+          if (!agreementSnapshot.empty) {
+            const agreementDoc = agreementSnapshot.docs[0];
+            const agreementRef = doc(db, 'agreements', agreementDoc.id);
+
+            await updateDoc(agreementRef, {
+              convertedEmail: formData.convertedEmail, // Use the updated email from formData
+              ccEmail: formData.ccEmail || '',          // Use the updated CC email from formData
+              lastEditedAt: serverTimestamp(),
+            });
+            // Log activity for agreement update
+            logActivity(
+              db,
+              user,
+              'agreement_updated',
+              `Agreement's email details updated for lead "${formData.name}".`,
+              { agreementId: agreementDoc.id, leadId: id }
+            );
+          }
         }
       }
 
