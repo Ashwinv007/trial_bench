@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext, useMemo } from 'react';
 import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, MenuItem, Box, InputAdornment, Select, CircularProgress } from '@mui/material';
-import { Close } from '@mui/icons-material';
+import { Close, Visibility } from '@mui/icons-material';
 import styles from './Agreements.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
 import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore'; // Added serverTimestamp
@@ -16,6 +16,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import ExitDateModal from './ExitDateModal';
 import SearchIcon from '@mui/icons-material/Search';
+import ClientProfileModal from './ClientProfileModal';
 
 const generateAgreementNumber = (memberPackageName, allAgreements) => {
   if (!memberPackageName) {
@@ -49,13 +50,6 @@ const generateAgreementNumber = (memberPackageName, allAgreements) => {
   return `TB${currentYear}${monthChar}${packageChar}${newSeq}`;
 };
 
-const formatBirthday = (day, month) => {
-  if (!day || !month) return '-';
-  const date = new Date(2000, month - 1, day); // Use a dummy year like 2000
-  return date.toLocaleString('en-US', { month: 'short', day: 'numeric' });
-};
-
-
 export default function Agreements() {
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
@@ -65,6 +59,8 @@ export default function Agreements() {
   const [statusFilter, setStatusFilter] = useState('Active');
   const [selectedAgreement, setSelectedAgreement] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState(null);
   const [isOtherPackage, setIsOtherPackage] = useState(false);
   const [agreementGenerated, setAgreementGenerated] = useState(null);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
@@ -217,6 +213,11 @@ export default function Agreements() {
     }
   }, [selectedAgreement?.purposeOfVisit, isModalOpen, selectedAgreement, allAgreements]);
 
+  const handleViewProfileClick = (event, leadId) => {
+    event.stopPropagation();
+    setSelectedClientId(leadId);
+    setIsProfileModalOpen(true);
+  };
 
   const handleRowClick = (agreement) => {
     if (!hasPermission('agreements:view')) return;
@@ -628,9 +629,9 @@ export default function Agreements() {
               <tr>
                 <th>Name</th>
                 <th>Package</th>
-                <th>Birthday</th>
                 <th>Email</th>
                 <th>Phone</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -646,9 +647,17 @@ export default function Agreements() {
                   <td>
                     {agreement.purposeOfVisit}
                   </td>
-                  <td>{agreement.birthdayDay && agreement.birthdayMonth ? formatBirthday(agreement.birthdayDay, agreement.birthdayMonth) : '-' }</td>
                   <td>{agreement.convertedEmail}</td>
                   <td>{agreement.phone}</td>
+                  <td>
+                    <IconButton
+                      onClick={(e) => handleViewProfileClick(e, agreement.leadId)}
+                      size="small"
+                      title="View Client Profile"
+                    >
+                      <Visibility />
+                    </IconButton>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -830,6 +839,14 @@ export default function Agreements() {
           isExiting={isExiting}
         />
       )}
+      <ClientProfileModal
+        open={isProfileModalOpen}
+        onClose={() => {
+          setIsProfileModalOpen(false);
+          setSelectedClientId(null);
+        }}
+        clientId={selectedClientId}
+      />
     </div>
   );
 }
