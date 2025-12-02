@@ -37,6 +37,7 @@ export default function Leads() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Statuses');
   const [purposeFilter, setPurposeFilter] = useState('All Purposes');
+  const [dateFilter, setDateFilter] = useState('All Time');
   const [isDeleting, setIsDeleting] = useState(false);
 
   const purposeOptions = [
@@ -80,6 +81,28 @@ export default function Leads() {
       }
     }
 
+    // Apply date filter
+    if (dateFilter !== 'All Time') {
+      currentLeads = currentLeads.filter(lead => {
+        if (!lead.createdAt || typeof lead.createdAt.toDate !== 'function') {
+          return false;
+        }
+        const leadDate = lead.createdAt.toDate();
+        const today = new Date();
+
+        if (dateFilter === 'This Week') {
+          const oneWeekAgo = new Date();
+          oneWeekAgo.setDate(today.getDate() - 7);
+          return leadDate >= oneWeekAgo;
+        }
+        if (dateFilter === 'This Month') {
+          const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+          return leadDate >= startOfMonth;
+        }
+        return true;
+      });
+    }
+
     return currentLeads.sort((a, b) => {
       const getDate = (field) => {
         if (field) {
@@ -93,8 +116,8 @@ export default function Leads() {
         return null;
       };
 
-      const dateA = getDate(a.lastEditedAt || a.createdAt);
-      const dateB = getDate(b.lastEditedAt || b.createdAt);
+      const dateA = getDate(a.createdAt);
+      const dateB = getDate(b.createdAt);
 
       if (dateA && dateB) {
         return dateB.getTime() - dateA.getTime();
@@ -103,7 +126,7 @@ export default function Leads() {
       if (dateB) return 1; // b comes first if a has no date
       return 0;
     });
-  }, [leads, searchQuery, statusFilter, purposeFilter]);
+  }, [leads, searchQuery, statusFilter, purposeFilter, dateFilter]);
 
   useEffect(() => {
     if (!hasPermission('leads:view')) return;
@@ -214,6 +237,7 @@ export default function Leads() {
               setSearchQuery('');
               setStatusFilter('All Statuses');
               setPurposeFilter('All Purposes');
+              setDateFilter('All Time');
             }}
             sx={{ textTransform: 'none', fontSize: '14px', color: '#424242', borderColor: '#e0e0e0', bgcolor: '#ffffff', px: 2, '&:hover': { borderColor: '#2b7a8e', bgcolor: '#ffffff' } }}
           >
@@ -245,6 +269,16 @@ export default function Leads() {
             <MenuItem value="Meeting Room">Meeting Room</MenuItem>
             <MenuItem value="Day Pass">Day Pass</MenuItem>
             <MenuItem value="Others">Others</MenuItem>
+          </Select>
+          <Select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            size="small"
+            sx={{ minWidth: '150px', bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } } }
+          >
+            <MenuItem value="All Time">All Time</MenuItem>
+            <MenuItem value="This Week">This Week</MenuItem>
+            <MenuItem value="This Month">This Month</MenuItem>
           </Select>
           {hasPermission('leads:add') && (
             <Button
