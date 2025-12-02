@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useContext, useEffect } from 'react';
 import { FirebaseContext } from '../store/Context';
-import { collection, getDocs, addDoc, doc, updateDoc, getDoc, deleteDoc, serverTimestamp, query, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, getDoc, deleteDoc, serverTimestamp, query, orderBy, limit, startAfter } from 'firebase/firestore';
 import { logActivity } from '../utils/logActivity';
 import {
   Box,
@@ -89,43 +89,52 @@ export default function MembersPage() {
 
   useEffect(() => {
     if (!hasPermission('members:view')) {
-      setIsLoading(false);
+      setIsLoading(false); // Ensure loading is false if no permission
       return;
     }
-    if (db) {
-      const membersCollection = collection(db, 'members');
+    if (!db) return;
 
-      const fetchInitialMembers = async () => {
-        setIsLoading(true);
-        try {
-          const initialQuery = query(membersCollection, orderBy('name'), limit(15));
-          const initialSnapshot = await getDocs(initialQuery);
-          const initialData = initialSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setAllMembers(initialData);
-        } catch (error) {
-          console.error("Error fetching initial members:", error);
-          toast.error("Failed to load initial members.");
-        } finally {
-          setIsLoading(false);
+    setAllMembers([]); // Clear previous members on refresh
+    setAllMembersFetched(false);
+    setTotalMembersCount(0); // Reset count
+    setIsLoading(true); // Set loading to true at the start of the fetch
+
+    const membersCollection = collection(db, 'members');
+
+    const fetchInitialAndRest = async () => {
+      try {
+        // Fetch initial batch
+        const initialQuery = query(membersCollection, orderBy('name'), limit(15));
+        const initialSnapshot = await getDocs(initialQuery);
+        const initialData = initialSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAllMembers(initialData);
+
+        // Now, fetch the rest in the background
+        if (initialSnapshot.docs.length > 0) {
+          const lastVisible = initialSnapshot.docs[initialSnapshot.docs.length - 1];
+          const restQuery = query(membersCollection, orderBy('name'), startAfter(lastVisible));
+          const restSnapshot = await getDocs(restQuery);
+          const restData = restSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+          // Append the rest of the data
+          setAllMembers(prevMembers => [...prevMembers, ...restData]);
+          setTotalMembersCount(initialData.length + restData.length);
+        } else {
+          // No initial members found
+          setTotalMembersCount(0);
         }
-      };
+        setAllMembersFetched(true);
 
-      const fetchAllMembers = async () => {
-        try {
-          const allSnapshot = await getDocs(membersCollection);
-          const allData = allSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setAllMembers(allData);
-          setTotalMembersCount(allData.length);
-          setAllMembersFetched(true);
-        } catch (error) {
-          console.error("Error fetching all members:", error);
-        }
-      };
+      } catch (error) {
+        console.error("Error fetching members:", error);
+        toast.error("Failed to fetch members.");
+      } finally {
+        setIsLoading(false); // Set loading to false when fetch is complete
+      }
+    };
 
-      fetchInitialMembers().then(() => {
-        fetchAllMembers();
-      });
-    }
+    fetchInitialAndRest();
+
   }, [db, hasPermission, refreshTrigger]);
 
   const handleOpenAddModal = (primaryId = null) => {

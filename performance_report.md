@@ -21,8 +21,9 @@ Based on the analysis of the codebase, the main reason for the slowdown is that 
     *   The remaining full dataset is then fetched in the background without user interruption.
     *   This greatly improves the *perceived performance* and responsiveness of the `Leads` page, reducing initial wait times.
 3.  **Progressive Loading for Members Data:**
-    *   Similarly, applied the two-stage data fetching strategy to the `MembersPage`.
-    *   The page now loads an initial batch of members for immediate display and then fetches the rest in the background.
-    *   This makes the Members page feel much more responsive, especially with a large number of members.
+    *   Applied an enhanced, two-stage data fetching strategy to the `MembersPage`.
+    *   The page now loads an initial, small batch of members for immediate display, *including an initial loading spinner* to signal that data is being fetched.
+    *   It then efficiently fetches the rest of the members in the background using database pagination (`startAfter`) and seamlessly appends them to the list.
+    *   This implementation provides a smooth user experience, providing clear loading feedback while minimizing wait times.
 
 This will make your app much faster and more scalable.
