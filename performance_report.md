@@ -40,5 +40,8 @@ Based on the analysis of the codebase, the main reason for the slowdown is that 
     *   It now loads an initial batch of invoices, showing a loading spinner for better user feedback.
     *   The rest of the invoices are fetched in the background. A summary text displays the count of loaded vs. total invoices.
     *   This significantly improves the initial load time of the `Invoices` page.
+7.  **Enhanced Dashboard UI/UX with Skeleton Loading and Animations:**
+    *   Replaced the blank loading state on the `Dashboard` with skeleton cards for the main statistics, providing immediate visual feedback and preventing layout shifts.
+    *   Integrated number-counting animations for statistics when data is loaded, creating a more dynamic and polished user experience.
 
 This will make your app much faster and more scalable.
