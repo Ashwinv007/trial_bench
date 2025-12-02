@@ -1,10 +1,10 @@
 import { useState, useEffect, useContext, useMemo, useCallback } from 'react';
-import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, Autocomplete, Select, MenuItem, InputAdornment, CircularProgress } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, Autocomplete, Select, MenuItem, InputAdornment, CircularProgress, Typography } from '@mui/material';
 import { Close, AddCircleOutline, Search as SearchIcon, FilterList as FilterListIcon, RemoveCircleOutline } from '@mui/icons-material';
 import styles from './Invoices.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
 import { logActivity } from '../utils/logActivity';
-import { collection, getDocs, addDoc, doc, updateDoc, query, where, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, query, where, serverTimestamp, Timestamp, limit, orderBy, startAfter } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { saveAs } from 'file-saver';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -152,6 +152,9 @@ export default function Invoices() {
   const { user } = useContext(AuthContext);
   const { hasPermission } = usePermissions();
   const [invoices, setInvoices] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalInvoicesCount, setTotalInvoicesCount] = useState(0);
+  const [allInvoicesFetched, setAllInvoicesFetched] = useState(false);
   const [clients, setClients] = useState([]);
   const [agreements, setAgreements] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -192,45 +195,62 @@ export default function Invoices() {
   const sendInvoiceEmailCallable = httpsCallable(functions, 'sendInvoiceEmail');
 
   useEffect(() => {
-    if (!db || !hasPermission('invoices:view')) return;
+    if (!db || !hasPermission('invoices:view')) {
+        setIsLoading(false); // Make sure to handle this case
+        return;
+    }
 
-    const fetchInvoices = async () => {
-      const invoicesCollection = collection(db, 'invoices');
-      const invoicesSnapshot = await getDocs(invoicesCollection);
-      const invoicesData = invoicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setInvoices(invoicesData);
+    // Reset states
+    setInvoices([]);
+    setIsLoading(true);
+    setTotalInvoicesCount(0);
+    setAllInvoicesFetched(false);
+
+    const fetchSupportingDataAndInvoices = async () => {
+        // Fetch clients and agreements first, as they are needed for context
+        const clientsQuery = query(collection(db, 'leads'), where('status', '==', 'Converted'));
+        const clientsSnapshot = await getDocs(clientsQuery);
+        const clientsData = clientsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setClients(clientsData);
+        const clientsMap = new Map(clientsData.map(client => [client.id, client]));
+
+        const agreementsQuery = query(collection(db, 'agreements'), where('status', '==', 'active'));
+        const agreementsSnapshot = await getDocs(agreementsQuery);
+        const agreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const combinedAgreementsData = agreementsData.map(agreement => {
+            if (!agreement.leadId) return null;
+            const client = clientsMap.get(agreement.leadId);
+            if (!client) return null;
+            return { ...agreement, name: client.name, company: client.companyName || 'N/A' };
+        }).filter(Boolean);
+        setAgreements(combinedAgreementsData);
+
+        // Now, progressively fetch invoices
+        const invoicesCollection = collection(db, 'invoices');
+        const initialQuery = query(invoicesCollection, orderBy("createdAt", "desc"), limit(10));
+        const initialSnapshot = await getDocs(initialQuery);
+        const initialInvoices = initialSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        setInvoices(initialInvoices);
+        setIsLoading(false);
+
+        // Fetch the rest in the background
+        const lastVisible = initialSnapshot.docs[initialSnapshot.docs.length - 1];
+        if (lastVisible) {
+            const restQuery = query(invoicesCollection, orderBy("createdAt", "desc"), startAfter(lastVisible));
+            const restSnapshot = await getDocs(restQuery);
+            const restInvoices = restSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            setInvoices(prev => [...prev, ...restInvoices]);
+            setTotalInvoicesCount(initialInvoices.length + restInvoices.length);
+            setAllInvoicesFetched(true);
+        } else {
+            setTotalInvoicesCount(initialInvoices.length);
+            setAllInvoicesFetched(true);
+        }
     };
 
-    const fetchAgreementsAndClients = async () => {
-      const clientsQuery = query(collection(db, 'leads'), where('status', '==', 'Converted'));
-      const clientsSnapshot = await getDocs(clientsQuery);
-      const clientsData = clientsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setClients(clientsData);
-      const clientsMap = new Map(clientsData.map(client => [client.id, client]));
-
-      const agreementsQuery = query(collection(db, 'agreements'), where('status', '==', 'active'));
-      const agreementsSnapshot = await getDocs(agreementsQuery);
-      const agreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
-      const combinedAgreementsData = agreementsData
-        .map(agreement => {
-          if (!agreement.leadId) return null;
-          const client = clientsMap.get(agreement.leadId);
-          if (!client) return null;
-          
-          return {
-            ...agreement,
-            name: client.name,
-            company: client.companyName || 'N/A',
-          };
-        })
-        .filter(Boolean);
-
-      setAgreements(combinedAgreementsData);
-    };
-
-    fetchInvoices();
-    fetchAgreementsAndClients();
+    fetchSupportingDataAndInvoices();
   }, [db, hasPermission]);
 
   const invoicesWithClientData = useMemo(() => {
@@ -790,32 +810,47 @@ export default function Invoices() {
               </tr>
             </thead>
             <tbody>
-              {filteredInvoices.map((invoice) => (
-                <tr key={invoice.id} onClick={(e) => handleEditInvoice(invoice, e)} className={hasPermission('invoices:edit') ? styles.clickableRow : ''}>
-                  <td>
-                    <span className={`${styles.statusBadge} ${styles[invoice.paymentStatus ? invoice.paymentStatus.toLowerCase().replace(' ', '') : 'unpaid']}`} onClick={(e) => togglePaymentStatus(invoice, e)}>
-                      {invoice.paymentStatus || 'Unpaid'}
-                    </span>
-                  </td>
-                  <td>{invoice.invoiceNumber}</td>
-                  <td><span className={styles.nameText}>{invoice.name}</span></td>
-                  <td>{invoice.phone}</td>
-                  <td>{invoice.email}</td>
-                  <td>{invoice.paymentStatus === 'Paid' ? formatDate(invoice.dateOfPayment) : '-'}</td>
-                  <td>
-                    {hasPermission('invoices:add') && (
-                      <IconButton onClick={(e) => handleGenerateInvoiceForMember(invoice.leadId, e)} size="small" color="primary" aria-label="generate invoice">
-                        <AddCircleOutline />
-                      </IconButton>
-                    )}
+              {isLoading ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>
+                    <CircularProgress />
                   </td>
                 </tr>
-              ))}
+              ) : filteredInvoices.length > 0 ? (
+                filteredInvoices.map((invoice) => (
+                  <tr key={invoice.id} onClick={(e) => handleEditInvoice(invoice, e)} className={hasPermission('invoices:edit') ? styles.clickableRow : ''}>
+                    <td>
+                      <span className={`${styles.statusBadge} ${styles[invoice.paymentStatus ? invoice.paymentStatus.toLowerCase().replace(' ', '') : 'unpaid']}`} onClick={(e) => togglePaymentStatus(invoice, e)}>
+                        {invoice.paymentStatus || 'Unpaid'}
+                      </span>
+                    </td>
+                    <td>{invoice.invoiceNumber}</td>
+                    <td><span className={styles.nameText}>{invoice.name}</span></td>
+                    <td>{invoice.phone}</td>
+                    <td>{invoice.email}</td>
+                    <td>{invoice.paymentStatus === 'Paid' ? formatDate(invoice.dateOfPayment) : '-'}</td>
+                    <td>
+                      {hasPermission('invoices:add') && (
+                        <IconButton onClick={(e) => handleGenerateInvoiceForMember(invoice.leadId, e)} size="small" color="primary" aria-label="generate invoice">
+                          <AddCircleOutline />
+                        </IconButton>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>
+                    No invoices found for the selected filter.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
-          
-          {filteredInvoices.length === 0 && <div className={styles.emptyState}><p>No invoices found for the selected filter.</p></div>}
         </div>
+        <Typography sx={{ mt: 2, fontSize: '13px', color: '#757575' }}>
+          {allInvoicesFetched ? `Showing ${filteredInvoices.length} of ${totalInvoicesCount} invoices` : `Showing ${filteredInvoices.length} invoices`}
+        </Typography>
       </div>
 
       <Dialog open={isPaymentDateModalOpen} onClose={() => setIsPaymentDateModalOpen(false)} maxWidth="xs" fullWidth PaperProps={{ style: { borderRadius: '12px' } }}>

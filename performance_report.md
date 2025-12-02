@@ -30,5 +30,15 @@ Based on the analysis of the codebase, the main reason for the slowdown is that 
     *   The same enhanced, two-stage data fetching strategy was applied to the `PastMembersPage`.
     *   An initial, small batch of past members is loaded with a spinner, followed by an efficient background fetch of the remaining data.
     *   This significantly improves the responsiveness and user experience of the Past Members page.
+5.  **Progressive Loading for Agreements Data:**
+    *   Applied the same two-stage data fetching strategy to the `Agreements` page.
+    *   The page now loads an initial, small batch of agreements (10) for immediate display, along with a loading spinner.
+    *   It then efficiently fetches the rest of the agreements in the background and displays a summary of the loaded data count.
+    *   This provides a smoother user experience and improves the perceived performance of the Agreements page.
+6.  **Progressive Loading for Invoices Data:**
+    *   A two-stage data fetching strategy was applied to the `Invoices` page.
+    *   It now loads an initial batch of invoices, showing a loading spinner for better user feedback.
+    *   The rest of the invoices are fetched in the background. A summary text displays the count of loaded vs. total invoices.
+    *   This significantly improves the initial load time of the `Invoices` page.
 
 This will make your app much faster and more scalable.
