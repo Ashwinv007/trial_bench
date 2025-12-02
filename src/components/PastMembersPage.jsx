@@ -23,7 +23,6 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import UploadFile from '@mui/icons-material/UploadFile';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
 import { useLocation } from 'react-router-dom';
 
 // Helper function to format birthday for display
@@ -62,6 +61,7 @@ export default function PastMembersPage() {
   const { user, hasPermission } = useContext(AuthContext);
   const [allMembers, setAllMembers] = useState([]);
   const [deletingMemberId, setDeletingMemberId] = useState(null);
+  const [isExporting, setIsExporting] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -139,21 +139,30 @@ export default function PastMembersPage() {
     }
   };
 
-  const handleExport = () => {
-    const dataToExport = filteredMembers.map(member => ({
-      Name: member.name,
-      Package: member.package,
-      Company: member.company,
-      Birthday: formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth),
-      WhatsApp: member.whatsapp,
-      Email: member.email,
-      'Date Removed': member.removedAt?.toDate().toLocaleDateString() || '-',
-    }));
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+        const XLSX = await import('xlsx');
+        const dataToExport = filteredMembers.map(member => ({
+          Name: member.name,
+          Package: member.package,
+          Company: member.company,
+          Birthday: formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth),
+          WhatsApp: member.whatsapp,
+          Email: member.email,
+          'Date Removed': member.removedAt?.toDate().toLocaleDateString() || '-',
+        }));
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "PastMembers");
-    XLSX.writeFile(wb, "past_members.xlsx");
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "PastMembers");
+        XLSX.writeFile(wb, "past_members.xlsx");
+    } catch (error) {
+        console.error("Error exporting past members:", error);
+        toast.error("Failed to export past members.");
+    } finally {
+        setIsExporting(false);
+    }
   };
 
   const renderAllMembersView = () => (
@@ -254,11 +263,12 @@ export default function PastMembersPage() {
           </Select>
           <Button
             variant="contained"
-            startIcon={<UploadFile />}
+            startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <UploadFile />}
             sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
             onClick={handleExport}
+            disabled={isExporting}
           >
-            Export
+            {isExporting ? 'Exporting...' : 'Export'}
           </Button>
         </Box>
 

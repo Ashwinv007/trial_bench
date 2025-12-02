@@ -23,7 +23,6 @@ import styles from './Expenses.module.css';
 import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp, query, where, writeBatch } from 'firebase/firestore';
 import { AuthContext } from '../store/Context';
-import * as XLSX from 'xlsx';
 import { usePermissions } from '../auth/usePermissions';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -94,6 +93,7 @@ export default function Expenses() {
   const [selectedMonthlyYear, setSelectedMonthlyYear] = useState(new Date().getFullYear().toString());
   const [selectedMonthlyMonth, setSelectedMonthlyMonth] = useState('All');
   const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = useState(null);
   const [formData, setFormData] = useState({
     category: '',
@@ -388,20 +388,29 @@ export default function Expenses() {
     }
   };
 
-  const handleExport = () => {
-    const dataToExport = filteredExpenses.map(expense => ({
-      Date: formatDate(expense.date),
-      Category: expense.category,
-      Amount: parseFloat(expense.amount),
-      'Bill Number': expense.billNumber || '-',
-      Notes: expense.notes || '-',
-      'Added By': expense.addedBy || 'N/A',
-    }));
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+        const XLSX = await import('xlsx');
+        const dataToExport = filteredExpenses.map(expense => ({
+          Date: formatDate(expense.date),
+          Category: expense.category,
+          Amount: parseFloat(expense.amount),
+          'Bill Number': expense.billNumber || '-',
+          Notes: expense.notes || '-',
+          'Added By': expense.addedBy || 'N/A',
+        }));
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Expenses");
-    XLSX.writeFile(wb, "expenses.xlsx");
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Expenses");
+        XLSX.writeFile(wb, "expenses.xlsx");
+    } catch (error) {
+        console.error("Error exporting expenses:", error);
+        toast.error("Failed to export expenses.");
+    } finally {
+        setIsExporting(false);
+    }
   };
 
   const formatCurrency = (amount) => {
@@ -654,11 +663,12 @@ export default function Expenses() {
           {hasPermission('expenses:export') && (
             <Button
               variant="outlined"
-              startIcon={<FileDownload />}
+              startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <FileDownload />}
               onClick={handleExport}
               className={styles.exportButton}
+              disabled={isExporting}
             >
-              Export
+              {isExporting ? 'Exporting...' : 'Export'}
             </Button>
           )}
           {hasPermission('expenses:manage_categories') && (

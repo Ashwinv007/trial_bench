@@ -6,7 +6,6 @@ import { FirebaseContext, AuthContext } from '../store/Context';
 import { logActivity } from '../utils/logActivity';
 import { collection, getDocs, addDoc, doc, updateDoc, query, where, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -101,6 +100,7 @@ const generateInvoiceNumber = (allInvoices) => {
 };
 
 const getInvoicePdfBytes = async (invoiceData) => {
+  const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
   const url = '/tb_invoice.pdf';
   const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
   const pdfDoc = await PDFDocument.load(existingPdfBytes);

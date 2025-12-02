@@ -5,7 +5,7 @@ import { FirebaseContext } from '../store/Context';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../auth/usePermissions';
-import * as XLSX from 'xlsx';
+
 import { toast } from 'sonner';
 import {
   Box,
@@ -39,6 +39,7 @@ export default function Leads() {
   const [purposeFilter, setPurposeFilter] = useState('All Purposes');
   const [dateFilter, setDateFilter] = useState('All Time');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const purposeOptions = [
     "Dedicated Desk",
@@ -181,24 +182,33 @@ export default function Leads() {
     }
   };
   
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!hasPermission('leads:export')) {
         toast.error("You don't have permission to export leads.");
         return;
     }
-    const dataToExport = filteredLeads.map(lead => ({
-      'Name': lead.name,
-      'Status': lead.status,
-      'Purpose of Visit': lead.purposeOfVisit,
-      'Phone': lead.phone,
-      'Whatsapp': lead.convertedWhatsapp,
-      'Source': `${lead.sourceType}${lead.sourceDetail ? ` (${lead.sourceDetail})` : ''}`
-    }));
+    setIsExporting(true);
+    try {
+        const XLSX = await import('xlsx');
+        const dataToExport = filteredLeads.map(lead => ({
+          'Name': lead.name,
+          'Status': lead.status,
+          'Purpose of Visit': lead.purposeOfVisit,
+          'Phone': lead.phone,
+          'Whatsapp': lead.convertedWhatsapp,
+          'Source': `${lead.sourceType}${lead.sourceDetail ? ` (${lead.sourceDetail})` : ''}`
+        }));
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Leads");
-    XLSX.writeFile(wb, "leads.xlsx");
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Leads");
+        XLSX.writeFile(wb, "leads.xlsx");
+    } catch (error) {
+        console.error("Error exporting leads:", error);
+        toast.error("Failed to export leads.");
+    } finally {
+        setIsExporting(false);
+    }
   };
 
   if (!hasPermission('leads:view')) {
@@ -301,11 +311,12 @@ export default function Leads() {
           {hasPermission('leads:export') && (
             <Button
                 variant="contained"
-                startIcon={<UploadFile />}
+                startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <UploadFile />}
                 sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
                 onClick={handleExport}
+                disabled={isExporting}
             >
-                Export
+                {isExporting ? 'Exporting...' : 'Export'}
             </Button>
           )}
         </Box>

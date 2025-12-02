@@ -5,7 +5,6 @@ import styles from './Agreements.module.css';
 import { FirebaseContext, AuthContext } from '../store/Context';
 import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore'; // Added serverTimestamp
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { toast } from 'sonner';
 import { logActivity } from '../utils/logActivity';
@@ -451,6 +450,7 @@ export default function Agreements() {
   };
 
   const getAgreementPdfBase64 = async (agreementData) => {
+    const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
     const url = '/tb_agreement.pdf';
     const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
   

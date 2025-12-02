@@ -11,8 +11,9 @@ Based on the analysis of the codebase, the main reason for the slowdown is that 
 
 ## Implemented Improvements:
 
-1.  **Implemented Server-Side Filtering**: Changed the code to ask Firebase for *only* the specific data that matches the user's filters. This is the most important change to make the app faster.
-2.  **Added Pagination**: Fetched data in smaller batches (e.g., 15 at a time) and added a "Load More" button.
-3.  **Optimized Library Loading**: Made it so large libraries (`xlsx`, `pdf-lib`, `recharts`) are only loaded when the user needs them.
+1.  **Code Splitting for Large Libraries:**
+    *   Applied on-demand loading for the `xlsx` and `pdf-lib` libraries.
+    *   These libraries are now only downloaded by the user's browser when they click the "Export" or "Download PDF" buttons, respectively.
+    *   This significantly reduces the initial page load time for pages like Leads, Invoices, and Members, as the browser no longer has to download these large libraries upfront.
 
 This will make your app much faster and more scalable.

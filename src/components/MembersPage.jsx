@@ -30,7 +30,6 @@ import ExitDateModal from './ExitDateModal';
 import { KeyboardArrowDown, KeyboardArrowRight } from '@mui/icons-material';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import * as XLSX from 'xlsx';
 import { usePermissions } from '../auth/usePermissions';
 import { AuthContext } from '../store/Context';
 
@@ -77,6 +76,7 @@ export default function MembersPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0); // Added for refresh mechanism
   const [isSaving, setIsSaving] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
@@ -345,25 +345,34 @@ export default function MembersPage() {
     return subMembers;
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!hasPermission('members:export')) {
         toast.error("You don't have permission to export members.");
         return;
     }
-    const dataToExport = filteredMembers.map(member => ({
-      Name: member.name,
-      Package: member.package,
-      Company: member.company,
-      Birthday: formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth),
-      WhatsApp: member.whatsapp,
-      Email: member.email,
-      Primary: member.primary ? 'Yes' : 'No',
-    }));
+    setIsExporting(true);
+    try {
+        const XLSX = await import('xlsx');
+        const dataToExport = filteredMembers.map(member => ({
+          Name: member.name,
+          Package: member.package,
+          Company: member.company,
+          Birthday: formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth),
+          WhatsApp: member.whatsapp,
+          Email: member.email,
+          Primary: member.primary ? 'Yes' : 'No',
+        }));
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Members");
-    XLSX.writeFile(wb, "members.xlsx");
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Members");
+        XLSX.writeFile(wb, "members.xlsx");
+    } catch (error) {
+        console.error("Error exporting members:", error);
+        toast.error("Failed to export members.");
+    } finally {
+        setIsExporting(false);
+    }
   };
 
   const renderAllMembersView = () => (
@@ -522,11 +531,12 @@ export default function MembersPage() {
           </Select>
             {hasPermission('members:export') && <Button
                 variant="contained"
-                startIcon={<UploadFile />}
+                startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <UploadFile />}
                 sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
                 onClick={handleExport}
+                disabled={isExporting}
             >
-                Export
+                {isExporting ? 'Exporting...' : 'Export'}
             </Button>}
             {/* {hasPermission('members:add') && <Button
                 variant="contained"
