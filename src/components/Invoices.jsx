@@ -173,6 +173,7 @@ export default function Invoices() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMarkingPaid, setIsMarkingPaid] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isRegeneratingInvoice, setIsRegeneratingInvoice] = useState(false);
   const [formData, setFormData] = useState({
     leadId: null,
     agreementId: null,
@@ -271,6 +272,7 @@ export default function Invoices() {
     setIsModalOpen(false);
     setEditingInvoice(null);
     setInvoiceGenerated(null);
+    setIsRegeneratingInvoice(false);
   };
 
   const handleAgreementSelect = (event, agreement) => {
@@ -581,6 +583,7 @@ export default function Invoices() {
       const agreement = agreements.find(a => a.leadId === leadId); // Use agreements from context
       setEditingInvoice(null);
       setInvoiceGenerated(null);
+      setIsRegeneratingInvoice(true);
       
       const initialData = {
         leadId: client.id,
@@ -848,7 +851,7 @@ export default function Invoices() {
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>Client Details</h3>
               <div className={styles.formGrid} style={{ gridTemplateColumns: '1fr' }}>
-                <Autocomplete options={agreements} getOptionLabel={(option) => `${option.memberLegalName || option.name} (${option.company})`} onChange={handleAgreementSelect} value={agreements.find(a => a.id === formData.agreementId) || null} disabled={!!editingInvoice} renderInput={(params) => <TextField {...params} label="Select Agreement" variant="outlined" size="small" required />} />
+                <Autocomplete options={agreements} getOptionLabel={(option) => `${option.memberLegalName || option.name} (${option.company})`} onChange={handleAgreementSelect} value={agreements.find(a => a.id === formData.agreementId) || null} disabled={!!editingInvoice || isRegeneratingInvoice} renderInput={(params) => <TextField {...params} label="Select Agreement" variant="outlined" size="small" required />} />
                  <TextField label="Legal Name (for invoice)" name="legalName" value={formData.legalName} onChange={handleInputChange} fullWidth variant="outlined" size="small" required style={{ marginTop: '16px' }} />
                 <TextField label="Address" name="address" value={formData.address} onChange={handleInputChange} fullWidth variant="outlined" size="small" required multiline rows={2} style={{ marginTop: '16px' }} />
               </div>
