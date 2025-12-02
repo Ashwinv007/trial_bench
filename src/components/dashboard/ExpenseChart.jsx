@@ -9,7 +9,7 @@ import { TrendingDown, ChevronDown } from 'lucide-react';
 
 const ExpenseChart = () => {
     const { hasPermission } = usePermissions();
-    const [period, setPeriod] = useState('year');
+    const [period, setPeriod] = useState('week');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);

@@ -90,7 +90,6 @@ function HomePage() {
                     id: `followup-${doc.id}-${activity.timestamp}`,
                     title: 'Follow-up Reminder',
                     description: `Follow up with ${lead.name} regarding "${activity.description}"`,
-                    time: 'Today',
                     isRead: false,
                     type: 'followUp'
                   });
@@ -134,7 +133,6 @@ function HomePage() {
                 id: `agreement-${doc.id}`,
                 title: 'Agreement Expiration',
                 description: message,
-                time: 'Today',
                 isRead: false,
                 type: 'agreement'
               });
@@ -161,7 +159,6 @@ function HomePage() {
                 id: `${isPast ? 'past-' : ''}birthday-${doc.id}`,
                 title: isPast ? 'Past Member Birthday' : 'Birthday Reminder',
                 description: `It's ${member.name}'s birthday today!${isPast ? ' (Past Member)' : ''}`,
-                time: 'Today',
                 isRead: false,
                 type: 'birthday'
               });
@@ -170,7 +167,6 @@ function HomePage() {
                 id: `${isPast ? 'past-' : ''}birthday-tomorrow-${doc.id}`,
                 title: 'Upcoming Birthday',
                 description: `${member.name}'s birthday is tomorrow!${isPast ? ' (Past Member)' : ''}`,
-                time: 'Tomorrow',
                 isRead: false,
                 type: 'birthday'
               });

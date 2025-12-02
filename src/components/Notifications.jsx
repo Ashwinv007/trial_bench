@@ -28,9 +28,7 @@ export default function Notifications({ notifications, onMarkAsRead }) {
             <div className={styles.notificationDescription}>
               {notification.description}
             </div>
-            <div className={styles.notificationTime}>
-              {notification.time}
-            </div>
+
           </div>
         </div>
       ))}
