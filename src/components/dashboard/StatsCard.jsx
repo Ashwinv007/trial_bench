@@ -1,4 +1,6 @@
 import React from 'react';
+import CountUp from 'react-countup';
+import { ClipLoader } from 'react-spinners';
 import { IndianRupee, Users, FileText, FileCheck, TrendingUp, TrendingDown } from 'lucide-react';
 import styles from './StatsCard.module.css';
 
@@ -9,9 +11,24 @@ const iconMap = {
   FileCheck
 };
 
-export default function StatsCard({ title, value, change, trend, icon, color }) {
+export default function StatsCard({ title, value, change, trend, icon, color, loading }) {
   const Icon = iconMap[icon];
+
+  const parseValue = (val) => {
+    if (typeof val !== 'string') return 0;
+    // Remove currency symbols, commas, and lakh indicators ('L')
+    const numericString = val.replace(/₹|L|,/g, '').trim();
+    const number = parseFloat(numericString);
+    // If 'L' was present, multiply by 100,000
+    if (val.includes('L')) {
+      return number * 100000;
+    }
+    return isNaN(number) ? 0 : number;
+  };
   
+  const endValue = parseValue(value);
+  const isCurrency = value.includes('₹');
+
   return (
     <div className={styles.card}>
       <div className={styles.header}>
@@ -28,7 +45,26 @@ export default function StatsCard({ title, value, change, trend, icon, color }) 
       </div>
       
       <div className={styles.content}>
-        <div className={styles.value}>{value}</div>
+        <div className={styles.value}>
+          {loading ? (
+            <ClipLoader color={color} size={28} speedMultiplier={0.7} />
+          ) : (
+            <CountUp
+              start={0}
+              end={endValue}
+              duration={1.5}
+              separator=","
+              prefix={isCurrency ? '₹' : ''}
+              formattingFn={(n) => {
+                if (!isCurrency) return n.toLocaleString('en-IN');
+                if (n >= 100000) {
+                  return `₹${(n / 100000).toFixed(2)} L`;
+                }
+                return `₹${n.toLocaleString('en-IN')}`;
+              }}
+            />
+          )}
+        </div>
         <div className={styles.title}>{title}</div>
       </div>
     </div>

@@ -12,7 +12,6 @@ import ExpenseChart from './dashboard/ExpenseChart';
 import StatsCard from './dashboard/StatsCard';
 import { useStatsData } from './dashboard/useStatsData';
 import { usePermissions } from '../auth/usePermissions';
-import PermissionMessage from './dashboard/PermissionMessage';
 
 export default function Dashboard() {
     const { statsData, loading } = useStatsData();
@@ -44,34 +43,33 @@ export default function Dashboard() {
                 </div>
 
                 {/* Stats Cards Row */}
-                {!loading && (
-                    <div className={styles.statsGrid}>
-                        {statsData
-                            .filter(stat => {
-                                if (stat.title === 'Total Revenue (30d)' || stat.title === 'Pending Amount') {
-                                    return permissions.hasPermission('invoices:view');
-                                }
-                                if (stat.title === 'Active Members') {
-                                    return permissions.hasPermission('members:view');
-                                }
-                                if (stat.title === 'Active Agreements') {
-                                    return permissions.hasPermission('agreements:view');
-                                }
-                                return false; // This should ideally not be reached if all stats are covered
-                            })
-                            .map((stat) => (
-                                <StatsCard
-                                    key={stat.id}
-                                    title={stat.title}
-                                    value={stat.value}
-                                    change={stat.change}
-                                    trend={stat.trend}
-                                    icon={stat.icon}
-                                    color={stat.color}
-                                />
-                            ))}
-                    </div>
-                )}
+                <div className={styles.statsGrid}>
+                    {statsData
+                        .filter(stat => {
+                            if (stat.title === 'Total Revenue (30d)' || stat.title === 'Pending Amount') {
+                                return permissions.hasPermission('invoices:view');
+                            }
+                            if (stat.title === 'Active Members') {
+                                return permissions.hasPermission('members:view');
+                            }
+                            if (stat.title === 'Active Agreements') {
+                                return permissions.hasPermission('agreements:view');
+                            }
+                            return false; // This should ideally not be reached if all stats are covered
+                        })
+                        .map((stat) => (
+                            <StatsCard
+                                key={stat.id}
+                                title={stat.title}
+                                value={stat.value}
+                                change={stat.change}
+                                trend={stat.trend}
+                                icon={stat.icon}
+                                color={stat.color}
+                                loading={loading}
+                            />
+                        ))}
+                </div>
 
                 {/* Main Content Grid */}
                 <Masonry
