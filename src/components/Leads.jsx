@@ -1,10 +1,11 @@
 import { AddCircleOutline, Person, Delete, UploadFile } from '@mui/icons-material';
 import styles from './Leads.module.css';
-import { useContext, useEffect, useState, useMemo } from 'react';
-import { FirebaseContext } from '../store/Context';
-import { collection, getDocs, deleteDoc, doc, query, orderBy, limit } from 'firebase/firestore';
+import { useContext, useMemo, useState } from 'react';
+import { FirebaseContext } from '../store/Context'; // Keep FirebaseContext for db operations
+import { doc, deleteDoc } from 'firebase/firestore'; 
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../auth/usePermissions';
+import { useData } from '../store/DataContext'; // Corrected import
 
 import { toast } from 'sonner';
 import {
@@ -29,10 +30,11 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 
 export default function Leads() {
-  const { db } = useContext(FirebaseContext);
+  const { db } = useContext(FirebaseContext); // Get db from FirebaseContext
+  const { leads, loading, refreshing, refreshData } = useData(); // Use leads, loading, refreshing, refreshData from DataContext
   const { hasPermission } = usePermissions();
-  const [leads, setLeads] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // const [leads, setLeads] = useState([]); // Removed local leads state
+  // const [isLoading, setIsLoading] = useState(true); // Removed local isLoading state
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,9 +43,9 @@ export default function Leads() {
   const [dateFilter, setDateFilter] = useState('All Time');
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [totalLeadsCount, setTotalLeadsCount] = useState(0);
-  const [allLeadsFetched, setAllLeadsFetched] = useState(false);
-
+  // const [totalLeadsCount, setTotalLeadsCount] = useState(0); // Handled by leads.length from context
+  // const [allLeadsFetched, setAllLeadsFetched] = useState(false); // No longer needed as all leads are fetched once
+  
   const purposeOptions = [
     "Dedicated Desk",
     "Flexible Desk",
@@ -54,7 +56,7 @@ export default function Leads() {
   ];
 
   const filteredLeads = useMemo(() => {
-    let currentLeads = leads; // Start with all fetched leads
+    let currentLeads = leads; // Start with all fetched leads from context
 
     // Apply search query filter
     if (searchQuery.trim()) {
@@ -110,10 +112,10 @@ export default function Leads() {
     return currentLeads.sort((a, b) => {
       const getDate = (field) => {
         if (field) {
-          if (typeof field.toDate === 'function') { // Check if it's a Firestore Timestamp
+          if (typeof field.toDate === 'function') { 
             return field.toDate();
           }
-          if (typeof field === 'string') { // Check if it's an ISO date string
+          if (typeof field === 'string') { 
             return new Date(field);
           }
         }
@@ -126,7 +128,7 @@ export default function Leads() {
       if (dateFilter === 'All Time') {
         dateA = getDate(a.lastEditedAt || a.createdAt);
         dateB = getDate(b.lastEditedAt || b.createdAt);
-      } else { // 'This Week' or 'This Month'
+      } else { 
         dateA = getDate(a.createdAt);
         dateB = getDate(b.createdAt);
       }
@@ -134,57 +136,13 @@ export default function Leads() {
       if (dateA && dateB) {
         return dateB.getTime() - dateA.getTime();
       }
-      if (dateA) return -1; // a comes first if b has no date
-      if (dateB) return 1; // b comes first if a has no date
+      if (dateA) return -1; 
+      if (dateB) return 1; 
       return 0;
     });
-  }, [leads, searchQuery, statusFilter, purposeFilter, dateFilter]);
+  }, [leads, searchQuery, statusFilter, purposeFilter, dateFilter]); 
 
-  useEffect(() => {
-    if (!hasPermission('leads:view')) {
-      setIsLoading(false);
-      return;
-    }
-    if (db) {
-      const leadsCollection = collection(db, 'leads');
-
-      const fetchInitialLeads = async () => {
-        setIsLoading(true);
-        try {
-          const initialQuery = query(leadsCollection, orderBy('createdAt', 'desc'), limit(15));
-          const initialSnapshot = await getDocs(initialQuery);
-          const initialData = initialSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setLeads(initialData);
-          return initialData;
-        } catch (error) {
-          console.error("Error fetching initial leads:", error);
-          toast.error("Failed to load initial leads.");
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      const fetchAllLeads = async () => {
-        try {
-          const allSnapshot = await getDocs(leadsCollection);
-          const allData = allSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setLeads(allData);
-          setTotalLeadsCount(allData.length);
-          setAllLeadsFetched(true); // Add this line
-        } catch (error) {
-          console.error("Error fetching all leads:", error);
-        }
-      };
-
-      fetchInitialLeads().then((initialData) => {
-        if (initialData) {
-          // After the initial leads are fetched and displayed,
-          // fetch the rest in the background.
-          fetchAllLeads();
-        }
-      });
-    }
-  }, [db, hasPermission]);
+  // Removed useEffect for fetching leads, now handled by DataContext
 
   const getStatusClass = (status) => {
     if (!status) return '';
@@ -195,11 +153,12 @@ export default function Leads() {
     if (window.confirm('Are you sure you want to delete this lead?')) {
       setIsDeleting(true);
       try {
-        await deleteDoc(doc(db, 'leads', leadId));
-        setLeads(leads.filter(lead => lead.id !== leadId));
-        console.log('Lead deleted successfully');
+        await deleteDoc(doc(db, 'leads', leadId)); 
+        refreshData('leads'); 
+        toast.success('Lead deleted successfully');
       } catch (error) {
         console.error("Error deleting lead:", error);
+        toast.error("Failed to delete lead.");
       } finally {
         setIsDeleting(false);
       }
@@ -366,7 +325,7 @@ export default function Leads() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {isLoading ? (
+              {loading.leads || refreshing.leads ? ( // Use loading and refreshing state from context
                 <TableRow>
                   <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
                     <CircularProgress />
@@ -418,18 +377,10 @@ export default function Leads() {
         </TableContainer>
 
         {/* Summary of filtered leads */}
-        {/* <Typography sx={{ mt: 2, fontSize: '13px', color: '#757575' }}>
-          Showing {filteredLeads.length} of {totalLeadsCount > 0 ? totalLeadsCount : leads.length} leads
-        </Typography> */}
          <Typography sx={{ mt: 2, fontSize: '13px', color: '#757575' }}>
-          {allLeadsFetched
-            ? `Showing ${filteredLeads.length} of ${totalLeadsCount} leads`
-            : `Showing ${filteredLeads.length} leads`
-          }
+            {`Showing ${filteredLeads.length} of ${leads.length} leads`}
        </Typography>
       </Box>  
     </Box>
   );
 }
-
-

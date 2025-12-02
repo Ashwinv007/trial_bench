@@ -2,8 +2,8 @@ import { useState, useEffect, useContext, useMemo } from 'react';
 import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, MenuItem, Box, InputAdornment, Select, CircularProgress, Typography } from '@mui/material';
 import { Close, Visibility } from '@mui/icons-material';
 import styles from './Agreements.module.css';
-import { FirebaseContext, AuthContext } from '../store/Context';
-import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp, query, orderBy, limit, startAfter } from 'firebase/firestore'; // Added serverTimestamp
+import { FirebaseContext, AuthContext } from '../store/Context'; // Keep FirebaseContext for db operations
+import { doc, getDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp, collection } from 'firebase/firestore'; // Removed getDocs, query, orderBy, limit, startAfter
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { saveAs } from 'file-saver';
 import { toast } from 'sonner';
@@ -16,6 +16,7 @@ import dayjs from 'dayjs';
 import ExitDateModal from './ExitDateModal';
 import SearchIcon from '@mui/icons-material/Search';
 import ClientProfileModal from './ClientProfileModal';
+import { useData } from '../store/DataContext'; // Import useData
 
 const generateAgreementNumber = (memberPackageName, allAgreements) => {
   if (!memberPackageName) {
@@ -52,11 +53,12 @@ const generateAgreementNumber = (memberPackageName, allAgreements) => {
 export default function Agreements() {
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
+  const { agreements, loading, refreshing, refreshData, leads } = useData(); // Use agreements, loading, refreshing, refreshData and leads from DataContext
   const { hasPermission } = usePermissions();
-  const [allAgreements, setAllAgreements] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [totalAgreementsCount, setTotalAgreementsCount] = useState(0);
-  const [allAgreementsFetched, setAllAgreementsFetched] = useState(false);
+  // const [allAgreements, setAllAgreements] = useState([]); // Removed local state
+  // const [isLoading, setIsLoading] = useState(true); // Removed local state
+  // const [totalAgreementsCount, setTotalAgreementsCount] = useState(0); // Removed local state
+  // const [allAgreementsFetched, setAllAgreementsFetched] = useState(false); // Removed local state
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('Active');
   const [selectedAgreement, setSelectedAgreement] = useState(null);
@@ -101,111 +103,12 @@ export default function Agreements() {
   const sendAgreementEmailCallable = httpsCallable(functions, 'sendAgreementEmail');
   const earlyExitAgreementCallable = httpsCallable(functions, 'earlyExitAgreement');
 
-  useEffect(() => {
-    if (!hasPermission('agreements:view')) {
-        setIsLoading(false);
-        return;
-    };
-    if (!db) return;
-
-    setAllAgreements([]);
-    setAllAgreementsFetched(false);
-    setTotalAgreementsCount(0);
-    setIsLoading(true);
-
-    const processAgreementsWithLeads = async (agreementsData) => {
-        const allAgreementsRaw = agreementsData.filter(agreement => agreement.leadId);
-        if (allAgreementsRaw.length === 0) return [];
-
-        const leadPromises = allAgreementsRaw.map(agreement => {
-            const leadDocRef = doc(db, 'leads', agreement.leadId);
-            return getDoc(leadDocRef);
-        });
-        const leadSnapshots = await Promise.all(leadPromises);
-        const combinedData = allAgreementsRaw.map((agreement, index) => {
-            const leadData = leadSnapshots[index].data();
-            return leadData ? { ...leadData, ...agreement } : null;
-        }).filter(Boolean);
-
-        return combinedData;
-    };
-
-    const sortAgreements = (agreements) => {
-        return agreements.sort((a, b) => {
-            const getDate = (field) => {
-                if (field) {
-                    if (typeof field.toDate === 'function') return field.toDate();
-                    if (typeof field === 'string') return new Date(field);
-                }
-                return null;
-            };
-
-            const dateA = getDate(a.lastEditedAt || a.createdAt);
-            const dateB = getDate(b.lastEditedAt || b.createdAt);
-
-            if (dateA && dateB) return dateB.getTime() - dateA.getTime();
-            if (dateA) return -1;
-            if (dateB) return 1;
-
-            const agreementDateA = a.agreementDate ? new Date(a.agreementDate) : null;
-            const agreementDateB = b.agreementDate ? new Date(b.agreementDate) : null;
-
-            if (agreementDateA && agreementDateB) return agreementDateB.getTime() - agreementDateA.getTime();
-            if (agreementDateA) return -1;
-            if (agreementDateB) return 1;
-            return 0;
-        });
-    };
-
-    const fetchAgreements = async () => {
-      const agreementsCollection = collection(db, 'agreements');
-      
-      // Fetch initial 10 agreements
-      const initialQuery = query(agreementsCollection, orderBy("createdAt", "desc"), limit(15));
-      const initialSnapshot = await getDocs(initialQuery);
-      const initialAgreementsData = initialSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-
-      let initialCombinedData = await processAgreementsWithLeads(initialAgreementsData);
-      
-      setAllAgreements(sortAgreements(initialCombinedData));
-      setIsLoading(false);
-
-      const activeAgreements = initialCombinedData.filter(a => a.status !== 'terminated');
-      if (activeAgreements.length > 0) {
-        const latest = activeAgreements[0]; // Already sorted
-        setLatestAuthDetails({
-          authorizorName: latest.authorizorName || '',
-          designation: latest.designation || '',
-          preparedByNew: latest.preparedByNew || '',
-        });
-      }
-      
-      // Fetch the rest in the background
-      const lastVisible = initialSnapshot.docs[initialSnapshot.docs.length - 1];
-      if (lastVisible) {
-        const restQuery = query(agreementsCollection, orderBy("createdAt", "desc"), startAfter(lastVisible));
-        const restSnapshot = await getDocs(restQuery);
-        const restAgreementsData = restSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        const restCombinedData = await processAgreementsWithLeads(restAgreementsData);
-        
-        setAllAgreements(prevAgreements => {
-            const allData = [...prevAgreements, ...restCombinedData];
-            setTotalAgreementsCount(allData.length);
-            return sortAgreements(allData);
-        });
-        setAllAgreementsFetched(true);
-      } else {
-        setTotalAgreementsCount(initialCombinedData.length);
-        setAllAgreementsFetched(true);
-      }
-    };
-
-    fetchAgreements();
-
-  }, [db, hasPermission]);
+  // Removed useEffect for fetching agreements, now handled by DataContext
+  // The processAgreementsWithLeads logic is now handled in DataContext, but some client-side join might be needed if not fully handled.
+  // For now, `agreements` from context should already be combined with lead data.
 
   const displayedAgreements = useMemo(() => {
-    let filtered = allAgreements;
+    let filtered = agreements; // Use agreements from context
 
     if (statusFilter === 'Active') {
         filtered = filtered.filter(a => a.status !== 'terminated');
@@ -222,8 +125,32 @@ export default function Agreements() {
         );
     }
 
-    return filtered;
-  }, [allAgreements, statusFilter, searchQuery]);
+    // Sort as before (assuming 'agreements' from context is not pre-sorted in the desired way)
+    return filtered.sort((a, b) => {
+        const getDate = (field) => {
+            if (field) {
+                if (typeof field.toDate === 'function') return field.toDate();
+                if (typeof field === 'string') return new Date(field);
+            }
+            return null;
+        };
+
+        const dateA = getDate(a.lastEditedAt || a.createdAt);
+        const dateB = getDate(b.lastEditedAt || b.createdAt);
+
+        if (dateA && dateB) return dateB.getTime() - dateA.getTime();
+        if (dateA) return -1;
+        if (dateB) return 1;
+
+        const agreementDateA = a.agreementDate ? new Date(a.agreementDate) : null;
+        const agreementDateB = b.agreementDate ? new Date(b.agreementDate) : null;
+
+        if (agreementDateA && agreementDateB) return agreementDateB.getTime() - agreementDateA.getTime();
+        if (agreementDateA) return -1;
+        if (agreementDateB) return 1;
+        return 0;
+    });
+  }, [agreements, statusFilter, searchQuery]); // Depend on agreements from context
 
   useEffect(() => {
     if (formData.startDate && formData.agreementLength) {
@@ -241,12 +168,12 @@ export default function Agreements() {
 
   useEffect(() => {
     if (isModalOpen && (!selectedAgreement?.agreementNumber)) {
-      const newAgreementNumber = generateAgreementNumber(selectedAgreement?.purposeOfVisit, allAgreements);
+      const newAgreementNumber = generateAgreementNumber(selectedAgreement?.purposeOfVisit, agreements); // Use agreements from context
       if (newAgreementNumber) {
         setFormData(prev => ({ ...prev, agreementNumber: newAgreementNumber }));
       }
     }
-  }, [selectedAgreement?.purposeOfVisit, isModalOpen, selectedAgreement, allAgreements]);
+  }, [selectedAgreement?.purposeOfVisit, isModalOpen, selectedAgreement, agreements]); // Depend on agreements from context
 
   const handleViewProfileClick = (event, leadId) => {
     event.stopPropagation();
@@ -384,15 +311,14 @@ export default function Agreements() {
         const agreementRef = doc(db, 'agreements', selectedAgreement.id);
         await updateDoc(agreementRef, dataToUpdate);
 
-        const updatedAgreement = { ...selectedAgreement, ...dataToUpdate };
-
-        setAllAgreements((prev) =>
-          prev.map((agreement) =>
-            agreement.id === selectedAgreement.id
-              ? updatedAgreement
-              : agreement
-          )
-        );
+        // No need to update local state directly, DataContext handles refresh
+        // setAllAgreements((prev) =>
+        //   prev.map((agreement) =>
+        //     agreement.id === selectedAgreement.id
+        //       ? updatedAgreement
+        //       : agreement
+        //   )
+        // );
 
         if (selectedAgreement.leadId) {
             const leadRef = doc(db, 'leads', selectedAgreement.leadId);
@@ -405,9 +331,12 @@ export default function Agreements() {
                 memberKYC: formData.memberKYC,
                 lastEditedAt: serverTimestamp(), // Update last edited timestamp for the lead as well
             });
+            refreshData('leads'); // Refresh leads data after updating
         }
 
+        const updatedAgreement = { ...selectedAgreement, ...dataToUpdate }; // For local display/generated
         setAgreementGenerated(updatedAgreement);
+        refreshData('agreements'); // Refresh agreements data in context after update
         logActivity(
           db,
           user,
@@ -445,7 +374,7 @@ export default function Agreements() {
           { agreementId: selectedAgreement.id, agreementNumber: selectedAgreement.agreementNumber, memberName: selectedAgreement.name }
         );
 
-        setAllAgreements(prev => prev.filter(a => a.id !== selectedAgreement.id));
+        refreshData('agreements'); // Refresh agreements data in context after deletion
         toast.success("Agreement deleted successfully.");
         handleCloseModal();
       } catch (error) {
@@ -578,13 +507,14 @@ export default function Agreements() {
       const result = await earlyExitAgreementCallable({ agreementId: selectedAgreement.id, exitDate: exitDate });
       toast.success(result.data.message);
 
-      setAllAgreements(prev => 
-        prev.map(a => 
-            a.id === selectedAgreement.id 
-            ? { ...a, status: 'terminated', exitDate: exitDate, lastEditedAt: serverTimestamp() }
-            : a
-        )
-      );
+      // setAllAgreements(prev => 
+      //   prev.map(a => 
+      //       a.id === selectedAgreement.id 
+      //       ? { ...a, status: 'terminated', exitDate: exitDate, lastEditedAt: serverTimestamp() }
+      //       : a
+      //   )
+      // );
+      refreshData('agreements'); // Refresh agreements data in context after update
       
       logActivity(
         db,
@@ -689,7 +619,7 @@ export default function Agreements() {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
+              {loading.agreements || refreshing.agreements ? ( // Use loading and refreshing state from context
                 <tr>
                   <td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>
                     <CircularProgress />
@@ -732,7 +662,7 @@ export default function Agreements() {
           </table>
         </div>
         <Typography sx={{ mt: 2, fontSize: '13px', color: '#757575' }}>
-          {allAgreementsFetched ? `Showing ${displayedAgreements.length} of ${totalAgreementsCount} agreements` : `Showing ${displayedAgreements.length} agreements`}
+          {`Showing ${displayedAgreements.length} of ${agreements.length} agreements`}
         </Typography>
       </div>
 
@@ -921,4 +851,3 @@ export default function Agreements() {
     </div>
   );
 }
-

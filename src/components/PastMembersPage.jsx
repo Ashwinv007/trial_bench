@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useContext, useEffect } from 'react';
-import { FirebaseContext, AuthContext } from '../store/Context';
-import { collection, getDocs, doc, deleteDoc, query, orderBy, limit, startAfter } from 'firebase/firestore';
+import { FirebaseContext, AuthContext } from '../store/Context'; // Keep FirebaseContext for db operations
+import { doc, deleteDoc } from 'firebase/firestore'; // Removed collection, getDocs, query, orderBy, limit, startAfter
 import { logActivity } from '../utils/logActivity';
 import {
   Box,
@@ -24,6 +24,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import UploadFile from '@mui/icons-material/UploadFile';
 import { toast } from 'sonner';
 import { useLocation } from 'react-router-dom';
+import { useData } from '../store/DataContext'; // Import useData
 
 // Helper function to format birthday for display
 const formatBirthdayDisplay = (day, month) => {
@@ -54,17 +55,19 @@ const formatBirthdayDisplay = (day, month) => {
 };
 
 export default function PastMembersPage() {
+  const { db } = useContext(FirebaseContext); // Get db from FirebaseContext
+  const { user, hasPermission } = useContext(AuthContext);
+  const { pastMembers, loading, refreshing, refreshData } = useData(); // Use pastMembers, loading, refreshing, refreshData from DataContext
+
   const [searchQuery, setSearchQuery] = useState('');
   const [packageFilter, setPackageFilter] = useState('All Packages');
   const [birthdayMonthFilter, setBirthdayMonthFilter] = useState('All Months');
-  const { db } = useContext(FirebaseContext);
-  const { user, hasPermission } = useContext(AuthContext);
-  const [allMembers, setAllMembers] = useState([]);
+  // const [allMembers, setAllMembers] = useState([]); // Removed local state
   const [deletingMemberId, setDeletingMemberId] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [totalPastMembersCount, setTotalPastMembersCount] = useState(0);
-  const [allPastMembersFetched, setAllPastMembersFetched] = useState(false);
+  // const [isLoading, setIsLoading] = useState(true); // Removed local state
+  // const [totalPastMembersCount, setTotalPastMembersCount] = useState(0); // Handled by pastMembers.length from context
+  // const [allPastMembersFetched, setAllPastMembersFetched] = useState(false); // No longer needed as all members are fetched once
   const location = useLocation();
 
   useEffect(() => {
@@ -75,59 +78,10 @@ export default function PastMembersPage() {
     }
   }, [location.search]);
 
-  useEffect(() => {
-    if (!hasPermission('past_members:view')) {
-      setIsLoading(false);
-      return;
-    }
-    if (!db) return;
-
-    setAllMembers([]); // Clear previous members on refresh
-    setAllPastMembersFetched(false);
-    setTotalPastMembersCount(0); // Reset count
-    setIsLoading(true); // Set loading to true at the start of the fetch
-
-    const membersCollection = collection(db, 'past_members');
-
-    const fetchInitialAndRest = async () => {
-      try {
-        // Fetch initial batch
-        const initialQuery = query(membersCollection, orderBy('removedAt', 'desc'), limit(15));
-        const initialSnapshot = await getDocs(initialQuery);
-        const initialData = initialSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-        initialData.sort((a, b) => (b.removedAt?.toDate() || 0) - (a.removedAt?.toDate() || 0)); // Re-sort for consistency
-        setAllMembers(initialData);
-
-        // Now, fetch the rest in the background
-        if (initialSnapshot.docs.length > 0) {
-          const lastVisible = initialSnapshot.docs[initialSnapshot.docs.length - 1];
-          const restQuery = query(membersCollection, orderBy('removedAt', 'desc'), startAfter(lastVisible));
-          const restSnapshot = await getDocs(restQuery);
-          const restData = restSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-
-          // Append the rest of the data
-          setAllMembers(prevMembers => [...prevMembers, ...restData]);
-          setTotalPastMembersCount(initialData.length + restData.length);
-        } else {
-          // No initial members found
-          setTotalPastMembersCount(0);
-        }
-        setAllPastMembersFetched(true);
-
-      } catch (error) {
-        console.error("Error fetching past members:", error);
-        toast.error("Failed to fetch past members.");
-      } finally {
-        setIsLoading(false); // Set loading to false when fetch is complete
-      }
-    };
-
-    fetchInitialAndRest();
-
-  }, [db, hasPermission, location.search]);
+  // Removed useEffect for fetching past members, now handled by DataContext
 
   const filteredMembers = useMemo(() => {
-    let members = allMembers;
+    let members = pastMembers; // Use pastMembers from context
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -149,15 +103,15 @@ export default function PastMembersPage() {
     }
 
     return members;
-  }, [searchQuery, packageFilter, birthdayMonthFilter, allMembers]);
+  }, [searchQuery, packageFilter, birthdayMonthFilter, pastMembers]); // Depend on pastMembers from context
 
   const handlePermanentDelete = async (memberId) => {
     if (window.confirm('Are you sure you want to permanently delete this member? This action cannot be undone.')) {
       setDeletingMemberId(memberId);
       try {
-        const memberToDelete = allMembers.find(member => member.id === memberId);
+        const memberToDelete = pastMembers.find(member => member.id === memberId); // Use pastMembers from context
         await deleteDoc(doc(db, "past_members", memberId));
-        setAllMembers(allMembers.filter(member => member.id !== memberId));
+        refreshData('pastMembers'); // Refresh pastMembers data in context
         toast.success("Member permanently deleted.");
         if (memberToDelete) {
           logActivity(
@@ -178,6 +132,10 @@ export default function PastMembersPage() {
   };
 
   const handleExport = async () => {
+    if (!hasPermission('past_members:export')) {
+        toast.error("You don't have permission to export past members.");
+        return;
+    }
     setIsExporting(true);
     try {
         const XLSX = await import('xlsx');
@@ -325,28 +283,40 @@ export default function PastMembersPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {isLoading ? (
+              {loading.pastMembers || refreshing.pastMembers ? ( // Use loading and refreshing state from context
                 <TableRow>
                   <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
                     <CircularProgress />
                   </TableCell>
                 </TableRow>
-              ) : (
-                renderAllMembersView()
-              )}
-              {!isLoading && filteredMembers.length === 0 && (
+              ) : filteredMembers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4, fontSize: '14px', color: '#757575' }}>
                     No past members found
                   </TableCell>
                 </TableRow>
               )}
+              {filteredMembers.map((member) => (
+                <TableRow key={member.id} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
+                  <TableCell component="th" scope="row">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {member.name}
+                    </Box>
+                  </TableCell>
+                  <TableCell>{member.package}</TableCell>
+                  <TableCell>{member.clientType === 'individual' && !member.company ? 'N/A' : member.company}</TableCell>
+                  <TableCell>{formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth)}</TableCell>
+                  <TableCell>{member.whatsapp}</TableCell>
+                  <TableCell>{member.email}</TableCell>
+                  <TableCell>{member.removedAt?.toDate().toLocaleDateString()}</TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </TableContainer>
 
         <Typography sx={{ mt: 2, fontSize: '13px', color: '#757575' }}>
-          {allPastMembersFetched ? `Showing ${filteredMembers.length} of ${totalPastMembersCount} past members` : `Showing ${filteredMembers.length} past members`}
+          {`Showing ${filteredMembers.length} of ${pastMembers.length} past members`}
         </Typography>
       </Box>
     </Box>

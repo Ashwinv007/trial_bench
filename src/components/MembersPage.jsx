@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useContext, useEffect } from 'react';
 import { FirebaseContext } from '../store/Context';
-import { collection, getDocs, addDoc, doc, updateDoc, getDoc, deleteDoc, serverTimestamp, query, orderBy, limit, startAfter } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, getDoc, deleteDoc, serverTimestamp, getDocs, query, orderBy, limit, startAfter } from 'firebase/firestore';
 import { logActivity } from '../utils/logActivity';
 import {
   Box,
@@ -32,6 +32,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../auth/usePermissions';
 import { AuthContext } from '../store/Context';
+import { useData } from '../store/DataContext'; // Import useData
 
 // Helper function to format birthday for display
 const formatBirthdayDisplay = (day, month) => {
@@ -62,6 +63,11 @@ const formatBirthdayDisplay = (day, month) => {
 };
 
 export default function MembersPage() {
+  const { db } = useContext(FirebaseContext); // Get db from FirebaseContext
+  const { user } = useContext(AuthContext);
+  const { members, loading, refreshing, refreshData } = useData(); // Use members, loading, refreshing, refreshData from DataContext
+  const { hasPermission } = usePermissions();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [packageFilter, setPackageFilter] = useState('All Packages');
   const [primaryMemberFilter, setPrimaryMemberFilter] = useState('All Members');
@@ -73,69 +79,39 @@ export default function MembersPage() {
   const [initialModalAction, setInitialModalAction] = useState(null);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0); // Added for refresh mechanism
+  // Removed refreshTrigger
   const [isSaving, setIsSaving] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [totalMembersCount, setTotalMembersCount] = useState(0);
-  const [allMembersFetched, setAllMembersFetched] = useState(false);
+  // Removed isLoading, totalMembersCount, allMembersFetched states
 
-  const { db } = useContext(FirebaseContext);
-  const { user } = useContext(AuthContext);
-  const { hasPermission } = usePermissions();
-  const [allMembers, setAllMembers] = useState([]);
   const navigate = useNavigate();
 
+  // Removed useEffect for fetching members, now handled by DataContext
+
   useEffect(() => {
-    if (!hasPermission('members:view')) {
-      setIsLoading(false); // Ensure loading is false if no permission
-      return;
+    if (primaryMemberFilter === 'Primary Members' && searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const newExpandedRows = {};
+
+      const subMembersMatching = members.filter(m => 
+        !m.primary && m.primaryMemberId && (
+          (m.name && m.name.toLowerCase().includes(query)) ||
+          (m.email && m.email.toLowerCase().includes(query)) ||
+          (m.whatsapp && m.whatsapp.toLowerCase().includes(query)) ||
+          (m.company && m.company.toLowerCase().includes(query))
+        )
+      );
+
+      subMembersMatching.forEach(subMember => {
+        newExpandedRows[subMember.primaryMemberId] = true;
+      });
+      
+      setExpandedRows(newExpandedRows);
+    } else if (!searchQuery.trim()) {
+      setExpandedRows({});
     }
-    if (!db) return;
-
-    setAllMembers([]); // Clear previous members on refresh
-    setAllMembersFetched(false);
-    setTotalMembersCount(0); // Reset count
-    setIsLoading(true); // Set loading to true at the start of the fetch
-
-    const membersCollection = collection(db, 'members');
-
-    const fetchInitialAndRest = async () => {
-      try {
-        // Fetch initial batch
-        const initialQuery = query(membersCollection, orderBy('name'), limit(15));
-        const initialSnapshot = await getDocs(initialQuery);
-        const initialData = initialSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setAllMembers(initialData);
-
-        // Now, fetch the rest in the background
-        if (initialSnapshot.docs.length > 0) {
-          const lastVisible = initialSnapshot.docs[initialSnapshot.docs.length - 1];
-          const restQuery = query(membersCollection, orderBy('name'), startAfter(lastVisible));
-          const restSnapshot = await getDocs(restQuery);
-          const restData = restSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-          // Append the rest of the data
-          setAllMembers(prevMembers => [...prevMembers, ...restData]);
-          setTotalMembersCount(initialData.length + restData.length);
-        } else {
-          // No initial members found
-          setTotalMembersCount(0);
-        }
-        setAllMembersFetched(true);
-
-      } catch (error) {
-        console.error("Error fetching members:", error);
-        toast.error("Failed to fetch members.");
-      } finally {
-        setIsLoading(false); // Set loading to false when fetch is complete
-      }
-    };
-
-    fetchInitialAndRest();
-
-  }, [db, hasPermission, refreshTrigger]);
+  }, [searchQuery, primaryMemberFilter, members]);
 
   const handleOpenAddModal = (primaryId = null) => {
     if (!hasPermission('members:add')) {
@@ -197,7 +173,7 @@ export default function MembersPage() {
             toast.success("Member added successfully!");
             logActivity(db, user, 'member_created', `New member "${memberData.name}" was added.`, { memberId: docRef.id, memberName: memberData.name });
         }
-        setRefreshTrigger(prev => prev + 1);
+        refreshData('members'); // Refresh members data in context
     } catch (error) {
         console.error("Error saving member: ", error);
         toast.error(`Failed to ${isEditing ? 'update' : 'add'} member.`);
@@ -219,8 +195,9 @@ export default function MembersPage() {
         const memberData = memberDoc.data();
         await addDoc(collection(db, "past_members"), { ...memberData, removedAt: exitDate });
 
-        const allDocs = await getDocs(collection(db, "members"));
-        for (const d of allDocs.docs) {
+        // Fetch all members to find and update subMembers arrays
+        const allMembersSnapshot = await getDocs(collection(db, "members"));
+        for (const d of allMembersSnapshot.docs) {
           const data = d.data();
           if (data.subMembers && data.subMembers.includes(memberId)) {
             const updatedSubMembers = data.subMembers.filter(id => id !== memberId);
@@ -229,7 +206,8 @@ export default function MembersPage() {
         }
         
         await deleteDoc(doc(db, "members", memberId));
-        setAllMembers(allMembers.filter(member => member.id !== memberId));
+        refreshData('members'); // Refresh members data in context
+        refreshData('pastMembers'); // Refresh pastMembers data in context
         toast.success("Member moved to Past Members successfully!");
         logActivity(
           db,
@@ -270,32 +248,8 @@ export default function MembersPage() {
     }
   };
 
-  useEffect(() => {
-    if (primaryMemberFilter === 'Primary Members' && searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      const newExpandedRows = {};
-
-      const subMembersMatching = allMembers.filter(m => 
-        !m.primary && m.primaryMemberId && (
-          (m.name && m.name.toLowerCase().includes(query)) ||
-          (m.email && m.email.toLowerCase().includes(query)) ||
-          (m.whatsapp && m.whatsapp.toLowerCase().includes(query)) ||
-          (m.company && m.company.toLowerCase().includes(query))
-        )
-      );
-
-      subMembersMatching.forEach(subMember => {
-        newExpandedRows[subMember.primaryMemberId] = true;
-      });
-      
-      setExpandedRows(newExpandedRows);
-    } else if (!searchQuery.trim()) {
-      setExpandedRows({});
-    }
-  }, [searchQuery, primaryMemberFilter, allMembers]);
-
   const filteredMembers = useMemo(() => {
-    let members = allMembers;
+    let currentMembers = members; // Use members from context
     const query = searchQuery.toLowerCase().trim();
     const hasSearch = query.length > 0;
 
@@ -307,33 +261,33 @@ export default function MembersPage() {
 
     if (primaryMemberFilter === 'Primary Members') {
       if (hasSearch) {
-        const matchingMembers = allMembers.filter(isMatch);
+        const matchingMembers = currentMembers.filter(isMatch);
         const primaryIdsToShow = new Set();
         matchingMembers.forEach(m => {
           if (m.primary) primaryIdsToShow.add(m.id);
           else if (m.primaryMemberId) primaryIdsToShow.add(m.primaryMemberId);
         });
         
-        members = allMembers.filter(m => m.primary && primaryIdsToShow.has(m.id));
+        currentMembers = currentMembers.filter(m => m.primary && primaryIdsToShow.has(m.id));
       } else {
-        members = members.filter(m => m.primary);
+        currentMembers = currentMembers.filter(m => m.primary);
       }
     } else { // All Members
       if (hasSearch) {
-        members = members.filter(isMatch);
+        currentMembers = currentMembers.filter(isMatch);
       }
     }
     
     if (packageFilter !== 'All Packages') {
-      members = members.filter((member) => member.package === packageFilter);
+      currentMembers = currentMembers.filter((member) => member.package === packageFilter);
     }
 
     if (birthdayMonthFilter !== 'All Months') {
-      members = members.filter((member) => member.birthdayMonth === birthdayMonthFilter);
+      currentMembers = currentMembers.filter((member) => member.birthdayMonth === birthdayMonthFilter);
     }
 
     if (primaryMemberFilter === 'All Members') {
-      members.sort((a, b) => {
+      currentMembers.sort((a, b) => {
         const getGroupId = (m) => m.primaryMemberId || m.id;
         const aGroupId = getGroupId(a);
         const bGroupId = getGroupId(b);
@@ -349,17 +303,17 @@ export default function MembersPage() {
         return (a.name || '').localeCompare(b.name || '');
       });
     } else {
-      members.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      currentMembers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     }
     
-    return members;
-  }, [searchQuery, packageFilter, primaryMemberFilter, birthdayMonthFilter, allMembers]);
+    return currentMembers;
+  }, [searchQuery, packageFilter, primaryMemberFilter, birthdayMonthFilter, members]);
 
   const getSubMembers = (member) => {
     if (!member.subMembers || member.subMembers.length === 0) return [];
     
     let subMembers = member.subMembers
-      .map(subId => allMembers.find(m => m.id === subId))
+      .map(subId => members.find(m => m.id === subId)) // Use members from context
       .filter(Boolean);
 
     const query = searchQuery.toLowerCase().trim();
@@ -602,7 +556,7 @@ export default function MembersPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {isLoading ? (
+              {loading.members || refreshing.members ? ( // Use loading and refreshing state from context
                 <TableRow>
                   <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4 }}>
                     <CircularProgress />
@@ -613,7 +567,7 @@ export default function MembersPage() {
               ) : (
                 renderAllMembersView()
               )}
-              {!isLoading && filteredMembers.length === 0 && (
+              {!loading.members && !refreshing.members && filteredMembers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4, fontSize: '14px', color: '#757575' }}>
                     No members found matching your filters
@@ -625,7 +579,7 @@ export default function MembersPage() {
         </TableContainer>
 
         <Typography sx={{ mt: 2, fontSize: '13px', color: '#757575' }}>
-          {allMembersFetched ? `Showing ${filteredMembers.length} of ${totalMembersCount} members` : `Showing ${filteredMembers.length} members`}
+          {`Showing ${filteredMembers.length} of ${members.length} members`}
         </Typography>
       </Box>
 

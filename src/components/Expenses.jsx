@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useMemo } from 'react';
 import { 
   Dialog, 
   DialogTitle, 
@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import styles from './Expenses.module.css';
 import { db } from '../firebase/config';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp, query, where, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, Timestamp, query, where, writeBatch, getDocs } from 'firebase/firestore';
 import { AuthContext } from '../store/Context';
 import { usePermissions } from '../auth/usePermissions';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -30,6 +30,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import { useData } from '../store/DataContext'; // Import useData
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -77,8 +78,9 @@ const getCategoryColor = (category) => {
 export default function Expenses() {
   const { user } = useContext(AuthContext);
   const { hasPermission } = usePermissions();
-  const [expenses, setExpenses] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const { expenses, expenseCategories: categories, loading, refreshing, refreshData } = useData(); // Use data from DataContext
+  // const [expenses, setExpenses] = useState([]); // Removed local state
+  // const [categories, setCategories] = useState([]); // Removed local state
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isReportsModalOpen, setIsReportsModalOpen] = useState(false);
@@ -103,50 +105,19 @@ export default function Expenses() {
     billNumber: ''
   });
 
-  const fetchExpenses = async () => {
-    if (!hasPermission('expenses:view')) return;
-    const expensesCollection = collection(db, 'expenses');
-    const expensesSnapshot = await getDocs(expensesCollection);
-    const expensesList = expensesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    setExpenses(expensesList);
-  };
-
-  const fetchCategories = async () => {
-    if (!hasPermission('expenses:view')) return;
-    const categoriesCollection = collection(db, 'expense_categories');
-    try {
-      const categoriesSnapshot = await getDocs(categoriesCollection);
-      if (categoriesSnapshot.empty) {
-        // First time setup: populate with initial categories
-        const batch = writeBatch(db);
-        initialCategories.forEach(categoryName => {
-          const newCatRef = doc(collection(db, 'expense_categories'));
-          batch.set(newCatRef, { name: categoryName });
-        });
-        await batch.commit();
-        const newSnapshot = await getDocs(categoriesCollection);
-        const categoriesList = newSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setCategories(categoriesList);
-        toast.info('Initial expense categories have been set up.');
-      } else {
-        const categoriesList = categoriesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setCategories(categoriesList);
-      }
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-      toast.error('Failed to load expense categories.');
-    }
-  };
+  // Removed fetchExpenses and fetchCategories, now handled by DataContext
 
   useEffect(() => {
-    if (hasPermission('expenses:view')) {
-      fetchExpenses();
-      fetchCategories();
+    if (!hasPermission('expenses:view')) {
+      // If permission is denied, ensure categories and expenses are empty to prevent issues
+      // This might be redundant if DataContext handles permissions correctly by not providing data
     }
   }, [hasPermission]);
 
+
   useEffect(() => {
     if (isReportsModalOpen) {
+      // Use expenses from DataContext
       const availableYears = [...new Set(expenses.map(e => parseDate(e.date).getFullYear()))].sort((a, b) => b - a);
       if (availableYears.length > 0) {
         setSelectedReportYear(availableYears[0].toString());
@@ -158,7 +129,7 @@ export default function Expenses() {
       }
       setSelectedMonthlyMonth('All');
     }
-  }, [isReportsModalOpen, expenses]);
+  }, [isReportsModalOpen, expenses]); // Depend on expenses from DataContext
 
   const handleOpenExpenseModal = () => {
     setIsExpenseModalOpen(true);
@@ -193,7 +164,7 @@ export default function Expenses() {
       setDeletingExpenseId(id);
       try {
         await deleteDoc(doc(db, 'expenses', id));
-        fetchExpenses();
+        refreshData('expenses'); // Refresh expenses data in context
         toast.success('Expense deleted successfully');
       } catch (error) {
         toast.error('Failed to delete expense.');
@@ -251,7 +222,7 @@ export default function Expenses() {
         await addDoc(collection(db, 'expenses'), payload);
         toast.success('Expense added successfully');
       }
-      fetchExpenses();
+      refreshData('expenses'); // Refresh expenses data in context
       setIsExpenseModalOpen(false);
       setEditingExpense(null);
     } catch (error) {
@@ -272,7 +243,7 @@ export default function Expenses() {
   };
 
   const getCategoryUsageCount = (categoryName) => {
-    return expenses.filter(expense => expense.category === categoryName).length;
+    return expenses.filter(expense => expense.category === categoryName).length; // Use expenses from DataContext
   };
 
   const handleAddCategory = async () => {
@@ -285,7 +256,7 @@ export default function Expenses() {
       return;
     }
     
-    if (categories.some(c => c.name.toLowerCase() === newCategory.trim().toLowerCase())) {
+    if (categories.some(c => c.name.toLowerCase() === newCategory.trim().toLowerCase())) { // Use categories from DataContext
       toast.error('Category already exists');
       return;
     }
@@ -294,7 +265,7 @@ export default function Expenses() {
       await addDoc(collection(db, 'expense_categories'), { name: newCategory.trim() });
       setNewCategory('');
       toast.success('Category added successfully');
-      fetchCategories();
+      refreshData('expenses'); // Refresh expenses data in context after adding category
     } catch (error) {
       toast.error('Failed to add category.');
     }
@@ -325,7 +296,7 @@ export default function Expenses() {
         return;
       }
       
-      if (categories.some(c => c.name.toLowerCase() === newCategoryName.toLowerCase() && c.id !== editingCategory.id)) {
+      if (categories.some(c => c.name.toLowerCase() === newCategoryName.toLowerCase() && c.id !== editingCategory.id)) { // Use categories from DataContext
         toast.error('A category with this name already exists.');
         return;
       }
@@ -337,9 +308,10 @@ export default function Expenses() {
         const categoryDocRef = doc(db, 'expense_categories', editingCategory.id);
         batch.update(categoryDocRef, { name: newCategoryName });
 
-        const expensesToUpdateQuery = query(collection(db, 'expenses'), where('category', '==', oldCategoryName));
-        const expensesSnapshot = await getDocs(expensesToUpdateQuery);
-        
+        // Query expenses to update category name
+        const expensesToUpdateSnapshot = await query(collection(db, 'expenses'), where('category', '==', oldCategoryName));
+        const expensesSnapshot = await getDocs(expensesToUpdateSnapshot);
+
         if (!expensesSnapshot.empty) {
           expensesSnapshot.forEach(expenseDoc => {
             batch.update(expenseDoc.ref, { category: newCategoryName });
@@ -352,9 +324,7 @@ export default function Expenses() {
         
         setEditingCategory(null);
         setNewCategory('');
-        fetchCategories();
-        fetchExpenses();
-
+        refreshData('expenses'); // Refresh expenses and categories data in context
       } catch (error) {
         console.error("Error updating category: ", error);
         toast.error('Failed to update category.');
@@ -381,7 +351,7 @@ export default function Expenses() {
       try {
         await deleteDoc(doc(db, 'expense_categories', categoryToDelete.id));
         toast.success('Category deleted successfully');
-        fetchCategories();
+        refreshData('expenses'); // Refresh expenses and categories data in context
       } catch (error) {
         toast.error('Failed to delete category.');
       }
@@ -447,7 +417,7 @@ export default function Expenses() {
 
   // Filter expenses based on category and date range
   const getFilteredExpenses = () => {
-    return expenses.filter(expense => {
+    return expenses.filter(expense => { // Use expenses from DataContext
       const categoryMatch = filterCategory === 'All' || expense.category === filterCategory;
       
       const expenseDate = dayjs(parseDate(expense.date));
@@ -474,7 +444,7 @@ export default function Expenses() {
   const getMonthlyReports = () => {
     const monthlyData = {};
     
-    expenses.forEach(expense => {
+    expenses.forEach(expense => { // Use expenses from DataContext
       const date = parseDate(expense.date);
       if (!date) return;
       const monthYear = `${date.toLocaleString('default', { month: 'long' })} ${date.getFullYear()}`;
@@ -500,7 +470,7 @@ export default function Expenses() {
   const getYearlyReports = () => {
     const yearlyData = {};
     
-    expenses.forEach(expense => {
+    expenses.forEach(expense => { // Use expenses from DataContext
       const date = parseDate(expense.date);
       if (!date) return;
       const year = date.getFullYear().toString();
@@ -525,7 +495,7 @@ export default function Expenses() {
 
   const getAvailableMonthsForYear = (year) => {
     const months = new Set();
-    expenses.forEach(expense => {
+    expenses.forEach(expense => { // Use expenses from DataContext
         const expenseDate = parseDate(expense.date);
         if (expenseDate && expenseDate.getFullYear().toString() === year) {
             months.add(expenseDate.toLocaleString('default', { month: 'long' }));
@@ -757,7 +727,13 @@ export default function Expenses() {
             </tr>
           </thead>
           <tbody>
-            {filteredExpenses.length === 0 ? (
+            {loading.expenses || refreshing.expenses ? ( // Use loading and refreshing state from context
+              <tr>
+                <td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>
+                  <CircularProgress />
+                </td>
+              </tr>
+            ) : filteredExpenses.length === 0 ? (
               <tr>
                 <td colSpan="7" className={styles.emptyState}>
                   {expenses.length === 0 
@@ -1264,9 +1240,9 @@ export default function Expenses() {
                                 ({((amount / dataForYear.total) * 100).toFixed(1)}%)
                               </span>
                             </div>
-                          ))}
-                        </div>
+                        ))}
                       </div>
+                    </div>
                     </CardContent>
                   </Card>
                 );

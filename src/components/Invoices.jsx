@@ -2,9 +2,9 @@ import { useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import { Dialog, DialogTitle, DialogContent, TextField, Button, IconButton, Autocomplete, Select, MenuItem, InputAdornment, CircularProgress, Typography } from '@mui/material';
 import { Close, AddCircleOutline, Search as SearchIcon, FilterList as FilterListIcon, RemoveCircleOutline } from '@mui/icons-material';
 import styles from './Invoices.module.css';
-import { FirebaseContext, AuthContext } from '../store/Context';
+import { FirebaseContext, AuthContext } from '../store/Context'; // Keep FirebaseContext for db operations
 import { logActivity } from '../utils/logActivity';
-import { collection, getDocs, addDoc, doc, updateDoc, query, where, serverTimestamp, Timestamp, limit, orderBy, startAfter } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, serverTimestamp, Timestamp, getDocs, query, where, limit, orderBy, startAfter } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { saveAs } from 'file-saver';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -13,6 +13,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { usePermissions } from '../auth/usePermissions';
 import dayjs from 'dayjs';
 import { toast } from 'sonner';
+import { useData } from '../store/DataContext'; // Import useData
 
 const formatDate = (dateInput) => {
   if (!dateInput) return '-';
@@ -150,13 +151,14 @@ const getInvoicePdfBytes = async (invoiceData) => {
 export default function Invoices() {
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
+  const { invoices, clients, agreements, loading, refreshing, refreshData } = useData(); // Use data from DataContext
   const { hasPermission } = usePermissions();
-  const [invoices, setInvoices] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [totalInvoicesCount, setTotalInvoicesCount] = useState(0);
-  const [allInvoicesFetched, setAllInvoicesFetched] = useState(false);
-  const [clients, setClients] = useState([]);
-  const [agreements, setAgreements] = useState([]);
+  // const [invoices, setInvoices] = useState([]); // Removed local state
+  // const [isLoading, setIsLoading] = useState(true); // Removed local state
+  // const [totalInvoicesCount, setTotalInvoicesCount] = useState(0); // Removed local state
+  // const [allInvoicesFetched, setAllInvoicesFetched] = useState(false); // Removed local state
+  // const [clients, setClients] = useState([]); // Removed local state
+  // const [agreements, setAgreements] = useState([]); // Removed local state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPaymentDateModalOpen, setIsPaymentDateModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
@@ -194,66 +196,10 @@ export default function Invoices() {
   const functions = getFunctions();
   const sendInvoiceEmailCallable = httpsCallable(functions, 'sendInvoiceEmail');
 
-  useEffect(() => {
-    if (!db || !hasPermission('invoices:view')) {
-        setIsLoading(false); // Make sure to handle this case
-        return;
-    }
-
-    // Reset states
-    setInvoices([]);
-    setIsLoading(true);
-    setTotalInvoicesCount(0);
-    setAllInvoicesFetched(false);
-
-    const fetchSupportingDataAndInvoices = async () => {
-        // Fetch clients and agreements first, as they are needed for context
-        const clientsQuery = query(collection(db, 'leads'), where('status', '==', 'Converted'));
-        const clientsSnapshot = await getDocs(clientsQuery);
-        const clientsData = clientsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setClients(clientsData);
-        const clientsMap = new Map(clientsData.map(client => [client.id, client]));
-
-        const agreementsQuery = query(collection(db, 'agreements'), where('status', '==', 'active'));
-        const agreementsSnapshot = await getDocs(agreementsQuery);
-        const agreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const combinedAgreementsData = agreementsData.map(agreement => {
-            if (!agreement.leadId) return null;
-            const client = clientsMap.get(agreement.leadId);
-            if (!client) return null;
-            return { ...agreement, name: client.name, company: client.companyName || 'N/A' };
-        }).filter(Boolean);
-        setAgreements(combinedAgreementsData);
-
-        // Now, progressively fetch invoices
-        const invoicesCollection = collection(db, 'invoices');
-        const initialQuery = query(invoicesCollection, orderBy("createdAt", "desc"), limit(10));
-        const initialSnapshot = await getDocs(initialQuery);
-        const initialInvoices = initialSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
-        setInvoices(initialInvoices);
-        setIsLoading(false);
-
-        // Fetch the rest in the background
-        const lastVisible = initialSnapshot.docs[initialSnapshot.docs.length - 1];
-        if (lastVisible) {
-            const restQuery = query(invoicesCollection, orderBy("createdAt", "desc"), startAfter(lastVisible));
-            const restSnapshot = await getDocs(restQuery);
-            const restInvoices = restSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-            setInvoices(prev => [...prev, ...restInvoices]);
-            setTotalInvoicesCount(initialInvoices.length + restInvoices.length);
-            setAllInvoicesFetched(true);
-        } else {
-            setTotalInvoicesCount(initialInvoices.length);
-            setAllInvoicesFetched(true);
-        }
-    };
-
-    fetchSupportingDataAndInvoices();
-  }, [db, hasPermission]);
+  // Removed useEffect for fetching data, now handled by DataContext
 
   const invoicesWithClientData = useMemo(() => {
+    // This now uses invoices and clients from DataContext
     if (!invoices.length || !clients.length) return [];
     return invoices.map(invoice => {
       const client = clients.find(c => c.id === invoice.leadId);
@@ -265,12 +211,12 @@ export default function Invoices() {
         ccEmail: client ? client.ccEmail : 'N/A',
       };
     });
-  }, [invoices, clients]);
+  }, [invoices, clients]); // Depend on invoices and clients from context
 
   const handleOpenModal = () => {
     setEditingInvoice(null);
     setInvoiceGenerated(null);
-    const newInvoiceNumber = generateInvoiceNumber(invoices);
+    const newInvoiceNumber = generateInvoiceNumber(invoices); // Use invoices from context
     const initialData = {
       leadId: null,
       agreementId: null,
@@ -290,7 +236,7 @@ export default function Invoices() {
       taxAmount: '',
       totalAmountPayable: ''
     };
-    setFormData(updateCalculationsAndDescription(initialData, clients));
+    setFormData(updateCalculationsAndDescription(initialData, clients)); // Use clients from context
     setIsModalOpen(true);
   };
 
@@ -331,7 +277,7 @@ export default function Invoices() {
     setFormData(prev => {
       let updated = { ...prev };
       if (agreement) {
-        const client = clients.find(c => c.id === agreement.leadId);
+        const client = clients.find(c => c.id === agreement.leadId); // Use clients from context
         updated.agreementId = agreement.id;
         updated.leadId = agreement.leadId;
         updated.legalName = agreement.memberLegalName || client?.name || '';
@@ -403,20 +349,20 @@ export default function Invoices() {
         updated.fromDate = null;
         updated.toDate = null;
       }
-      return updateCalculationsAndDescription(updated, clients);
+      return updateCalculationsAndDescription(updated, clients); // Use clients from context
     });
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => updateCalculationsAndDescription({ ...prev, [name]: value }, clients));
+    setFormData((prev) => updateCalculationsAndDescription({ ...prev, [name]: value }, clients)); // Use clients from context
   };
 
   const handleItemInputChange = (index, e) => {
     const { name, value } = e.target;
     const newItems = [...formData.items];
     newItems[index] = { ...newItems[index], [name]: value };
-    setFormData(prev => updateCalculationsAndDescription({ ...prev, items: newItems }, clients));
+    setFormData(prev => updateCalculationsAndDescription({ ...prev, items: newItems }, clients)); // Use clients from context
   };
 
   const handleAddItem = () => {
@@ -429,7 +375,7 @@ export default function Invoices() {
   const handleRemoveItem = (index) => {
       if (formData.items.length > 1) {
           const newItems = formData.items.filter((_, i) => i !== index);
-          setFormData(prev => updateCalculationsAndDescription({ ...prev, items: newItems }, clients));
+          setFormData(prev => updateCalculationsAndDescription({ ...prev, items: newItems }, clients)); // Use clients from context
       }
   };
 
@@ -442,7 +388,7 @@ export default function Invoices() {
         updated.month = monthNames[dateObj.getMonth()];
         updated.year = dateObj.getFullYear().toString();
       }
-      return updateCalculationsAndDescription(updated, clients);
+      return updateCalculationsAndDescription(updated, clients); // Use clients from context
     });
   };
 
@@ -462,7 +408,7 @@ export default function Invoices() {
     if (toDate) invoicePayload.toDate = Timestamp.fromDate(toDate);
 
 
-    const client = clients.find(c => c.id === formData.leadId);
+    const client = clients.find(c => c.id === formData.leadId); // Use clients from context
     const clientName = client ? client.name : 'Unknown Client';
     const clientEmail = client ? client.convertedEmail : '';
     const clientCcEmail = client ? client.ccEmail : '';
@@ -472,8 +418,9 @@ export default function Invoices() {
         const invoiceRef = doc(db, "invoices", editingInvoice.id);
         await updateDoc(invoiceRef, { ...invoicePayload, lastEditedAt: serverTimestamp() });
         const updatedInvoice = { ...editingInvoice, ...invoicePayload, name: clientName, email: clientEmail, ccEmail: clientCcEmail };
-        setInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? updatedInvoice : inv));
+        // setInvoices(prev => prev.map(inv => inv.id === editingInvoice.id ? updatedInvoice : inv)); // No need to update local state directly
         setInvoiceGenerated(updatedInvoice);
+        refreshData('invoices'); // Refresh invoices data in context
         logActivity(
           db,
           user,
@@ -482,10 +429,12 @@ export default function Invoices() {
           { invoiceId: updatedInvoice.id, invoiceNumber: updatedInvoice.invoiceNumber, clientName: updatedInvoice.name }
         );
       } else {
+        // collection(db, "invoices") is still needed here
         const docRef = await addDoc(collection(db, "invoices"), { ...invoicePayload, createdAt: serverTimestamp(), lastEditedAt: serverTimestamp() });
         const newInvoice = { id: docRef.id, ...invoicePayload, name: clientName, email: clientEmail, ccEmail: clientCcEmail };
-        setInvoices(prev => [...prev, newInvoice]);
+        // setInvoices(prev => [...prev, newInvoice]); // No need to update local state directly
         setInvoiceGenerated(newInvoice);
+        refreshData('invoices'); // Refresh invoices data in context
         logActivity(
           db,
           user,
@@ -508,13 +457,14 @@ export default function Invoices() {
         };
         await updateDoc(leadRef, { lastInvoiceDetails: lastInvoiceDetails });
 
-        setClients(prevClients => 
-            prevClients.map(c => 
-                c.id === formData.leadId 
-                    ? { ...c, lastInvoiceDetails: lastInvoiceDetails } 
-                    : c
-            )
-        );
+        // setClients(prevClients => 
+        //     prevClients.map(c => 
+        //         c.id === formData.leadId 
+        //             ? { ...c, lastInvoiceDetails: lastInvoiceDetails } 
+        //             : c
+        //     )
+        // ); // No need to update local state directly
+        refreshData('leads'); // Refresh leads data (from which clients are derived) in context
       }
     } catch (error) {
       console.error("Error processing invoice: ", error);
@@ -539,7 +489,8 @@ export default function Invoices() {
       try {
         const invoiceRef = doc(db, "invoices", selectedInvoiceForPayment.id);
         await updateDoc(invoiceRef, { paymentStatus: 'Paid', dateOfPayment: Timestamp.fromDate(new Date(paymentDate.replace(/-/g, '/'))), lastEditedAt: serverTimestamp() });
-        setInvoices(prev => prev.map(inv => inv.id === selectedInvoiceForPayment.id ? { ...inv, paymentStatus: 'Paid', dateOfPayment: paymentDate } : inv));
+        // setInvoices(prev => prev.map(inv => inv.id === selectedInvoiceForPayment.id ? { ...inv, paymentStatus: 'Paid', dateOfPayment: paymentDate } : inv)); // No need to update local state directly
+        refreshData('invoices'); // Refresh invoices data in context
         setIsPaymentDateModalOpen(false);
         setSelectedInvoiceForPayment(null);
         setPaymentDate('');
@@ -561,7 +512,7 @@ export default function Invoices() {
   };
 
   const filteredInvoices = useMemo(() => {
-    let currentInvoices = invoicesWithClientData;
+    let currentInvoices = invoicesWithClientData; // Use invoicesWithClientData derived from context data
 
     if (filterStatus !== 'All') {
       currentInvoices = currentInvoices.filter((invoice) => (invoice.paymentStatus || 'Unpaid') === filterStatus);
@@ -579,7 +530,7 @@ export default function Invoices() {
 
     if (packageFilter !== 'All Packages') {
       currentInvoices = currentInvoices.filter((invoice) => {
-        const client = clients.find(c => c.id === invoice.leadId);
+        const client = clients.find(c => c.id === invoice.leadId); // Use clients from context
         return client && client.purposeOfVisit === packageFilter;
       });
     }
@@ -619,15 +570,15 @@ export default function Invoices() {
     });
 
     return currentInvoices;
-  }, [invoicesWithClientData, filterStatus, searchQuery, packageFilter, monthFilter, yearFilter, clients]);
+  }, [invoicesWithClientData, filterStatus, searchQuery, packageFilter, monthFilter, yearFilter, clients]); // Depend on invoicesWithClientData and clients from context
 
   const handleGenerateInvoiceForMember = useCallback((leadId, e) => {
     e.stopPropagation();
     if (!hasPermission('invoices:add')) return;
 
-    const client = clients.find(c => c.id === leadId);
+    const client = clients.find(c => c.id === leadId); // Use clients from context
     if (client) {
-      const agreement = agreements.find(a => a.leadId === leadId);
+      const agreement = agreements.find(a => a.leadId === leadId); // Use agreements from context
       setEditingInvoice(null);
       setInvoiceGenerated(null);
       
@@ -636,7 +587,7 @@ export default function Invoices() {
         agreementId: agreement ? agreement.id : null,
         legalName: agreement?.memberLegalName || client.name || '',
         address: client.lastInvoiceDetails?.address || agreement?.memberAddress || client.memberAddress || '',
-        invoiceNumber: generateInvoiceNumber(invoices),
+        invoiceNumber: generateInvoiceNumber(invoices), // Use invoices from context
         date: new Date(),
         month: '',
         year: new Date().getFullYear().toString(),
@@ -682,7 +633,7 @@ export default function Invoices() {
         }
       }
       
-      setFormData(updateCalculationsAndDescription(initialData, clients));
+      setFormData(updateCalculationsAndDescription(initialData, clients)); // Use clients from context
       setIsModalOpen(true);
     }
   }, [clients, hasPermission, invoices, agreements]);
@@ -810,7 +761,7 @@ export default function Invoices() {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
+              {loading.invoices || refreshing.invoices ? ( // Use loading and refreshing state from context
                 <tr>
                   <td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>
                     <CircularProgress />
@@ -849,7 +800,7 @@ export default function Invoices() {
           </table>
         </div>
         <Typography sx={{ mt: 2, fontSize: '13px', color: '#757575' }}>
-          {allInvoicesFetched ? `Showing ${filteredInvoices.length} of ${totalInvoicesCount} invoices` : `Showing ${filteredInvoices.length} invoices`}
+          {`Showing ${filteredInvoices.length} of ${invoices.length} invoices`}
         </Typography>
       </div>
 
