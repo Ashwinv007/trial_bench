@@ -315,7 +315,7 @@ export default function Invoices() {
         updated.agreementId = agreement.id;
         updated.leadId = agreement.leadId;
         updated.legalName = agreement.memberLegalName || client?.name || '';
-        updated.address = agreement.memberAddress || client?.memberAddress || '';
+        updated.address = client?.lastInvoiceDetails?.address || agreement.memberAddress || client?.memberAddress || '';
 
         if (client && client.lastInvoiceDetails) {
           const newItems = [...prev.items];
@@ -484,6 +484,7 @@ export default function Invoices() {
             month: formData.month,
             fromDate: fromDate,
             toDate: toDate,
+            address: formData.address, // Added address to lastInvoiceDetails
         };
         await updateDoc(leadRef, { lastInvoiceDetails: lastInvoiceDetails });
 
@@ -614,7 +615,7 @@ export default function Invoices() {
         leadId: client.id,
         agreementId: agreement ? agreement.id : null,
         legalName: agreement?.memberLegalName || client.name || '',
-        address: agreement?.memberAddress || client.memberAddress || '',
+        address: client.lastInvoiceDetails?.address || agreement?.memberAddress || client.memberAddress || '',
         invoiceNumber: generateInvoiceNumber(invoices),
         date: new Date(),
         month: '',
