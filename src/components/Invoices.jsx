@@ -208,8 +208,8 @@ export default function Invoices() {
       setClients(clientsData);
       const clientsMap = new Map(clientsData.map(client => [client.id, client]));
 
-      const agreementsCollection = collection(db, 'agreements');
-      const agreementsSnapshot = await getDocs(agreementsCollection);
+      const agreementsQuery = query(collection(db, 'agreements'), where('status', '==', 'active'));
+      const agreementsSnapshot = await getDocs(agreementsQuery);
       const agreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
       const combinedAgreementsData = agreementsData
