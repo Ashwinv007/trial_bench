@@ -2,7 +2,7 @@ import { AddCircleOutline, Person, Delete, UploadFile } from '@mui/icons-materia
 import styles from './Leads.module.css';
 import { useContext, useEffect, useState, useMemo } from 'react';
 import { FirebaseContext } from '../store/Context';
-import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, query, orderBy, limit } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../auth/usePermissions';
 
@@ -32,6 +32,7 @@ export default function Leads() {
   const { db } = useContext(FirebaseContext);
   const { hasPermission } = usePermissions();
   const [leads, setLeads] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,6 +41,8 @@ export default function Leads() {
   const [dateFilter, setDateFilter] = useState('All Time');
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [totalLeadsCount, setTotalLeadsCount] = useState(0);
+  const [allLeadsFetched, setAllLeadsFetched] = useState(false);
 
   const purposeOptions = [
     "Dedicated Desk",
@@ -138,21 +141,48 @@ export default function Leads() {
   }, [leads, searchQuery, statusFilter, purposeFilter, dateFilter]);
 
   useEffect(() => {
-    if (!hasPermission('leads:view')) return;
+    if (!hasPermission('leads:view')) {
+      setIsLoading(false);
+      return;
+    }
     if (db) {
-      console.log('Database reference is available:', db);
-      const fetchLeads = async () => {
+      const leadsCollection = collection(db, 'leads');
+
+      const fetchInitialLeads = async () => {
+        setIsLoading(true);
         try {
-          const leadsCollection = collection(db, 'leads');
-          const leadsSnapshot = await getDocs(leadsCollection);
-          const leadsData = leadsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setLeads(leadsData);
-          console.log('Fetched leads:', leadsData);
+          const initialQuery = query(leadsCollection, orderBy('createdAt', 'desc'), limit(15));
+          const initialSnapshot = await getDocs(initialQuery);
+          const initialData = initialSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setLeads(initialData);
+          return initialData;
         } catch (error) {
-          console.error("Error fetching leads:", error);
+          console.error("Error fetching initial leads:", error);
+          toast.error("Failed to load initial leads.");
+        } finally {
+          setIsLoading(false);
         }
       };
-      fetchLeads();
+
+      const fetchAllLeads = async () => {
+        try {
+          const allSnapshot = await getDocs(leadsCollection);
+          const allData = allSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setLeads(allData);
+          setTotalLeadsCount(allData.length);
+          setAllLeadsFetched(true); // Add this line
+        } catch (error) {
+          console.error("Error fetching all leads:", error);
+        }
+      };
+
+      fetchInitialLeads().then((initialData) => {
+        if (initialData) {
+          // After the initial leads are fetched and displayed,
+          // fetch the rest in the background.
+          fetchAllLeads();
+        }
+      });
     }
   }, [db, hasPermission]);
 
@@ -336,55 +366,68 @@ export default function Leads() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredLeads.map((lead) => (
-                <TableRow key={lead.id} sx={{ '&:hover': { backgroundColor: '#f5f5f5' }, cursor: hasPermission('leads:edit') ? 'pointer' : 'default' }}>
-                  <TableCell onClick={() => handleRowClick(lead.id)}>
-                    <Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.name}</Typography>
-                  </TableCell>
-                  <TableCell onClick={() => handleRowClick(lead.id)}>
-                    <span className={`${styles.statusBadge} ${styles[getStatusClass(lead.status)]}`}>
-                      {lead.status}
-                    </span>
-                  </TableCell>
-                  <TableCell onClick={() => handleRowClick(lead.id)}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Person sx={{ fontSize: '18px', color: '#9e9e9e' }} />
-                      <Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.purposeOfVisit}</Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell onClick={() => handleRowClick(lead.id)}><Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.phone}</Typography></TableCell>
-                  <TableCell onClick={() => handleRowClick(lead.id)}><Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.convertedWhatsapp}</Typography></TableCell>
-                  <TableCell onClick={() => handleRowClick(lead.id)}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                      <Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.sourceType}</Typography>
-                      <Typography component="span" sx={{ fontSize: '12px', color: '#757575' }}>{lead.sourceDetail}</Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    {hasPermission('leads:delete') && (
-                      <IconButton color="error" onClick={(e) => { e.stopPropagation(); handleDelete(lead.id); }} disabled={isDeleting}>
-                        {isDeleting ? <CircularProgress size={24} /> : <Delete />}
-                      </IconButton>
-                    )}
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                    <CircularProgress />
                   </TableCell>
                 </TableRow>
-              ))}
-              {filteredLeads.length === 0 && (
+              ) : filteredLeads.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4, fontSize: '14px', color: '#757575' }}>
                     No leads found matching your filters.
                   </TableCell>
                 </TableRow>
+              ) : (
+                filteredLeads.map((lead) => (
+                  <TableRow key={lead.id} sx={{ '&:hover': { backgroundColor: '#f5f5f5' }, cursor: hasPermission('leads:edit') ? 'pointer' : 'default' }}>
+                    <TableCell onClick={() => handleRowClick(lead.id)}>
+                      <Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.name}</Typography>
+                    </TableCell>
+                    <TableCell onClick={() => handleRowClick(lead.id)}>
+                      <span className={`${styles.statusBadge} ${styles[getStatusClass(lead.status)]}`}>
+                        {lead.status}
+                      </span>
+                    </TableCell>
+                    <TableCell onClick={() => handleRowClick(lead.id)}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Person sx={{ fontSize: '18px', color: '#9e9e9e' }} />
+                        <Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.purposeOfVisit}</Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell onClick={() => handleRowClick(lead.id)}><Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.phone}</Typography></TableCell>
+                    <TableCell onClick={() => handleRowClick(lead.id)}><Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.convertedWhatsapp}</Typography></TableCell>
+                    <TableCell onClick={() => handleRowClick(lead.id)}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.sourceType}</Typography>
+                        <Typography component="span" sx={{ fontSize: '12px', color: '#757575' }}>{lead.sourceDetail}</Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      {hasPermission('leads:delete') && (
+                        <IconButton color="error" onClick={(e) => { e.stopPropagation(); handleDelete(lead.id); }} disabled={isDeleting}>
+                          {isDeleting ? <CircularProgress size={24} /> : <Delete />}
+                        </IconButton>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
         </TableContainer>
 
         {/* Summary of filtered leads */}
-        <Typography sx={{ mt: 2, fontSize: '13px', color: '#757575' }}>
-          Showing {filteredLeads.length} of {leads.length} leads
-        </Typography>
-      </Box>
+        {/* <Typography sx={{ mt: 2, fontSize: '13px', color: '#757575' }}>
+          Showing {filteredLeads.length} of {totalLeadsCount > 0 ? totalLeadsCount : leads.length} leads
+        </Typography> */}
+         <Typography sx={{ mt: 2, fontSize: '13px', color: '#757575' }}>
+          {allLeadsFetched
+            ? `Showing ${filteredLeads.length} of ${totalLeadsCount} leads`
+            : `Showing ${filteredLeads.length} leads`
+          }
+       </Typography>
+      </Box>  
     </Box>
   );
 }
