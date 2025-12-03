@@ -53,7 +53,7 @@ const generateAgreementNumber = (memberPackageName, allAgreements) => {
 export default function Agreements() {
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
-  const { agreements, loading, refreshing, refreshData, leads } = useData(); // Use agreements, loading, refreshing, refreshData and leads from DataContext
+  const { agreements, loading, refreshing, refreshData, leads, prefetchClientProfile } = useData(); // Use agreements, loading, refreshing, refreshData and leads from DataContext
   const { hasPermission } = usePermissions();
   // const [allAgreements, setAllAgreements] = useState([]); // Removed local state
   // const [isLoading, setIsLoading] = useState(true); // Removed local state
@@ -643,6 +643,7 @@ export default function Agreements() {
                     <td>
                       <IconButton
                         onClick={(e) => handleViewProfileClick(e, agreement.leadId)}
+                        onMouseEnter={() => prefetchClientProfile(agreement.leadId)}
                         size="small"
                         title="View Client Profile"
                       >

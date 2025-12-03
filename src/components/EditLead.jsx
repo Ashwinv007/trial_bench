@@ -29,6 +29,7 @@ import ClientProfileModal from './ClientProfileModal';
 import { usePermissions } from '../auth/usePermissions'; // Use the new usePermissions hook
 import { toast } from 'sonner';
 import { logActivity } from '../utils/logActivity';
+import { useData } from '../store/DataContext';
 
 // Helper function to format birthday
 const formatBirthday = (day, month) => {
@@ -90,6 +91,7 @@ export default function EditLead() {
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
   const { hasPermission } = usePermissions(); // Use the new usePermissions hook
+  const { prefetchClientProfile } = useData();
   const navigate = useNavigate();
   const { id } = useParams();
 
@@ -692,7 +694,7 @@ export default function EditLead() {
                 {isUpdating ? <CircularProgress size={24} color="inherit" /> : <><Save className={styles.buttonIcon} />Update Lead</>}
               </button>
               {formData?.status === 'Converted' && (
-                <button className={styles.saveButton} onClick={() => setIsProfileModalOpen(true)} style={{ marginTop: '10px' }}>
+                <button className={styles.saveButton} onClick={() => setIsProfileModalOpen(true)} onMouseEnter={() => prefetchClientProfile(id)} style={{ marginTop: '10px' }}>
                   View Client Profile
                 </button>
               )}

@@ -26,6 +26,7 @@ import { Email as EmailIcon } from '@mui/icons-material';
 import styles from './AddLead.module.css';
 import { usePermissions } from '../auth/usePermissions';
 import ClientProfileModal from './ClientProfileModal';
+import { useData } from '../store/DataContext';
 
 // Helper function to format birthday
 const formatBirthday = (day, month) => {
@@ -196,6 +197,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
   const { db } = useContext(FirebaseContext);
   const { user } = useContext(AuthContext);
   const { hasPermission } = usePermissions();
+  const { prefetchClientProfile } = useData();
   const [formData, setFormData] = useState({
     name: '',
     package: '',
@@ -620,6 +622,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
             {editMember && editMember.primary && (
             <Button
                 onClick={() => handleViewProfile(editMember)}
+                onMouseEnter={() => editMember.leadId && prefetchClientProfile(editMember.leadId)}
                 variant="outlined"
             >
                 View Client Profile

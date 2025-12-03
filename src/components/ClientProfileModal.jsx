@@ -2,19 +2,16 @@ import { useState, useEffect, useContext, useMemo } from 'react';
 import { Dialog, DialogContent, IconButton, Tabs, Tab, Card, CardContent, Button, Chip, Typography, Box, CircularProgress } from '@mui/material';
 import { Close, Email, Phone, Cake, Business, Lock } from '@mui/icons-material';
 import styles from './ClientProfile.module.css';
-import { FirebaseContext } from '../store/Context';
-import { doc, getDoc, collection, getDocs, query, where, documentId } from 'firebase/firestore';
+import { useData } from '../store/DataContext';
 import { usePermissions } from '../auth/usePermissions'; // Import usePermissions
 
 export default function ClientProfileModal({ open, onClose, clientId }) {
-  const { db } = useContext(FirebaseContext);
-  const { hasPermission } = usePermissions(); // Initialize usePermissions
-  const [client, setClient] = useState(null);
-  const [agreements, setAgreements] = useState([]);
-  const [invoices, setInvoices] = useState([]);
-  const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { clientProfiles, prefetchClientProfile } = useData();
+  const { hasPermission } = usePermissions();
   const [activeTab, setActiveTab] = useState(0);
+
+  const profileData = clientProfiles[clientId];
+  const { client, agreements = [], invoices = [], members = [], loading, error } = profileData || {};
 
   // Define tabs and their required permissions
   const allTabs = useMemo(() => [
@@ -26,124 +23,43 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
   const visibleTabs = useMemo(() => allTabs.filter(tab => hasPermission(tab.permission)), [allTabs, hasPermission]);
 
   useEffect(() => {
-    const fetchClientData = async () => {
-      if (!clientId) {
-        setClient(null);
-        setLoading(false);
-        return;
+    if (open && clientId) {
+      // If data is not present, or is stale (e.g., older than 5 minutes), fetch it.
+      // The prefetch function itself checks if it's already loading.
+      if (!profileData || (!profileData.loading && !profileData.fetchedAt) || (profileData.fetchedAt && Date.now() - profileData.fetchedAt > 5 * 60 * 1000)) {
+        prefetchClientProfile(clientId);
       }
-      
-      setLoading(true);
-      try {
-        // 1. Fetch the lead document (assuming this is always allowed if the modal is open)
-        const clientDocRef = doc(db, 'leads', clientId);
-        const clientDocSnap = await getDoc(clientDocRef);
-
-        if (clientDocSnap.exists()) {
-          setClient({ id: clientDocSnap.id, ...clientDocSnap.data() });
-        } else {
-          console.warn("Client not found with ID:", clientId);
-          setClient(null);
-          setLoading(false);
-          return;
-        }
-
-        // 2. Conditionally fetch agreements
-        if (hasPermission('agreements:view')) {
-          const agreementsQuery = query(collection(db, 'agreements'), where('leadId', '==', clientId));
-          const agreementsSnapshot = await getDocs(agreementsQuery);
-          const clientAgreementsData = agreementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setAgreements(clientAgreementsData);
-
-          // 3. Conditionally fetch invoices (dependent on agreements)
-          if (hasPermission('invoices:view') && clientAgreementsData.length > 0) {
-            const agreementIds = clientAgreementsData.map(a => a.id);
-            const invoicesQuery = query(collection(db, 'invoices'), where('agreementId', 'in', agreementIds));
-            const invoicesSnapshot = await getDocs(invoicesQuery);
-            const clientInvoicesData = invoicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setInvoices(clientInvoicesData);
-          } else {
-            setInvoices([]);
-          }
-        } else {
-          setAgreements([]);
-          setInvoices([]);
-        }
-        
-        // 4. Conditionally fetch members
-        if (hasPermission('members:view')) {
-          const primaryMembersQuery = query(collection(db, 'members'), where('leadId', '==', clientId));
-          const primaryMembersSnapshot = await getDocs(primaryMembersQuery);
-          const primaryMembers = primaryMembersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-          const subMemberIds = primaryMembers.flatMap(member => member.subMembers || []);
-          let subMembers = [];
-
-          if (subMemberIds.length > 0) {
-              const chunks = [];
-              for (let i = 0; i < subMemberIds.length; i += 30) {
-                  chunks.push(subMemberIds.slice(i, i + 30));
-              }
-              
-              const subMemberPromises = chunks.map(chunk => {
-                  const subMembersQuery = query(collection(db, 'members'), where(documentId(), 'in', chunk));
-                  return getDocs(subMembersQuery);
-              });
-
-              const subMemberSnapshots = await Promise.all(subMemberPromises);
-              subMembers = subMemberSnapshots.flatMap(snapshot => snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-          }
-
-          const allRelatedMembers = [...primaryMembers, ...subMembers];
-          const uniqueMembers = Array.from(new Map(allRelatedMembers.map(m => [m.id, m])).values());
-          
-          uniqueMembers.sort((a, b) => {
-              if (a.primary && !b.primary) return -1;
-              if (!a.primary && b.primary) return 1;
-              return (a.name || '').localeCompare(b.name || '');
-          });
-
-          setMembers(uniqueMembers);
-        } else {
-          setMembers([]);
-        }
-
-      } catch (error) {
-        console.error("Error fetching client data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (open) {
-      fetchClientData();
     }
-  }, [open, clientId, db, hasPermission]);
+  }, [open, clientId, prefetchClientProfile, profileData]);
 
-  // Reset state when modal is closed
+  // Reset tab when modal is closed or client changes
   useEffect(() => {
     if (!open) {
-      setClient(null);
-      setAgreements([]);
-      setInvoices([]);
-      setMembers([]);
-      setLoading(true);
       setActiveTab(0);
     }
   }, [open]);
+
+  // Adjust activeTab if it becomes invalid when permissions or tabs change
+  useEffect(() => {
+    if (activeTab >= visibleTabs.length) {
+      setActiveTab(0);
+    }
+  }, [visibleTabs, activeTab]);
 
   const getInitials = (name) => {
     if (!name) return '';
     return name.split(' ').map(word => word[0]).join('').toUpperCase().substring(0, 2);
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
+  const formatDate = (dateField) => {
+    if (!dateField) return '-';
+    // Handle Firestore Timestamp or ISO string
+    const date = typeof dateField.toDate === 'function' ? dateField.toDate() : new Date(dateField);
     return date.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   const formatCurrency = (amount) => {
+    if (amount === null || amount === undefined) return '-';
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount);
   };
   
@@ -158,7 +74,7 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
   };
 
   const renderContent = () => {
-    if (loading) {
+    if (loading && !client) { // Show main loader only if no client data is available yet
       return (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '500px' }}>
           <CircularProgress />
@@ -166,7 +82,7 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
       );
     }
 
-    if (!client) {
+    if (error === 'Not Found') {
       return (
         <Box sx={{ textAlign: 'center', p: 4 }}>
           <Typography variant="h6">Client Not Found</Typography>
@@ -178,6 +94,14 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
           </Button>
         </Box>
       );
+    }
+
+    if (!client) { // Handles cases where there's no error but client is not yet loaded
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '500px' }}>
+              <CircularProgress />
+            </Box>
+        );
     }
 
     const displayName = client.memberLegalName || client.name;
@@ -205,6 +129,7 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
                   {secondaryText && <Typography variant="body2" color="text.secondary">{secondaryText}</Typography>}
                 </div>
               </div>
+              {loading && <CircularProgress size={20} sx={{ ml: 2 }} />}
             </div>
             <div className={styles.detailsGrid}>
               <div className={styles.detailItem}><div className={styles.detailLabel}><Business className={styles.detailIcon} />Package</div><div className={styles.detailValue}>{client.purposeOfVisit || '-'}</div></div>
@@ -239,7 +164,7 @@ export default function ClientProfileModal({ open, onClose, clientId }) {
                             <div className={styles.agreementDetailRow}><span className={styles.agreementLabel}>Start Date:</span><span className={styles.agreementValue}>{formatDate(agreement.startDate)}</span></div>
                             <div className={styles.agreementDetailRow}><span className={styles.agreementLabel}>End Date:</span><span className={styles.agreementValue}>{formatDate(agreement.endDate)}</span></div>
                             {agreement.totalMonthlyPayment && <div className={styles.agreementDetailRow}><span className={styles.agreementLabel}>Monthly Payment:</span><span className={styles.agreementValue}>{formatCurrency(agreement.totalMonthlyPayment)}</span></div>}
-                            {agreement.memberLegalName && <div className={styles.agreementDetailRow}><span className={styles.agreementLabel}>Legal Name:</span><span className={styles.agreementValue}>{agreement.memberLegalName}</span></div>}
+                            {agreement.memberLegalName && <div className={styles.agreementDetailRow}><span className={styles.agreementLabel}>Legal Name:</span><span className={styles.agreementValue}>{formatCurrency(agreement.memberLegalName)}</span></div>}
                           </div>
                         </CardContent>
                       </Card>
