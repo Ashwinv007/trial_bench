@@ -137,8 +137,8 @@ export default function PastMembersPage() {
   };
 
   const handleExport = async () => {
-    if (!hasPermission('past_members:export')) {
-        toast.error("You don't have permission to export past members.");
+    if (!hasPermission('members:export')) {
+        toast.error("You don't have permission to export members.");
         return;
     }
     setIsExporting(true);

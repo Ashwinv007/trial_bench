@@ -211,7 +211,7 @@ export const DataProvider = ({ children }) => {
     if (user) {
         fetchData('leads', setLeads, 'leads:view', 'leads', [orderBy('createdAt', 'desc')]);
         fetchData('members', setMembers, 'members:view', 'members', [orderBy('name')]);
-        fetchData('past_members', setPastMembers, 'past_members:view', 'pastMembers', [orderBy('removedAt', 'desc')]);
+        fetchData('past_members', setPastMembers, 'members:view', 'pastMembers', [orderBy('removedAt', 'desc')]);
         fetchData('invoices', setInvoices, 'invoices:view', 'invoices', [orderBy('createdAt', 'desc')]);
         fetchData('expenses', setExpenses, 'expenses:view', 'expenses');
         fetchData('expense_categories', setExpenseCategories, 'expenses:view', 'expenses');
