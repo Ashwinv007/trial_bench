@@ -287,6 +287,7 @@ export default function EditLead() {
             await updateDoc(agreementRef, {
               convertedEmail: formData.convertedEmail, // Use the updated email from formData
               ccEmail: formData.ccEmail || '',          // Use the updated CC email from formData
+              company: formData.companyName,
               lastEditedAt: serverTimestamp(),
             });
             // Log activity for agreement update
@@ -354,6 +355,7 @@ export default function EditLead() {
       await addDoc(agreementsCollection, {
         leadId: id,
         name: formData.name, // Use lead's name
+        company: formData.companyName,
         memberLegalName: "",
         memberAddress: "", 
         memberCIN: "Not Applicable", 

@@ -201,6 +201,7 @@ export default function AddLead() {
       await addDoc(agreementsCollection, {
         leadId: newlyCreatedLeadId,
         name: formData.name, // Use lead's name
+        company: formData.companyName,
         memberLegalName: "",
         memberAddress: "", 
         memberCIN: "Not Applicable", 

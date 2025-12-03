@@ -31,7 +31,8 @@ const parseFirestoreDate = (firestoreDate) => {
     return new Date(String(firestoreDate).replace(/-/g, '/')); // Is a string 'YYYY-MM-DD'
 };
 
-const updateCalculationsAndDescription = (currentFormData, allClients) => {
+const updateCalculationsAndDescription = (currentFormData, allClients, options = {}) => {
+  const { regenerateDescription = false } = options;
   const updated = { ...currentFormData };
 
   let subtotal = 0;
@@ -58,7 +59,7 @@ const updateCalculationsAndDescription = (currentFormData, allClients) => {
   updated.taxAmount = totalTax.toFixed(2);
   updated.totalAmountPayable = totalPayable.toFixed(2);
 
-  if (updated.items.length > 0) {
+  if (regenerateDescription && updated.items.length > 0) {
     const selectedClient = allClients.find(c => c.id === updated.leadId);
     const packageName = selectedClient ? selectedClient.purposeOfVisit : '';
     const invoiceMonth = updated.month;
@@ -237,7 +238,7 @@ export default function Invoices() {
       taxAmount: '',
       totalAmountPayable: ''
     };
-    setFormData(updateCalculationsAndDescription(initialData, clients)); // Use clients from context
+    setFormData(updateCalculationsAndDescription(initialData, clients, { regenerateDescription: true })); // Use clients from context
     setIsModalOpen(true);
   };
 
@@ -351,13 +352,13 @@ export default function Invoices() {
         updated.fromDate = null;
         updated.toDate = null;
       }
-      return updateCalculationsAndDescription(updated, clients); // Use clients from context
+      return updateCalculationsAndDescription(updated, clients, { regenerateDescription: true }); // Use clients from context
     });
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => updateCalculationsAndDescription({ ...prev, [name]: value }, clients)); // Use clients from context
+    setFormData((prev) => updateCalculationsAndDescription({ ...prev, [name]: value }, clients, { regenerateDescription: false }));
   };
 
   const handleItemInputChange = (index, e) => {
@@ -390,7 +391,7 @@ export default function Invoices() {
         updated.month = monthNames[dateObj.getMonth()];
         updated.year = dateObj.getFullYear().toString();
       }
-      return updateCalculationsAndDescription(updated, clients); // Use clients from context
+      return updateCalculationsAndDescription(updated, clients, { regenerateDescription: true }); // Use clients from context
     });
   };
 
@@ -636,7 +637,7 @@ export default function Invoices() {
         }
       }
       
-      setFormData(updateCalculationsAndDescription(initialData, clients)); // Use clients from context
+      setFormData(updateCalculationsAndDescription(initialData, clients, { regenerateDescription: true })); // Use clients from context
       setIsModalOpen(true);
     }
   }, [clients, hasPermission, invoices, agreements]);
@@ -869,7 +870,7 @@ export default function Invoices() {
               <h3 className={styles.sectionTitle}>Pricing Details</h3>
               {formData.items.map((item, index) => (
                 <div key={index} className={styles.itemRow}>
-                    <TextField label="Description" name="description" value={item.description} onChange={(e) => handleItemInputChange(index, e)} variant="outlined" size="small" required InputProps={{ readOnly: index === 0 && !!formData.agreementId }} style={{ flex: 3 }} />
+                    <TextField label="Description" name="description" value={item.description} onChange={(e) => handleItemInputChange(index, e)} variant="outlined" size="small" required style={{ flex: 3 }} />
                     <TextField label="SAC" name="sacCode" value={item.sacCode} onChange={(e) => handleItemInputChange(index, e)} variant="outlined" size="small" required style={{ flex: 1 }} />
                     <TextField label="Price" name="price" type="number" value={item.price} onChange={(e) => handleItemInputChange(index, e)} variant="outlined" size="small" required inputProps={{ step: "0.01", min: "0" }} style={{ flex: 1 }} />
                     <TextField label="Qty" name="quantity" type="number" value={item.quantity} onChange={(e) => handleItemInputChange(index, e)} variant="outlined" size="small" required inputProps={{ step: "1", min: "1" }} style={{ flex: 1 }} />

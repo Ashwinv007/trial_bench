@@ -5,6 +5,7 @@ import { AddCircleOutline, Edit, Delete, Close, LockReset } from '@mui/icons-mat
 import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import MDEditor from "@uiw/react-md-editor";
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { logActivity } from '../utils/logActivity';
@@ -690,16 +691,12 @@ export default function Settings() {
                 onChange={(e) => handleTemplateChange(index, 'subject', e.target.value)}
                 sx={{ mb: 2 }}
             />
-            <TextField
-                label="Body"
-                fullWidth
-                multiline
-                rows={4}
-                variant="outlined"
-                value={template.body}
-                onChange={(e) => handleTemplateChange(index, 'body', e.target.value)}
-                sx={{ mb: 2 }}
-            />
+            <div data-color-mode="light">
+                <MDEditor
+                    value={template.body}
+                    onChange={(value) => handleTemplateChange(index, 'body', value)}
+                />
+            </div>
             <Button onClick={() => handleSaveTemplate(index)} variant="contained" className={styles.saveButton} disabled={isSavingTemplate}>{isSavingTemplate ? <CircularProgress size={24} /> : "Save Template"}</Button>
             </div>
         ))}
