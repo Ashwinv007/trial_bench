@@ -207,7 +207,7 @@ export default function Invoices() {
       const client = clients.find(c => c.id === invoice.leadId);
       return {
         ...invoice,
-        name: client ? client.name : 'Unknown Client',
+        name: invoice.legalName || (client ? client.name : 'Unknown Client'),
         phone: client ? client.convertedWhatsapp : 'N/A',
         email: client ? client.convertedEmail : 'N/A',
         ccEmail: client ? client.ccEmail : 'N/A',
