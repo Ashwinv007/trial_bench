@@ -18,6 +18,7 @@ import {
   MenuItem,
   Select,
   CircularProgress,
+  IconButton, // Added IconButton
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -25,6 +26,8 @@ import UploadFile from '@mui/icons-material/UploadFile';
 import { toast } from 'sonner';
 import { useLocation } from 'react-router-dom';
 import { useData } from '../store/DataContext'; // Import useData
+import { Visibility } from '@mui/icons-material'; // Added Visibility icon
+import ClientProfileModal from './ClientProfileModal'; // Added ClientProfileModal
 
 // Helper function to format birthday for display
 const formatBirthdayDisplay = (day, month) => {
@@ -68,6 +71,8 @@ export default function PastMembersPage() {
   // const [isLoading, setIsLoading] = useState(true); // Removed local state
   // const [totalPastMembersCount, setTotalPastMembersCount] = useState(0); // Handled by pastMembers.length from context
   // const [allPastMembersFetched, setAllPastMembersFetched] = useState(false); // No longer needed as all members are fetched once
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false); // Added for ClientProfileModal
+  const [selectedClientId, setSelectedClientId] = useState(null); // Added for ClientProfileModal
   const location = useLocation();
 
   useEffect(() => {
@@ -161,6 +166,16 @@ export default function PastMembersPage() {
     }
   };
 
+  const handleViewProfileClick = (event, clientId) => {
+    event.stopPropagation();
+    if (!clientId) {
+      toast.error("Client profile not available for this member.");
+      return;
+    }
+    setSelectedClientId(clientId);
+    setIsProfileModalOpen(true);
+  };
+
   const renderAllMembersView = () => (
     filteredMembers.map((member) => (
       <TableRow key={member.id} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
@@ -192,133 +207,154 @@ export default function PastMembersPage() {
   );
 
   return (
-    <Box sx={{ flex: 1, bgcolor: '#fafafa', minHeight: '100vh', overflow: 'auto' }}>
-      <Box sx={{ p: '32px 40px', bgcolor: '#ffffff', borderBottom: '1px solid #e0e0e0' }}>
-        <Typography sx={{ fontSize: '28px', fontWeight: 600, color: '#1a4d5c', mb: 0.5 }}>
-          Past Members
-        </Typography>
-        <Typography sx={{ fontSize: '14px', color: '#2b7a8e' }}>
-          View members who are no longer part of the coworking space.
-        </Typography>
-      </Box>
-
-      <Box sx={{ p: '32px 40px' }}>
-        <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
-          <TextField
-            placeholder="Search past members..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            size="small"
-            sx={{ flex: 1, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { fontSize: '14px', '& fieldset': { borderColor: '#e0e0e0' }, '&:hover fieldset': { borderColor: '#2b7a8e' }, '&.Mui-focused fieldset': { borderColor: '#2b7a8e' } } }}
-            InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#9e9e9e', fontSize: '20px' }} /></InputAdornment>) }}
-          />
-          <Button
-            variant="outlined"
-            startIcon={<FilterListIcon />}
-            onClick={() => {
-              setSearchQuery('');
-              setPackageFilter('All Packages');
-              setBirthdayMonthFilter('All Months');
-            }}
-            sx={{ textTransform: 'none', fontSize: '14px', color: '#424242', borderColor: '#e0e0e0', bgcolor: '#ffffff', px: 2, '&:hover': { borderColor: '#2b7a8e', bgcolor: '#ffffff' } }}
-          >
-            Clear
-          </Button>
-          <Select
-            value={packageFilter}
-            onChange={(e) => setPackageFilter(e.target.value)}
-            size="small"
-            sx={{ minWidth: '150px', bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } }}
-          >
-            <MenuItem value="All Packages">All Packages</MenuItem>
-            <MenuItem value="Dedicated Desk">Dedicated Desk</MenuItem>
-            <MenuItem value="Flexible Desk">Flexible Desk</MenuItem>
-            <MenuItem value="Cabin">Cabin</MenuItem>
-            <MenuItem value="Virtual Office">Virtual Office</MenuItem>
-            <MenuItem value="Meeting Room">Meeting Room</MenuItem>
-          </Select>
-          <Select
-            value={birthdayMonthFilter}
-            onChange={(e) => setBirthdayMonthFilter(e.target.value)}
-            size="small"
-            sx={{ minWidth: '150px', bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } }}
-          >
-            <MenuItem value="All Months">All Months</MenuItem>
-            <MenuItem value="1">January</MenuItem>
-            <MenuItem value="2">February</MenuItem>
-            <MenuItem value="3">March</MenuItem>
-            <MenuItem value="4">April</MenuItem>
-            <MenuItem value="5">May</MenuItem>
-            <MenuItem value="6">June</MenuItem>
-            <MenuItem value="7">July</MenuItem>
-            <MenuItem value="8">August</MenuItem>
-            <MenuItem value="9">September</MenuItem>
-            <MenuItem value="10">October</MenuItem>
-            <MenuItem value="11">November</MenuItem>
-            <MenuItem value="12">December</MenuItem>
-          </Select>
-          <Button
-            variant="contained"
-            startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <UploadFile />}
-            sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
-            onClick={handleExport}
-            disabled={isExporting}
-          >
-            {isExporting ? 'Exporting...' : 'Export'}
-          </Button>
+    <>
+      <Box sx={{ flex: 1, bgcolor: '#fafafa', minHeight: '100vh', overflow: 'auto' }}>
+        <Box sx={{ p: '32px 40px', bgcolor: '#ffffff', borderBottom: '1px solid #e0e0e0' }}>
+          <Typography sx={{ fontSize: '28px', fontWeight: 600, color: '#1a4d5c', mb: 0.5 }}>
+            Past Members
+          </Typography>
+          <Typography sx={{ fontSize: '14px', color: '#2b7a8e' }}>
+            View members who are no longer part of the coworking space.
+          </Typography>
         </Box>
 
-        <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid #e0e0e0', borderRadius: '8px' }}>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ bgcolor: '#fafafa' }}>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0', py: 2 }}>Name</TableCell>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Package</TableCell>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Company</TableCell>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Birthday</TableCell>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>WhatsApp</TableCell>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Email</TableCell>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Date Removed</TableCell>
-                {/* {hasPermission('manage_settings') && <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Actions</TableCell>} */}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading.pastMembers || refreshing.pastMembers ? ( // Use loading and refreshing state from context
-                <TableRow>
-                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
-                    <CircularProgress />
-                  </TableCell>
-                </TableRow>
-              ) : filteredMembers.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4, fontSize: '14px', color: '#757575' }}>
-                    No past members found
-                  </TableCell>
-                </TableRow>
-              )}
-              {filteredMembers.map((member) => (
-                <TableRow key={member.id} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
-                  <TableCell component="th" scope="row">
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {member.name}
-                    </Box>
-                  </TableCell>
-                  <TableCell>{member.package}</TableCell>
-                  <TableCell>{member.clientType === 'individual' && !member.company ? 'N/A' : member.company}</TableCell>
-                  <TableCell>{formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth)}</TableCell>
-                  <TableCell>{member.whatsapp}</TableCell>
-                  <TableCell>{member.email}</TableCell>
-                  <TableCell>{member.removedAt?.toDate().toLocaleDateString()}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Box sx={{ p: '32px 40px' }}>
+          <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
+            <TextField
+              placeholder="Search past members..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              size="small"
+              sx={{ flex: 1, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { fontSize: '14px', '& fieldset': { borderColor: '#e0e0e0' }, '&:hover fieldset': { borderColor: '#2b7a8e' }, '&.Mui-focused fieldset': { borderColor: '#2b7a8e' } } }}
+              InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#9e9e9e', fontSize: '20px' }} /></InputAdornment>) }}
+            />
+            <Button
+              variant="outlined"
+              startIcon={<FilterListIcon />}
+              onClick={() => {
+                setSearchQuery('');
+                setPackageFilter('All Packages');
+                setBirthdayMonthFilter('All Months');
+              }}
+              sx={{ textTransform: 'none', fontSize: '14px', color: '#424242', borderColor: '#e0e0e0', bgcolor: '#ffffff', px: 2, '&:hover': { borderColor: '#2b7a8e', bgcolor: '#ffffff' } }}
+            >
+              Clear
+            </Button>
+            <Select
+              value={packageFilter}
+              onChange={(e) => setPackageFilter(e.target.value)}
+              size="small"
+              sx={{ minWidth: '150px', bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } }}
+            >
+              <MenuItem value="All Packages">All Packages</MenuItem>
+              <MenuItem value="Dedicated Desk">Dedicated Desk</MenuItem>
+              <MenuItem value="Flexible Desk">Flexible Desk</MenuItem>
+              <MenuItem value="Cabin">Cabin</MenuItem>
+              <MenuItem value="Virtual Office">Virtual Office</MenuItem>
+              <MenuItem value="Meeting Room">Meeting Room</MenuItem>
+            </Select>
+            <Select
+              value={birthdayMonthFilter}
+              onChange={(e) => setBirthdayMonthFilter(e.target.value)}
+              size="small"
+              sx={{ minWidth: '150px', bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } }}
+            >
+              <MenuItem value="All Months">All Months</MenuItem>
+              <MenuItem value="1">January</MenuItem>
+              <MenuItem value="2">February</MenuItem>
+              <MenuItem value="3">March</MenuItem>
+              <MenuItem value="4">April</MenuItem>
+              <MenuItem value="5">May</MenuItem>
+              <MenuItem value="6">June</MenuItem>
+              <MenuItem value="7">July</MenuItem>
+              <MenuItem value="8">August</MenuItem>
+              <MenuItem value="9">September</MenuItem>
+              <MenuItem value="10">October</MenuItem>
+              <MenuItem value="11">November</MenuItem>
+              <MenuItem value="12">December</MenuItem>
+            </Select>
+            <Button
+              variant="contained"
+              startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <UploadFile />}
+              sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
+              onClick={handleExport}
+              disabled={isExporting}
+            >
+              {isExporting ? 'Exporting...' : 'Export'}
+            </Button>
+          </Box>
 
-        <Typography sx={{ mt: 2, fontSize: '13px', color: '#757575' }}>
-          {`Showing ${filteredMembers.length} of ${pastMembers.length} past members`}
-        </Typography>
+          <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid #e0e0e0', borderRadius: '8px' }}>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ bgcolor: '#fafafa' }}>
+                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0', py: 2 }}>Name</TableCell>
+                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Package</TableCell>
+                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Company</TableCell>
+                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Birthday</TableCell>
+                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>WhatsApp</TableCell>
+                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Email</TableCell>
+                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Date Removed</TableCell>
+                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Actions</TableCell> {/* Added Actions column */}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loading.pastMembers || refreshing.pastMembers ? (
+                  <TableRow>
+                    <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4 }}>
+                      <CircularProgress />
+                    </TableCell>
+                  </TableRow>
+                ) : filteredMembers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4, fontSize: '14px', color: '#757575' }}>
+                      No past members found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredMembers.map((member) => (
+                    <TableRow key={member.id} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
+                      <TableCell component="th" scope="row">
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {member.name}
+                        </Box>
+                      </TableCell>
+                      <TableCell>{member.package}</TableCell>
+                      <TableCell>{member.clientType === 'individual' && !member.company ? 'N/A' : member.company}</TableCell>
+                      <TableCell>{formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth)}</TableCell>
+                      <TableCell>{member.whatsapp}</TableCell>
+                      <TableCell>{member.email}</TableCell>
+                      <TableCell>{member.removedAt?.toDate().toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <IconButton
+                            onClick={(e) => handleViewProfileClick(e, member.leadId)}
+                            size="small"
+                            title="View Client Profile"
+                            disabled={!member.leadId}
+                        >
+                            <Visibility />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          <Typography sx={{ mt: 2, fontSize: '13px', color: '#757575' }}>
+            {`Showing ${filteredMembers.length} of ${pastMembers.length} past members`}
+          </Typography>
+        </Box>
       </Box>
-    </Box>
+      <ClientProfileModal
+        open={isProfileModalOpen}
+        onClose={() => {
+          setIsProfileModalOpen(false);
+          setSelectedClientId(null);
+        }}
+        clientId={selectedClientId}
+      />
+    </>
   );
 }
