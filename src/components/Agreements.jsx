@@ -415,12 +415,17 @@ export default function Agreements() {
   };
 
   const getAgreementPdfBase64 = async (agreementData) => {
-    const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
+    const { PDFDocument, rgb } = await import('pdf-lib');
+    const fontkit = await import('@pdf-lib/fontkit'); // Import fontkit
     const url = '/tb_agreement.pdf';
     const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
   
     const pdfDoc = await PDFDocument.load(existingPdfBytes);
-    const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    pdfDoc.registerFontkit(fontkit.default); // Register fontkit
+    // Fetch a font that supports a wide range of characters
+    const fontUrl = 'https://cdn.jsdelivr.net/npm/notosans-fontface@latest/fonts/NotoSans-Regular.ttf';
+    const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
+    const notoSansFont = await pdfDoc.embedFont(fontBytes);
   
     const pages = pdfDoc.getPages();
     const firstPage = pages[0];
@@ -429,7 +434,7 @@ export default function Agreements() {
     firstPage.drawText(agreementData.preparedByNew || '', {
       x: 60,
       y: 52,
-      font: helveticaFont,
+      font: notoSansFont,
       size: 15,
       color: rgb(0.466, 0.466, 0.466),
     });
@@ -438,49 +443,49 @@ export default function Agreements() {
       pages[i].drawText(agreementData.agreementNumber || '', {
         x: 480,
         y: 729,
-        font: helveticaFont,
+        font: notoSansFont,
         size: 8.5,
         color: rgb(0.466, 0.466, 0.466),
       });
       pages[i].drawText(`(${agreementData.memberLegalName || ''})`, {
         x: 89,
         y: 105,
-        font: helveticaFont,
+        font: notoSansFont,
         size: 11,
         color: rgb(0, 0, 0),
       });
     }
   
     if (secondPage) {
-      secondPage.drawText(agreementData.serviceAgreementType || '', { x: 185, y: 394, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(`${agreementData.totalMonthlyPayment || ''} /-`, { x: 275, y: 380, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(agreementData.endDate) || '', { x: 350, y: 408, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(agreementData.startDate) || '', { x: 175, y: 408, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.agreementNumber || '', { x: 160, y: 437, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(agreementData.agreementDate) || '', { x: 145, y: 451, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.serviceAgreementType || '', { x: 185, y: 394, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(`${agreementData.totalMonthlyPayment || ''} /-`, { x: 275, y: 380, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(agreementData.endDate) || '', { x: 350, y: 408, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(agreementData.startDate) || '', { x: 175, y: 408, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.agreementNumber || '', { x: 160, y: 437, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(agreementData.agreementDate) || '', { x: 145, y: 451, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
   
-      secondPage.drawText(agreementData.memberLegalName || '', { x: 170, y: 608, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.memberCIN || '', { x: 130, y: 594, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.memberGST || '', { x: 174, y: 579, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.memberPAN || '', { x: 133, y: 565, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.memberKYC || '', { x: 133, y: 551, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.memberLegalName || '', { x: 170, y: 608, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.memberCIN || '', { x: 130, y: 594, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.memberGST || '', { x: 174, y: 579, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.memberPAN || '', { x: 133, y: 565, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.memberKYC || '', { x: 133, y: 551, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
   
       const address = (agreementData.memberAddress || '').replace(/\n/g, ' ');
-      const addressLines = splitTextIntoLines(address, helveticaFont, 9.5, 300);
+      const addressLines = splitTextIntoLines(address, notoSansFont, 9.5, 300);
       let y = 536.5;
       for (const line of addressLines) {
-        secondPage.drawText(line, { x: 150, y, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(line, { x: 150, y, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
         y -= 12;
       }
   
-      secondPage.drawText(agreementData.clientAuthorizorName || '', { x: 150, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.clientAuthorizorTitle || '', { x: 150, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.clientAuthorizorName || '', { x: 150, y: 280, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.clientAuthorizorTitle || '', { x: 150, y: 266, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
   
-      secondPage.drawText(agreementData.authorizorName || '', { x: 370, y: 280, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.designation || '', { x: 370, y: 266, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.authorizorName || '', { x: 370, y: 280, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(agreementData.designation || '', { x: 370, y: 266, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
       const currentDate = new Date();
-      secondPage.drawText(formatDate(currentDate), { x: 415, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(currentDate), { x: 150, y: 252, font: helveticaFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(currentDate), { x: 415, y: 252, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+      secondPage.drawText(formatDate(currentDate), { x: 150, y: 252, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
     }
   
     const pdfBytes = await pdfDoc.save();
