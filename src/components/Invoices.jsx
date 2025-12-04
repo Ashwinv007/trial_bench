@@ -859,7 +859,7 @@ export default function Invoices() {
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>Client Details</h3>
               <div className={styles.formGrid} style={{ gridTemplateColumns: '1fr' }}>
-                <Autocomplete options={agreements} getOptionLabel={(option) => `${option.memberLegalName || option.name} (${option.company})`} onChange={handleAgreementSelect} value={agreements.find(a => a.id === formData.agreementId) || null} disabled={!!editingInvoice || isRegeneratingInvoice} renderInput={(params) => <TextField {...params} label="Select Agreement" variant="outlined" size="small" required />} />
+                <Autocomplete options={agreements.filter(agreement => agreement.status === 'active')} getOptionLabel={(option) => `${option.memberLegalName || option.name}`} onChange={handleAgreementSelect} value={agreements.find(a => a.id === formData.agreementId) || null} disabled={!!editingInvoice || isRegeneratingInvoice} renderInput={(params) => <TextField {...params} label="Select Agreement" variant="outlined" size="small" required />} />
                  <TextField label="Legal Name (for invoice)" name="legalName" value={formData.legalName} onChange={handleInputChange} fullWidth variant="outlined" size="small" required style={{ marginTop: '16px' }} />
                 <TextField label="Address" name="address" value={formData.address} onChange={handleInputChange} fullWidth variant="outlined" size="small" required multiline rows={2} style={{ marginTop: '16px' }} />
               </div>
