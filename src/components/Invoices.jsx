@@ -231,7 +231,7 @@ export default function Invoices() {
   const handleOpenModal = () => {
     setEditingInvoice(null);
     setInvoiceGenerated(null);
-    const newInvoiceNumber = generateInvoiceNumber(invoices); // Use invoices from context
+    const newInvoiceNumber = 'Generated on Submission';
     const initialData = {
       leadId: null,
       agreementId: null,
@@ -466,6 +466,7 @@ export default function Invoices() {
         );
       } else {
         // collection(db, "invoices") is still needed here
+        invoicePayload.invoiceNumber = generateInvoiceNumber(invoices);
         const docRef = await addDoc(collection(db, "invoices"), { ...invoicePayload, createdAt: serverTimestamp(), lastEditedAt: serverTimestamp() });
         const newInvoice = { id: docRef.id, ...invoicePayload, name: clientName, email: clientEmail, ccEmail: clientCcEmail };
         // setInvoices(prev => [...prev, newInvoice]); // No need to update local state directly
@@ -624,7 +625,7 @@ export default function Invoices() {
         agreementId: agreement ? agreement.id : null,
         legalName: agreement?.memberLegalName || client.name || '',
         address: client.lastInvoiceDetails?.address || agreement?.memberAddress || client.memberAddress || '',
-        invoiceNumber: generateInvoiceNumber(invoices), // Use invoices from context
+        invoiceNumber: 'Generated on Submission', // Use invoices from context
         date: new Date(),
         month: '',
         year: new Date().getFullYear().toString(),
