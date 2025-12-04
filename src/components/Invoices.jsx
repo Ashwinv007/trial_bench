@@ -152,7 +152,7 @@ const getInvoicePdfBytes = async (invoiceData) => {
     yPos -= 40;
   });
 
-  firstPage.drawText(formatCurrency(priceAfterDiscount), { x: 490, y: 200, size: 10, font, color: rgb(0, 0, 0) });
+  firstPage.drawText(formatCurrency(subtotal), { x: 490, y: 200, size: 10, font, color: rgb(0, 0, 0) });
   firstPage.drawText(formatCurrency(discountAmount), { x: 490, y: 184, size: 10, font, color: rgb(0, 0, 0) });
   firstPage.drawText(taxAmount, { x: 490, y: 169, size: 10, font, color: rgb(0, 0, 0) });
   firstPage.drawText(formatCurrency(cgstAmount), { x: 490, y: 154, size: 10, font, color: rgb(0, 0, 0) });
