@@ -102,11 +102,18 @@ const generateInvoiceNumber = (allInvoices) => {
 };
 
 const getInvoicePdfBytes = async (invoiceData) => {
-  const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
+  const { PDFDocument, rgb } = await import('pdf-lib');
+  const fontkit = await import('@pdf-lib/fontkit');
   const url = '/tb_invoice.pdf';
   const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
   const pdfDoc = await PDFDocument.load(existingPdfBytes);
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  pdfDoc.registerFontkit(fontkit.default);
+  
+  // Fetch a font that supports a wide range of characters
+  const fontUrl = 'https://cdn.jsdelivr.net/npm/notosans-fontface@latest/fonts/NotoSans-Regular.ttf';
+  const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
+  const font = await pdfDoc.embedFont(fontBytes);
+
   const firstPage = pdfDoc.getPages()[0];
 
   const { legalName, address, invoiceNumber, date, items, discountPercentage, cgstPercentage, sgstPercentage, totalPrice, taxAmount, totalAmountPayable } = invoiceData;
