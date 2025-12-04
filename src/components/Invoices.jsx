@@ -42,11 +42,10 @@ const updateCalculationsAndDescription = (currentFormData, allClients, options =
     subtotal += price * quantity;
   });
 
-  const discount = parseFloat(updated.discountPercentage) || 0;
+  const discountAmount = parseFloat(updated.discountAmount) || 0;
   const cgst = parseFloat(updated.cgstPercentage) || 0;
   const sgst = parseFloat(updated.sgstPercentage) || 0;
 
-  const discountAmount = (subtotal * discount) / 100;
   const priceAfterDiscount = subtotal - discountAmount;
   
   const cgstAmount = (priceAfterDiscount * cgst) / 100;
@@ -116,14 +115,21 @@ const getInvoicePdfBytes = async (invoiceData) => {
 
   const firstPage = pdfDoc.getPages()[0];
 
-  const { legalName, address, invoiceNumber, date, items, discountPercentage, cgstPercentage, sgstPercentage, totalPrice, taxAmount, totalAmountPayable } = invoiceData;
+  const { legalName, address, invoiceNumber, date, items, discountPercentage, discountAmount: discountAmountRaw, cgstPercentage, sgstPercentage, totalPrice, taxAmount, totalAmountPayable } = invoiceData;
 
   let subtotal = 0;
   items.forEach(item => {
     subtotal += (parseFloat(item.price) || 0) * (parseInt(item.quantity, 10) || 0);
   });
 
-  const discountAmount = (subtotal * (parseFloat(discountPercentage) || 0)) / 100;
+  let discountAmount;
+  if (discountAmountRaw !== undefined) {
+    discountAmount = parseFloat(discountAmountRaw) || 0;
+  } else if (discountPercentage !== undefined) {
+    discountAmount = (subtotal * (parseFloat(discountPercentage) || 0)) / 100;
+  } else {
+    discountAmount = 0;
+  }
   const priceAfterDiscount = parseFloat(totalPrice) || 0;
   const cgstAmount = (priceAfterDiscount * (parseFloat(cgstPercentage) || 0)) / 100;
   const sgstAmount = (priceAfterDiscount * (parseFloat(sgstPercentage) || 0)) / 100;
@@ -195,7 +201,7 @@ export default function Invoices() {
     toDate: null,
     items: [{ description: '', sacCode: '997212', price: '', quantity: 1 }],
     totalPrice: '',
-    discountPercentage: 0,
+    discountAmount: 0,
     cgstPercentage: 9,
     sgstPercentage: 9,
     taxAmount: '',
@@ -239,7 +245,7 @@ export default function Invoices() {
       toDate: null,
       items: [{ description: '', sacCode: '997212', price: '', quantity: 1 }],
       totalPrice: '',
-      discountPercentage: 0,
+      discountAmount: 0,
       cgstPercentage: 9,
       sgstPercentage: 9,
       taxAmount: '',
@@ -254,6 +260,17 @@ export default function Invoices() {
     if (e.target.closest(`.${styles.statusBadge}`)) return;
 
     setEditingInvoice(invoice);
+
+    const items = invoice.items || [{ description: '', sacCode: '997212', price: '', quantity: 1 }];
+    const subtotal = items.reduce((acc, item) => acc + (parseFloat(item.price) || 0) * (parseInt(item.quantity, 10) || 0), 0);
+    
+    let discountAmountValue = 0;
+    if (invoice.discountAmount !== undefined) {
+        discountAmountValue = invoice.discountAmount;
+    } else if (invoice.discountPercentage !== undefined) {
+        discountAmountValue = (subtotal * invoice.discountPercentage) / 100;
+    }
+
     setFormData({
       leadId: invoice.leadId,
       agreementId: invoice.agreementId,
@@ -265,9 +282,9 @@ export default function Invoices() {
       year: invoice.year || '',
       fromDate: parseFirestoreDate(invoice.fromDate),
       toDate: parseFirestoreDate(invoice.toDate),
-      items: invoice.items || [{ description: '', sacCode: '997212', price: '', quantity: 1 }],
+      items: items,
       totalPrice: invoice.totalPrice,
-      discountPercentage: invoice.discountPercentage,
+      discountAmount: discountAmountValue,
       cgstPercentage: invoice.cgstPercentage !== undefined ? invoice.cgstPercentage : 9,
       sgstPercentage: invoice.sgstPercentage !== undefined ? invoice.sgstPercentage : 9,
       taxAmount: invoice.taxAmount || '',
@@ -295,10 +312,19 @@ export default function Invoices() {
 
         if (client && client.lastInvoiceDetails) {
           const newItems = [...prev.items];
-          newItems[0].price = client.lastInvoiceDetails.price || '';
+          const price = client.lastInvoiceDetails.price || '';
+          newItems[0].price = price;
           newItems[0].sacCode = client.lastInvoiceDetails.sacCode || '997212';
           updated.items = newItems;
-          updated.discountPercentage = client.lastInvoiceDetails.discountPercentage || 0;
+
+          let discountAmountValue = 0;
+          if (client.lastInvoiceDetails.discountAmount !== undefined) {
+              discountAmountValue = client.lastInvoiceDetails.discountAmount;
+          } else if (client.lastInvoiceDetails.discountPercentage !== undefined) {
+              const subtotal = parseFloat(price) || 0;
+              discountAmountValue = (subtotal * (parseFloat(client.lastInvoiceDetails.discountPercentage) || 0)) / 100;
+          }
+          updated.discountAmount = discountAmountValue;
           updated.cgstPercentage = client.lastInvoiceDetails.cgstPercentage !== undefined ? client.lastInvoiceDetails.cgstPercentage : 9;
           updated.sgstPercentage = client.lastInvoiceDetails.sgstPercentage !== undefined ? client.lastInvoiceDetails.sgstPercentage : 9;
           
@@ -334,7 +360,7 @@ export default function Invoices() {
           newItems[0].price = '';
           newItems[0].sacCode = '997212';
           updated.items = newItems;
-          updated.discountPercentage = 0;
+          updated.discountAmount = 0;
           updated.cgstPercentage = 9;
           updated.sgstPercentage = 9;
           updated.month = '';
@@ -349,7 +375,7 @@ export default function Invoices() {
         updated.address = '';
         updated.items = [{ description: '', sacCode: '997212', price: '', quantity: 1 }];
         updated.totalPrice = '';
-        updated.discountPercentage = 0;
+        updated.discountAmount = 0;
         updated.cgstPercentage = 9;
         updated.sgstPercentage = 9;
         updated.taxAmount = '';
@@ -410,7 +436,7 @@ export default function Invoices() {
     }
 
     setIsSubmitting(true);
-    const { name, phone, email, date, fromDate, toDate, ...restOfFormData } = formData;
+    const { name, phone, email, date, fromDate, toDate, discountPercentage, ...restOfFormData } = formData;
     
     const invoicePayload = { ...restOfFormData };
     if (date) invoicePayload.date = Timestamp.fromDate(date);
@@ -457,7 +483,7 @@ export default function Invoices() {
         const lastInvoiceDetails = {
             sacCode: formData.items[0].sacCode,
             price: formData.items[0].price,
-            discountPercentage: formData.discountPercentage,
+            discountAmount: formData.discountAmount,
             cgstPercentage: formData.cgstPercentage,
             sgstPercentage: formData.sgstPercentage,
             month: formData.month,
@@ -606,7 +632,7 @@ export default function Invoices() {
         toDate: null,
         items: [{ description: '', sacCode: '997212', price: '', quantity: 1 }],
         totalPrice: '',
-        discountPercentage: 0,
+        discountAmount: 0,
         cgstPercentage: 9,
         sgstPercentage: 9,
         taxAmount: '',
@@ -614,12 +640,17 @@ export default function Invoices() {
       };
 
       if (client.lastInvoiceDetails) {
-        initialData.items[0].price = client.lastInvoiceDetails.price || '';
+        const price = client.lastInvoiceDetails.price || '';
+        initialData.items[0].price = price;
         initialData.items[0].sacCode = client.lastInvoiceDetails.sacCode || '997212';
-        initialData.discountPercentage = client.lastInvoiceDetails.discountPercentage || 0;
+        if (client.lastInvoiceDetails.discountAmount !== undefined) {
+          initialData.discountAmount = client.lastInvoiceDetails.discountAmount;
+        } else if (client.lastInvoiceDetails.discountPercentage !== undefined) {
+          const subtotal = parseFloat(price) || 0;
+          initialData.discountAmount = (subtotal * parseFloat(client.lastInvoiceDetails.discountPercentage)) / 100;
+        }
         initialData.cgstPercentage = client.lastInvoiceDetails.cgstPercentage !== undefined ? client.lastInvoiceDetails.cgstPercentage : 9;
         initialData.sgstPercentage = client.lastInvoiceDetails.sgstPercentage !== undefined ? client.lastInvoiceDetails.sgstPercentage : 9;
-        
         const lastToDate = client.lastInvoiceDetails.toDate;
         if (lastToDate) {
           const lastToDateObj = parseFirestoreDate(lastToDate);
@@ -887,7 +918,7 @@ export default function Invoices() {
               ))}
               {formData.items.length < 4 && <Button startIcon={<AddCircleOutline />} onClick={handleAddItem} size="small" style={{ marginTop: '10px' }}>Add Item</Button>}
               <div className={styles.formGrid} style={{marginTop: '16px'}}>
-                <TextField label="Discount (%)" name="discountPercentage" type="number" value={formData.discountPercentage} onChange={handleInputChange} fullWidth variant="outlined" size="small" inputProps={{ step: "0.01", min: "0", max: "100" }} />
+                <TextField label="Discount Amount" name="discountAmount" type="number" value={formData.discountAmount} onChange={handleInputChange} fullWidth variant="outlined" size="small" inputProps={{ step: "0.01", min: "0" }} />
                 <TextField label="Price After Discount" name="totalPrice" type="number" value={formData.totalPrice} fullWidth variant="outlined" size="small" InputProps={{ readOnly: true }} inputProps={{ step: "0.01" }} />
                 <TextField label="CGST (%)" name="cgstPercentage" type="number" value={formData.cgstPercentage} onChange={handleInputChange} fullWidth variant="outlined" size="small" inputProps={{ step: "0.01", min: "0" }} />
                 <TextField label="SGST (%)" name="sgstPercentage" type="number" value={formData.sgstPercentage} onChange={handleInputChange} fullWidth variant="outlined" size="small" inputProps={{ step: "0.01", min: "0" }} />
