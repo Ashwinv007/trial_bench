@@ -479,30 +479,30 @@ export default function Invoices() {
           `Invoice "${newInvoice.invoiceNumber}" for "${newInvoice.name}" was generated.`,
           { invoiceId: newInvoice.id, invoiceNumber: newInvoice.invoiceNumber, clientName: newInvoice.name }
         );
-
-        const leadRef = doc(db, "leads", formData.leadId);
-        const lastInvoiceDetails = {
-            items: formData.items,
-            discountAmount: formData.discountAmount,
-            cgstPercentage: formData.cgstPercentage,
-            sgstPercentage: formData.sgstPercentage,
-            month: formData.month,
-            fromDate: fromDate,
-            toDate: toDate,
-            address: formData.address, // Added address to lastInvoiceDetails
-            legalName: formData.legalName,
-        };
-        await updateDoc(leadRef, { lastInvoiceDetails: lastInvoiceDetails });
-
-        // setClients(prevClients => 
-        //     prevClients.map(c => 
-        //         c.id === formData.leadId 
-        //             ? { ...c, lastInvoiceDetails: lastInvoiceDetails } 
-        //             : c
-        //     )
-        // ); // No need to update local state directly
-        refreshData('leads'); // Refresh leads data (from which clients are derived) in context
       }
+
+      const leadRef = doc(db, "leads", formData.leadId);
+      const lastInvoiceDetails = {
+          items: formData.items,
+          discountAmount: formData.discountAmount,
+          cgstPercentage: formData.cgstPercentage,
+          sgstPercentage: formData.sgstPercentage,
+          month: formData.month,
+          fromDate: fromDate,
+          toDate: toDate,
+          address: formData.address,
+          legalName: formData.legalName,
+      };
+      await updateDoc(leadRef, { lastInvoiceDetails: lastInvoiceDetails });
+
+      // setClients(prevClients => 
+      //     prevClients.map(c => 
+      //         c.id === formData.leadId 
+      //             ? { ...c, lastInvoiceDetails: lastInvoiceDetails } 
+      //             : c
+      //     )
+      // ); // No need to update local state directly
+      refreshData('leads'); // Refresh leads data (from which clients are derived) in context
     } catch (error) {
       console.error("Error processing invoice: ", error);
       toast.error("Failed to process invoice.");
