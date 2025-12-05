@@ -798,7 +798,7 @@ export default function Invoices() {
                 <th>Invoice No.</th>
                 <th>Name</th>
                 <th>Phone</th>
-                <th>Email</th>
+                <th>Amount</th>
                 <th>Date of Payment</th>
                 <th>Actions</th>
               </tr>
@@ -821,7 +821,7 @@ export default function Invoices() {
                     <td>{invoice.invoiceNumber}</td>
                     <td><span className={styles.nameText}>{invoice.name}</span></td>
                     <td>{invoice.phone}</td>
-                    <td>{invoice.email}</td>
+                    <td>₹{invoice.totalAmountPayable}</td>
                     <td>{invoice.paymentStatus === 'Paid' ? formatDate(invoice.dateOfPayment) : '-'}</td>
                     <td>
                       {hasPermission('invoices:add') && (
