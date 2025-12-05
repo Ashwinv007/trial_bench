@@ -482,8 +482,7 @@ export default function Invoices() {
 
         const leadRef = doc(db, "leads", formData.leadId);
         const lastInvoiceDetails = {
-            sacCode: formData.items[0].sacCode,
-            price: formData.items[0].price,
+            items: formData.items,
             discountAmount: formData.discountAmount,
             cgstPercentage: formData.cgstPercentage,
             sgstPercentage: formData.sgstPercentage,
@@ -491,6 +490,7 @@ export default function Invoices() {
             fromDate: fromDate,
             toDate: toDate,
             address: formData.address, // Added address to lastInvoiceDetails
+            legalName: formData.legalName,
         };
         await updateDoc(leadRef, { lastInvoiceDetails: lastInvoiceDetails });
 
@@ -623,7 +623,7 @@ export default function Invoices() {
       const initialData = {
         leadId: client.id,
         agreementId: agreement ? agreement.id : null,
-        legalName: agreement?.memberLegalName || client.name || '',
+        legalName: client.lastInvoiceDetails?.legalName || client.name || '',
         address: client.lastInvoiceDetails?.address || agreement?.memberAddress || client.memberAddress || '',
         invoiceNumber: 'Generated on Submission', // Use invoices from context
         date: new Date(),
@@ -641,13 +641,18 @@ export default function Invoices() {
       };
 
       if (client.lastInvoiceDetails) {
-        const price = client.lastInvoiceDetails.price || '';
-        initialData.items[0].price = price;
-        initialData.items[0].sacCode = client.lastInvoiceDetails.sacCode || '997212';
+        if (client.lastInvoiceDetails.items && client.lastInvoiceDetails.items.length > 0) {
+            initialData.items = client.lastInvoiceDetails.items;
+        } else {
+            // Fallback for invoices saved with the old structure
+            const price = client.lastInvoiceDetails.price || '';
+            initialData.items = [{ description: '', sacCode: client.lastInvoiceDetails.sacCode || '997212', price: price, quantity: 1 }];
+        }
+        
         if (client.lastInvoiceDetails.discountAmount !== undefined) {
           initialData.discountAmount = client.lastInvoiceDetails.discountAmount;
         } else if (client.lastInvoiceDetails.discountPercentage !== undefined) {
-          const subtotal = parseFloat(price) || 0;
+          const subtotal = initialData.items.reduce((acc, item) => acc + (parseFloat(item.price) || 0) * (parseInt(item.quantity, 10) || 0), 0);
           initialData.discountAmount = (subtotal * parseFloat(client.lastInvoiceDetails.discountPercentage)) / 100;
         }
         initialData.cgstPercentage = client.lastInvoiceDetails.cgstPercentage !== undefined ? client.lastInvoiceDetails.cgstPercentage : 9;
