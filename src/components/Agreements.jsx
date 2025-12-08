@@ -375,12 +375,12 @@ export default function Agreements() {
         if (selectedAgreement.leadId) {
             const leadRef = doc(db, 'leads', selectedAgreement.leadId);
             await updateDoc(leadRef, {
-                memberLegalName: formData.memberLegalName,
-                memberAddress: formData.memberAddress,
-                memberCIN: formData.memberCIN,
-                memberGST: formData.memberGST,
-                memberPAN: formData.memberPAN,
-                memberKYC: formData.memberKYC,
+                memberLegalName: formData.memberLegalName || '',
+                memberAddress: formData.memberAddress || '',
+                memberCIN: formData.memberCIN || '',
+                memberGST: formData.memberGST || '',
+                memberPAN: formData.memberPAN || '',
+                memberKYC: formData.memberKYC || '',
                 lastEditedAt: serverTimestamp(), // Update last edited timestamp for the lead as well
             });
             refreshData('leads'); // Refresh leads data after updating
@@ -548,6 +548,87 @@ export default function Agreements() {
     return btoa(binary);
   };
 
+  const getVOPdfBase64 = async (agreementData, voPlan) => {
+    const { PDFDocument, rgb } = await import('pdf-lib');
+    const fontkit = await import('@pdf-lib/fontkit');
+
+    let url;
+    if (voPlan === 'Basic' || voPlan === 'Plus') {
+        url = '/Basic_and_plus_Package_Virtual_Agreement.pdf';
+    } else if (voPlan === 'Platinum') {
+        url = '/Platinum_Package_Virtual_Agreement.pdf';
+    } else {
+        console.error('Invalid Virtual Office plan selected for PDF generation:', voPlan);
+        toast.error('Could not generate PDF: Invalid VO plan.');
+        return;
+    }
+
+    const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
+    const pdfDoc = await PDFDocument.load(existingPdfBytes);
+    pdfDoc.registerFontkit(fontkit.default);
+
+    const fontUrl = 'https://cdn.jsdelivr.net/npm/notosans-fontface@latest/fonts/NotoSans-Regular.ttf';
+    const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
+    const notoSansFont = await pdfDoc.embedFont(fontBytes);
+
+    const boldFontUrl = 'https://cdn.jsdelivr.net/npm/notosans-fontface@latest/fonts/NotoSans-Bold.ttf';
+    const boldFontBytes = await fetch(boldFontUrl).then(res => res.arrayBuffer());
+    const notoSansBoldFont = await pdfDoc.embedFont(boldFontBytes);
+    
+    const pages = pdfDoc.getPages();
+    const firstPage = pages[0];
+    const secondPage = pages[1];
+
+    const formatDateForVO = (date) => {
+        if (!date) return '';
+        const d = dayjs(date);
+        const dayOfMonth = d.date();
+        const suffix = (dayOfMonth > 3 && dayOfMonth < 21) ? 'th' : ['th', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th'][dayOfMonth % 10];
+        return d.format(`MMMM D[${suffix}], YYYY`);
+    };
+
+    // Draw 'LEGAL NAME (Second Party) on Agreement Date)'
+    if (agreementData.memberLegalName && agreementData.agreementDate) {
+        const legalName = agreementData.memberLegalName.toUpperCase();
+        const agreementDateStr = formatDateForVO(agreementData.agreementDate);
+        const text1 = `${legalName} (Second Party) `;
+        const text2 = 'on ';
+        const text3 = `${agreementDateStr}`;
+
+        const x = 200;
+        const y = 664;
+        const size = 11;
+        const color = rgb(0, 0, 0);
+        
+        firstPage.drawText(text1, { x, y, font: notoSansBoldFont, size, color });
+        const text1Width = notoSansBoldFont.widthOfTextAtSize(text1, size);
+        
+        firstPage.drawText(text2, { x: x + text1Width, y, font: notoSansFont, size, color });
+        const text2Width = notoSansFont.widthOfTextAtSize(text2, size);
+
+        firstPage.drawText(text3, { x: x + text1Width + text2Width, y, font: notoSansBoldFont, size, color });
+    }
+
+    firstPage.drawText(formatDate(agreementData.agreementDate) || '', { x: 395, y: 514, font: notoSansFont, size: 11, color: rgb(0, 0, 0) });
+    firstPage.drawText(String(agreementData.agreementLength || ''), { x: 237, y: 484, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+    firstPage.drawText(`(${agreementData.memberLegalName || ''})`, { x: 190, y: 85, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+
+    if(secondPage) {
+        secondPage.drawText(agreementData.authorizorName || '', { x: 105, y: 206, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.designation || '', { x: 105, y: 191, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+        secondPage.drawText(formatDate(new Date()) || '', { x: 105, y: 176, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.clientAuthorizorName || '', { x: 105, y: 100, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.clientAuthorizorTitle || '', { x: 105, y: 69, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+    }
+
+    const pdfBytes = await pdfDoc.save();
+    let binary = '';
+    for (let i = 0; i < pdfBytes.length; i++) {
+        binary += String.fromCharCode(pdfBytes[i]);
+    }
+    return btoa(binary);
+};
+
   const handleEarlyExit = async () => {
     if (!hasPermission('agreements:early_exit')) {
       toast.error("You don't have permission to terminate agreements.");
@@ -602,7 +683,12 @@ export default function Agreements() {
 
     setIsSendingEmail(true);
     try {
-      const pdfBase64 = await getAgreementPdfBase64(agreementGenerated);
+      const pdfBase64 = isVirtualOfficeFlow 
+        ? await getVOPdfBase64(agreementGenerated, selectedVOPlan)
+        : await getAgreementPdfBase64(agreementGenerated);
+
+      if (!pdfBase64) return; // Stop if PDF generation failed
+
       await sendAgreementEmailCallable({
         toEmail: agreementGenerated.convertedEmail,
         ccEmail: agreementGenerated.ccEmail,
@@ -766,7 +852,12 @@ export default function Agreements() {
                 <Button
                   onClick={async () => {
                     try {
-                      const pdfBase64 = await getAgreementPdfBase64(agreementGenerated);
+                      const pdfBase64 = isVirtualOfficeFlow 
+                        ? await getVOPdfBase64(agreementGenerated, selectedVOPlan)
+                        : await getAgreementPdfBase64(agreementGenerated);
+
+                      if (!pdfBase64) return;
+                        
                       const byteCharacters = atob(pdfBase64);
                       const byteArray = Uint8Array.from(byteCharacters, char => char.charCodeAt(0));
                       const blob = new Blob([byteArray], { type: 'application/pdf' });
@@ -840,6 +931,28 @@ export default function Agreements() {
                   </div>
 
                   <div className={styles.modalActions}>
+                    {selectedAgreement && (
+                      <Button
+                        onClick={async () => {
+                          try {
+                            const pdfBase64 = await getVOPdfBase64(formData, selectedVOPlan);
+                            if (!pdfBase64) return;
+                            const byteCharacters = atob(pdfBase64);
+                            const byteArray = Uint8Array.from(byteCharacters, char => char.charCodeAt(0));
+                            const blob = new Blob([byteArray], { type: 'application/pdf' });
+                            saveAs(blob, `${formData.agreementNumber || 'agreement'}.pdf`);
+                            toast.success("Agreement downloaded successfully!");
+                          } catch (error) {
+                            console.error("Error downloading agreement:", error);
+                            toast.error("Failed to download agreement.");
+                          }
+                        }}
+                        variant="outlined"
+                        style={{ color: '#2b7a8e', borderColor: '#2b7a8e', textTransform: 'none', padding: '8px 24px', marginRight: 'auto' }}
+                      >
+                        Download Current Agreement
+                      </Button>
+                    )}
                      {selectedAgreement?.status !== 'terminated' && (
                         <Button onClick={handleCloseModal} variant="outlined" style={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', padding: '8px 24px' }} disabled={isSubmitting}>
                         Cancel
@@ -918,7 +1031,12 @@ export default function Agreements() {
                   <Button
                     onClick={async () => {
                       try {
-                        const pdfBase64 = await getAgreementPdfBase64(formData);
+                        const pdfBase64 = isVirtualOfficeFlow
+                            ? await getVOPdfBase64(formData, selectedVOPlan)
+                            : await getAgreementPdfBase64(formData);
+
+                        if (!pdfBase64) return;
+
                         const byteCharacters = atob(pdfBase64);
                         const byteArray = Uint8Array.from(byteCharacters, char => char.charCodeAt(0));
                         const blob = new Blob([byteArray], { type: 'application/pdf' });
