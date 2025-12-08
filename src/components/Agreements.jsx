@@ -72,6 +72,8 @@ export default function Agreements() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isVirtualOfficeFlow, setIsVirtualOfficeFlow] = useState(false);
+  const [selectedVOPlan, setSelectedVOPlan] = useState('');
   const [latestAuthDetails, setLatestAuthDetails] = useState({ // New state for latest auth details
     authorizorName: '',
     designation: '',
@@ -157,10 +159,10 @@ export default function Agreements() {
       const startDate = new Date(formData.startDate);
       const length = parseInt(formData.agreementLength, 10);
       if (!isNaN(startDate.getTime()) && !isNaN(length)) {
-        const endDate = new Date(startDate.setMonth(startDate.getMonth() + length));
+        const endDate = dayjs(startDate).add(length, 'month').subtract(1, 'day');
         setFormData((prev) => ({
           ...prev,
-          endDate: endDate.toISOString().split('T')[0],
+          endDate: endDate.format('YYYY-MM-DD'),
         }));
       }
     }
@@ -223,6 +225,48 @@ export default function Agreements() {
         servicePackage = agreement.purposeOfVisit || '';
     }
 
+    if (servicePackage === 'Virtual Office') {
+        setIsVirtualOfficeFlow(true);
+        const parts = serviceAgreementType.split(' - ');
+        const voPlan = (parts.length > 1 && ['Basic', 'Plus', 'Platinum'].includes(parts[1])) ? parts[1] : null;
+
+        if (voPlan) {
+            setSelectedVOPlan(voPlan);
+            setFormData({
+                memberLegalName: agreement.memberLegalName || agreement.name || '',
+                agreementDate: toDateString(agreement.agreementDate) || dayjs().format('YYYY-MM-DD'),
+                agreementNumber: agreement.agreementNumber || '',
+                startDate: toDateString(agreement.startDate),
+                agreementLength: agreement.agreementLength || '',
+                endDate: toDateString(agreement.endDate),
+                clientAuthorizorName: agreement.clientAuthorizorName || '',
+                clientAuthorizorTitle: agreement.clientAuthorizorTitle || '',
+                authorizorName: agreement.authorizorName || latestAuthDetails.authorizorName,
+                designation: agreement.designation || latestAuthDetails.designation,
+                preparedByNew: agreement.preparedByNew || latestAuthDetails.preparedByNew,
+            });
+        } else {
+            setSelectedVOPlan(''); // This will trigger plan selection UI
+            const newAgreementNumber = generateAgreementNumber('Virtual Office', agreements);
+            setFormData({
+                memberLegalName: agreement.memberLegalName || agreement.name || '',
+                agreementDate: dayjs().format('YYYY-MM-DD'),
+                agreementNumber: agreement.agreementNumber || newAgreementNumber,
+                startDate: '',
+                agreementLength: '',
+                endDate: '',
+                clientAuthorizorName: '',
+                clientAuthorizorTitle: '',
+                authorizorName: latestAuthDetails.authorizorName,
+                designation: latestAuthDetails.designation,
+                preparedByNew: latestAuthDetails.preparedByNew,
+            });
+        }
+        setIsModalOpen(true);
+        return; // End VO flow
+    }
+    setIsVirtualOfficeFlow(false); // Not VO, so set to false
+
     if (servicePackage && !standardPackages.includes(servicePackage)) {
         isOtherPkg = true;
     }
@@ -256,6 +300,8 @@ export default function Agreements() {
     setIsModalOpen(false);
     setSelectedAgreement(null);
     setAgreementGenerated(null);
+    setIsVirtualOfficeFlow(false);
+    setSelectedVOPlan('');
   };
 
   const handleInputChange = (e) => {
@@ -295,7 +341,13 @@ export default function Agreements() {
 
     setIsSubmitting(true);
     try {
-        const serviceAgreementType = `${formData.servicePackage} - ${formData.serviceQuantity} nos`;
+        let serviceAgreementType;
+        if (isVirtualOfficeFlow) {
+            serviceAgreementType = `Virtual Office - ${selectedVOPlan}`;
+        } else {
+            serviceAgreementType = `${formData.servicePackage} - ${formData.serviceQuantity} nos`;
+        }
+
         const dataToUpdate = {
             ...formData,
             serviceAgreementType: serviceAgreementType,
@@ -740,6 +792,68 @@ export default function Agreements() {
                 </Button>
               </div>
             </div>
+          ) : isVirtualOfficeFlow ? (
+            !selectedVOPlan ? (
+              <div style={{ padding: '20px', textAlign: 'center' }}>
+                <h3 style={{ color: '#1a4d5c', fontSize: '18px', fontWeight: 600 }}>Select a Virtual Office Plan</h3>
+                <p style={{ margin: '4px 0 24px 0', color: '#64748b', fontSize: '14px' }}>
+                  For member: <strong>{selectedAgreement?.name}</strong>
+                </p>
+                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 3 }}>
+                  <Button variant="outlined" onClick={() => setSelectedVOPlan('Basic')} sx={{ borderColor: '#2b7a8e', color: '#2b7a8e', '&:hover': { borderColor: '#1a4d5c', backgroundColor: '#f0f7f8' }}}>Basic</Button>
+                  <Button variant="outlined" onClick={() => setSelectedVOPlan('Plus')} sx={{ borderColor: '#2b7a8e', color: '#2b7a8e', '&:hover': { borderColor: '#1a4d5c', backgroundColor: '#f0f7f8' }}}>Plus</Button>
+                  <Button variant="outlined" onClick={() => setSelectedVOPlan('Platinum')} sx={{ borderColor: '#2b7a8e', color: '#2b7a8e', '&:hover': { borderColor: '#1a4d5c', backgroundColor: '#f0f7f8' }}}>Platinum</Button>
+                </Box>
+              </div>
+            ) : (
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <form onSubmit={handleSubmit}>
+                  <div className={styles.section}>
+                    <h3 className={styles.sectionTitle}>Member & Agreement Details (Plan: {selectedVOPlan})</h3>
+                    <div className={styles.formGrid}>
+                      <TextField label="Member Legal Name" name="memberLegalName" value={formData.memberLegalName} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                      <DatePicker label="Agreement Date" value={formData.agreementDate ? dayjs(formData.agreementDate) : null} onChange={(newValue) => handleDateChange('agreementDate', newValue)} format="DD/MM/YYYY" slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small' } }} disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                      <TextField label="Agreement Number" name="agreementNumber" value={formData.agreementNumber} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled />
+                      <DatePicker label="Start Date" value={formData.startDate ? dayjs(formData.startDate) : null} onChange={(newValue) => handleDateChange('startDate', newValue)} format="DD/MM/YYYY" slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small' } }} disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                      <TextField label="Length of Agreement" name="agreementLength" value={formData.agreementLength} onChange={handleInputChange} fullWidth variant="outlined" size="small" select disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}>
+                        <MenuItem value={6}>6 months</MenuItem>
+                        <MenuItem value={11}>11 months</MenuItem>
+                      </TextField>
+                      <DatePicker label="End Date" value={formData.endDate ? dayjs(formData.endDate) : null} onChange={(newValue) => handleDateChange('endDate', newValue)} format="DD/MM/YYYY" slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small', disabled: true } }} />
+                    </div>
+                  </div>
+
+                  <div className={styles.section}>
+                    <h3 className={styles.sectionTitle}>Client Authorization Details</h3>
+                    <div className={styles.formGrid}>
+                      <TextField label="Name" name="clientAuthorizorName" value={formData.clientAuthorizorName} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                      <TextField label="Title" name="clientAuthorizorTitle" value={formData.clientAuthorizorTitle} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                    </div>
+                  </div>
+
+                  <div className={styles.section}>
+                    <h3 className={styles.sectionTitle}>Authorization Details</h3>
+                    <div className={styles.formGrid}>
+                      <TextField label="Authorizor Name" name="authorizorName" value={formData.authorizorName} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                      <TextField label="Designation" name="designation" value={formData.designation} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                    </div>
+                  </div>
+
+                  <div className={styles.modalActions}>
+                     {selectedAgreement?.status !== 'terminated' && (
+                        <Button onClick={handleCloseModal} variant="outlined" style={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', padding: '8px 24px' }} disabled={isSubmitting}>
+                        Cancel
+                        </Button>
+                      )}
+                      {hasPermission('agreements:edit') && selectedAgreement?.status !== 'terminated' && (
+                        <Button type="submit" variant="contained" style={{ backgroundColor: '#2b7a8e', color: 'white', textTransform: 'none', padding: '8px 24px' }} disabled={isSubmitting}>
+                          {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Update Agreement'}
+                        </Button>
+                      )}
+                  </div>
+                </form>
+              </LocalizationProvider>
+            )
           ) : (
             <LocalizationProvider dateAdapter={AdapterDayjs}>
             <form onSubmit={handleSubmit}>
