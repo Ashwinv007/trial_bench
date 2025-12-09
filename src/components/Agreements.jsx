@@ -613,14 +613,18 @@ export default function Agreements() {
 
     firstPage.drawText(formatDate(agreementData.startDate) || '', { x: 395, y: 514, font: notoSansFont, size: 11, color: rgb(0, 0, 0) });
     firstPage.drawText(`${agreementData.agreementLength || ''}`, { x: 237, y: 484, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
-    firstPage.drawText(`(${agreementData.memberLegalName || ''})`, { x: 190, y: 85, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+    firstPage.drawText(`(${agreementData.memberLegalName || ''})`, { x: 190, y: 85, font: notoSansBoldFont, size: 10, color: rgb(0, 0, 0) });
+    firstPage.drawText(`Agreement Number: ${agreementData.agreementNumber || ''}`, { x: 440, y: 840, font: notoSansBoldFont, size: 9, color: rgb(0, 0, 0) });
+
 
     if(secondPage) {
         secondPage.drawText(agreementData.authorizorName || '', { x: 105, y: 206, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
         secondPage.drawText(agreementData.designation || '', { x: 105, y: 191, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
         secondPage.drawText(formatDate(new Date()) || '', { x: 105, y: 176, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
         secondPage.drawText(agreementData.clientAuthorizorName || '', { x: 105, y: 100, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
-        secondPage.drawText(agreementData.clientAuthorizorTitle || '', { x: 105, y: 69, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.clientAuthorizorTitle || '', { x: 105, y: 85, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+        secondPage.drawText(formatDate(new Date()) || '', { x: 105, y: 69, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+
     }
 
     const pdfBytes = await pdfDoc.save();
