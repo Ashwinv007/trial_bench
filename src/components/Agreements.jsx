@@ -797,7 +797,24 @@ export default function Agreements() {
                       <span className={styles.nameText}>{agreement.memberLegalName || agreement.name}</span>
                     </td>
                     <td>
-                      {agreement.purposeOfVisit}
+                      {(() => {
+                        if (agreement.purposeOfVisit === 'Virtual Office' && agreement.serviceAgreementType) {
+                          const parts = agreement.serviceAgreementType.split(' - ');
+                          if (parts.length > 1 && ['Basic', 'Plus', 'Platinum'].includes(parts[1])) {
+                            return (
+                              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                <Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>
+                                  {agreement.purposeOfVisit}
+                                </Typography>
+                                <Typography component="span" sx={{ fontSize: '12px', color: '#757575' }}>
+                                  {parts[1]}
+                                </Typography>
+                              </Box>
+                            );
+                          }
+                        }
+                        return agreement.purposeOfVisit;
+                      })()}
                     </td>
                     <td>{agreement.convertedEmail}</td>
                     <td>{agreement.phone}</td>
