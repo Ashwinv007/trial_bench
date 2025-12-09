@@ -438,116 +438,126 @@ export default function Agreements() {
     }
   };
 
-  const formatDate = (dateString) => {
-      if (!dateString) return '-';
-      const date = new Date(dateString);
-      const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-      const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
-      return adjustedDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  };
-
-  const splitTextIntoLines = (text, font, fontSize, maxWidth) => {
-    const words = text.split(' ');
-    let line = '';
-    const lines = [];
+    const formatDate = (dateField) => {
+        if (!dateField) return '-';
+        let date;
+        if (typeof dateField.toDate === 'function') { // Firestore Timestamp
+            date = dateField.toDate();
+        } else { // String or JS Date
+            date = new Date(dateField);
+        }
+        
+        if (isNaN(date.getTime())) {
+            return 'Invalid Date';
+        }
+    
+        const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+        const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+        return adjustedDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
   
-    for (const word of words) {
-      const testLine = line + word + ' ';
-      const testWidth = font.widthOfTextAtSize(testLine, fontSize);
-      if (testWidth > maxWidth) {
-        lines.push(line.trim());
-        line = word + ' ';
-      } else {
-        line = testLine;
+    const splitTextIntoLines = (text, font, fontSize, maxWidth) => {
+      const words = text.split(' ');
+      let line = '';
+      const lines = [];
+    
+      for (const word of words) {
+        const testLine = line + word + ' ';
+        const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+        if (testWidth > maxWidth) {
+          lines.push(line.trim());
+          line = word + ' ';
+        } else {
+          line = testLine;
+        }
       }
-    }
-    lines.push(line.trim());
+      lines.push(line.trim());
+    
+      return lines.slice(0, 3);
+    };
   
-    return lines.slice(0, 3);
-  };
-
-  const getAgreementPdfBase64 = async (agreementData) => {
-    const { PDFDocument, rgb } = await import('pdf-lib');
-    const fontkit = await import('@pdf-lib/fontkit'); // Import fontkit
-    const url = '/tb_agreement.pdf';
-    const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
-  
-    const pdfDoc = await PDFDocument.load(existingPdfBytes);
-    pdfDoc.registerFontkit(fontkit.default); // Register fontkit
-    // Fetch a font that supports a wide range of characters
-    const fontUrl = 'https://cdn.jsdelivr.net/npm/notosans-fontface@latest/fonts/NotoSans-Regular.ttf';
-    const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
-    const notoSansFont = await pdfDoc.embedFont(fontBytes);
-  
-    const pages = pdfDoc.getPages();
-    const firstPage = pages[0];
-    const secondPage = pages[1];
-  
-    firstPage.drawText(agreementData.preparedByNew || '', {
-      x: 60,
-      y: 52,
-      font: notoSansFont,
-      size: 15,
-      color: rgb(0.466, 0.466, 0.466),
-    });
-  
-    for (let i = 1; i < pages.length; i++) {
-      pages[i].drawText(agreementData.agreementNumber || '', {
-        x: 480,
-        y: 729,
+    const getAgreementPdfBase64 = async (agreementData) => {
+      const { PDFDocument, rgb } = await import('pdf-lib');
+      const fontkit = await import('@pdf-lib/fontkit'); // Import fontkit
+      const url = '/tb_agreement.pdf';
+      const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
+    
+      const pdfDoc = await PDFDocument.load(existingPdfBytes);
+      pdfDoc.registerFontkit(fontkit.default); // Register fontkit
+      // Fetch a font that supports a wide range of characters
+      const fontUrl = 'https://cdn.jsdelivr.net/npm/notosans-fontface@latest/fonts/NotoSans-Regular.ttf';
+      const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
+      const notoSansFont = await pdfDoc.embedFont(fontBytes);
+    
+      const pages = pdfDoc.getPages();
+      const firstPage = pages[0];
+      const secondPage = pages[1];
+    
+      firstPage.drawText(agreementData.preparedByNew || '', {
+        x: 60,
+        y: 52,
         font: notoSansFont,
-        size: 8.5,
+        size: 15,
         color: rgb(0.466, 0.466, 0.466),
       });
-      pages[i].drawText(`(${agreementData.memberLegalName || ''})`, {
-        x: 89,
-        y: 105,
-        font: notoSansFont,
-        size: 11,
-        color: rgb(0, 0, 0),
-      });
-    }
-  
-    if (secondPage) {
-      secondPage.drawText(agreementData.serviceAgreementType || '', { x: 185, y: 394, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(`${agreementData.totalMonthlyPayment || ''} /-`, { x: 275, y: 380, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(agreementData.endDate) || '', { x: 350, y: 408, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(agreementData.startDate) || '', { x: 175, y: 408, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.agreementNumber || '', { x: 160, y: 437, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(agreementData.agreementDate) || '', { x: 145, y: 451, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-  
-      secondPage.drawText(agreementData.memberLegalName || '', { x: 170, y: 608, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.memberCIN || '', { x: 130, y: 594, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.memberGST || '', { x: 174, y: 579, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.memberPAN || '', { x: 133, y: 565, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.memberKYC || '', { x: 133, y: 551, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-  
-      const address = (agreementData.memberAddress || '').replace(/\n/g, ' ');
-      const addressLines = splitTextIntoLines(address, notoSansFont, 9.5, 300);
-      let y = 536.5;
-      for (const line of addressLines) {
-        secondPage.drawText(line, { x: 150, y, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-        y -= 12;
+    
+      for (let i = 1; i < pages.length; i++) {
+        pages[i].drawText(agreementData.agreementNumber || '', {
+          x: 480,
+          y: 729,
+          font: notoSansFont,
+          size: 8.5,
+          color: rgb(0.466, 0.466, 0.466),
+        });
+        pages[i].drawText(`(${agreementData.memberLegalName || ''})`, {
+          x: 89,
+          y: 105,
+          font: notoSansFont,
+          size: 11,
+          color: rgb(0, 0, 0),
+        });
       }
+    
+      if (secondPage) {
+        secondPage.drawText(agreementData.serviceAgreementType || '', { x: 185, y: 394, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(`${agreementData.totalMonthlyPayment || ''} /-`, { x: 275, y: 380, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(formatDate(agreementData.endDate) || '', { x: 350, y: 408, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(formatDate(agreementData.startDate) || '', { x: 175, y: 408, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.agreementNumber || '', { x: 160, y: 437, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(formatDate(agreementData.agreementDate) || '', { x: 145, y: 451, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+    
+        secondPage.drawText(agreementData.memberLegalName || '', { x: 170, y: 608, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.memberCIN || '', { x: 130, y: 594, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.memberGST || '', { x: 174, y: 579, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.memberPAN || '', { x: 133, y: 565, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.memberKYC || '', { x: 133, y: 551, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+    
+        const address = (agreementData.memberAddress || '').replace(/\n/g, ' ');
+        const addressLines = splitTextIntoLines(address, notoSansFont, 9.5, 300);
+        let y = 536.5;
+        for (const line of addressLines) {
+          secondPage.drawText(line, { x: 150, y, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+          y -= 12;
+        }
+    
+        secondPage.drawText(agreementData.clientAuthorizorName || '', { x: 150, y: 280, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.clientAuthorizorTitle || '', { x: 150, y: 266, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+    
+        secondPage.drawText(agreementData.authorizorName || '', { x: 370, y: 280, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.designation || '', { x: 370, y: 266, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        const currentDate = new Date();
+        secondPage.drawText(formatDate(currentDate), { x: 415, y: 252, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(formatDate(currentDate), { x: 150, y: 252, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+      }
+    
+      const pdfBytes = await pdfDoc.save();
+      let binary = '';
+      for (let i = 0; i < pdfBytes.length; i++) {
+        binary += String.fromCharCode(pdfBytes[i]);
+      }
+      return btoa(binary);
+    };
   
-      secondPage.drawText(agreementData.clientAuthorizorName || '', { x: 150, y: 280, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.clientAuthorizorTitle || '', { x: 150, y: 266, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-  
-      secondPage.drawText(agreementData.authorizorName || '', { x: 370, y: 280, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.designation || '', { x: 370, y: 266, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      const currentDate = new Date();
-      secondPage.drawText(formatDate(currentDate), { x: 415, y: 252, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(currentDate), { x: 150, y: 252, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-    }
-  
-    const pdfBytes = await pdfDoc.save();
-    let binary = '';
-    for (let i = 0; i < pdfBytes.length; i++) {
-      binary += String.fromCharCode(pdfBytes[i]);
-    }
-    return btoa(binary);
-  };
-
   const getVOPdfBase64 = async (agreementData, voPlan) => {
     const { PDFDocument, rgb } = await import('pdf-lib');
     const fontkit = await import('@pdf-lib/fontkit');
@@ -579,18 +589,10 @@ export default function Agreements() {
     const firstPage = pages[0];
     const secondPage = pages[1];
 
-    const formatDateForVO = (date) => {
-        if (!date) return '';
-        const d = dayjs(date);
-        const dayOfMonth = d.date();
-        const suffix = (dayOfMonth > 3 && dayOfMonth < 21) ? 'th' : ['th', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th'][dayOfMonth % 10];
-        return d.format(`MMMM D[${suffix}], YYYY`);
-    };
-
     // Draw 'LEGAL NAME (Second Party) on Agreement Date)'
     if (agreementData.memberLegalName && agreementData.agreementDate) {
         const legalName = agreementData.memberLegalName.toUpperCase();
-        const agreementDateStr = formatDateForVO(agreementData.agreementDate);
+        const agreementDateStr = formatDate(agreementData.agreementDate);
         const text1 = `${legalName} (Second Party) `;
         const text2 = 'on ';
         const text3 = `${agreementDateStr}`;
@@ -609,8 +611,8 @@ export default function Agreements() {
         firstPage.drawText(text3, { x: x + text1Width + text2Width, y, font: notoSansBoldFont, size, color });
     }
 
-    firstPage.drawText(formatDate(agreementData.agreementDate) || '', { x: 395, y: 514, font: notoSansFont, size: 11, color: rgb(0, 0, 0) });
-    firstPage.drawText(String(agreementData.agreementLength || ''), { x: 237, y: 484, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+    firstPage.drawText(formatDate(agreementData.startDate) || '', { x: 395, y: 514, font: notoSansFont, size: 11, color: rgb(0, 0, 0) });
+    firstPage.drawText(`${agreementData.agreementLength || ''}`, { x: 237, y: 484, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
     firstPage.drawText(`(${agreementData.memberLegalName || ''})`, { x: 190, y: 85, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
 
     if(secondPage) {
@@ -624,11 +626,10 @@ export default function Agreements() {
     const pdfBytes = await pdfDoc.save();
     let binary = '';
     for (let i = 0; i < pdfBytes.length; i++) {
-        binary += String.fromCharCode(pdfBytes[i]);
+      binary += String.fromCharCode(pdfBytes[i]);
     }
     return btoa(binary);
-};
-
+  };
   const handleEarlyExit = async () => {
     if (!hasPermission('agreements:early_exit')) {
       toast.error("You don't have permission to terminate agreements.");
