@@ -72,6 +72,8 @@ export default function Agreements() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isVirtualOfficeFlow, setIsVirtualOfficeFlow] = useState(false);
+  const [selectedVOPlan, setSelectedVOPlan] = useState('');
   const [latestAuthDetails, setLatestAuthDetails] = useState({ // New state for latest auth details
     authorizorName: '',
     designation: '',
@@ -97,6 +99,7 @@ export default function Agreements() {
     clientAuthorizorName: '',
     clientAuthorizorTitle: '',
     agreementLength: '',
+    seatNumber: '',
   });
 
   const functions = getFunctions();
@@ -157,10 +160,10 @@ export default function Agreements() {
       const startDate = new Date(formData.startDate);
       const length = parseInt(formData.agreementLength, 10);
       if (!isNaN(startDate.getTime()) && !isNaN(length)) {
-        const endDate = new Date(startDate.setMonth(startDate.getMonth() + length));
+        const endDate = dayjs(startDate).add(length, 'month').subtract(1, 'day');
         setFormData((prev) => ({
           ...prev,
-          endDate: endDate.toISOString().split('T')[0],
+          endDate: endDate.format('YYYY-MM-DD'),
         }));
       }
     }
@@ -223,6 +226,50 @@ export default function Agreements() {
         servicePackage = agreement.purposeOfVisit || '';
     }
 
+    if (servicePackage === 'Virtual Office') {
+        setIsVirtualOfficeFlow(true);
+        const parts = serviceAgreementType.split(' - ');
+        const voPlan = (parts.length > 1 && ['Basic', 'Plus', 'Platinum'].includes(parts[1])) ? parts[1] : null;
+
+        if (voPlan) {
+            setSelectedVOPlan(voPlan);
+            setFormData({
+                memberLegalName: agreement.memberLegalName || agreement.name || '',
+                agreementDate: toDateString(agreement.agreementDate) || dayjs().format('YYYY-MM-DD'),
+                agreementNumber: agreement.agreementNumber || '',
+                startDate: toDateString(agreement.startDate),
+                agreementLength: agreement.agreementLength || '',
+                endDate: toDateString(agreement.endDate),
+                clientAuthorizorName: agreement.clientAuthorizorName || '',
+                clientAuthorizorTitle: agreement.clientAuthorizorTitle || '',
+                authorizorName: agreement.authorizorName || latestAuthDetails.authorizorName,
+                designation: agreement.designation || latestAuthDetails.designation,
+                preparedByNew: agreement.preparedByNew || latestAuthDetails.preparedByNew,
+                seatNumber: agreement.seatNumber || '',
+            });
+        } else {
+            setSelectedVOPlan(''); // This will trigger plan selection UI
+            const newAgreementNumber = generateAgreementNumber('Virtual Office', agreements);
+            setFormData({
+                memberLegalName: agreement.memberLegalName || agreement.name || '',
+                agreementDate: dayjs().format('YYYY-MM-DD'),
+                agreementNumber: agreement.agreementNumber || newAgreementNumber,
+                startDate: '',
+                agreementLength: '',
+                endDate: '',
+                clientAuthorizorName: '',
+                clientAuthorizorTitle: '',
+                authorizorName: latestAuthDetails.authorizorName,
+                designation: latestAuthDetails.designation,
+                preparedByNew: latestAuthDetails.preparedByNew,
+                seatNumber: '',
+            });
+        }
+        setIsModalOpen(true);
+        return; // End VO flow
+    }
+    setIsVirtualOfficeFlow(false); // Not VO, so set to false
+
     if (servicePackage && !standardPackages.includes(servicePackage)) {
         isOtherPkg = true;
     }
@@ -256,6 +303,8 @@ export default function Agreements() {
     setIsModalOpen(false);
     setSelectedAgreement(null);
     setAgreementGenerated(null);
+    setIsVirtualOfficeFlow(false);
+    setSelectedVOPlan('');
   };
 
   const handleInputChange = (e) => {
@@ -295,7 +344,13 @@ export default function Agreements() {
 
     setIsSubmitting(true);
     try {
-        const serviceAgreementType = `${formData.servicePackage} - ${formData.serviceQuantity} nos`;
+        let serviceAgreementType;
+        if (isVirtualOfficeFlow) {
+            serviceAgreementType = `Virtual Office - ${selectedVOPlan}`;
+        } else {
+            serviceAgreementType = `${formData.servicePackage} - ${formData.serviceQuantity} nos`;
+        }
+
         const dataToUpdate = {
             ...formData,
             serviceAgreementType: serviceAgreementType,
@@ -323,12 +378,12 @@ export default function Agreements() {
         if (selectedAgreement.leadId) {
             const leadRef = doc(db, 'leads', selectedAgreement.leadId);
             await updateDoc(leadRef, {
-                memberLegalName: formData.memberLegalName,
-                memberAddress: formData.memberAddress,
-                memberCIN: formData.memberCIN,
-                memberGST: formData.memberGST,
-                memberPAN: formData.memberPAN,
-                memberKYC: formData.memberKYC,
+                memberLegalName: formData.memberLegalName || '',
+                memberAddress: formData.memberAddress || '',
+                memberCIN: formData.memberCIN || '',
+                memberGST: formData.memberGST || '',
+                memberPAN: formData.memberPAN || '',
+                memberKYC: formData.memberKYC || '',
                 lastEditedAt: serverTimestamp(), // Update last edited timestamp for the lead as well
             });
             refreshData('leads'); // Refresh leads data after updating
@@ -386,108 +441,205 @@ export default function Agreements() {
     }
   };
 
-  const formatDate = (dateString) => {
-      if (!dateString) return '-';
-      const date = new Date(dateString);
-      const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-      const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
-      return adjustedDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  };
-
-  const splitTextIntoLines = (text, font, fontSize, maxWidth) => {
-    const words = text.split(' ');
-    let line = '';
-    const lines = [];
+    const formatDate = (dateField) => {
+        if (!dateField) return '-';
+        let date;
+        if (typeof dateField.toDate === 'function') { // Firestore Timestamp
+            date = dateField.toDate();
+        } else { // String or JS Date
+            date = new Date(dateField);
+        }
+        
+        if (isNaN(date.getTime())) {
+            return 'Invalid Date';
+        }
+    
+        const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+        const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+        return adjustedDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
   
-    for (const word of words) {
-      const testLine = line + word + ' ';
-      const testWidth = font.widthOfTextAtSize(testLine, fontSize);
-      if (testWidth > maxWidth) {
-        lines.push(line.trim());
-        line = word + ' ';
-      } else {
-        line = testLine;
+    const splitTextIntoLines = (text, font, fontSize, maxWidth) => {
+      const words = text.split(' ');
+      let line = '';
+      const lines = [];
+    
+      for (const word of words) {
+        const testLine = line + word + ' ';
+        const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+        if (testWidth > maxWidth) {
+          lines.push(line.trim());
+          line = word + ' ';
+        } else {
+          line = testLine;
+        }
       }
-    }
-    lines.push(line.trim());
+      lines.push(line.trim());
+    
+      return lines.slice(0, 3);
+    };
   
-    return lines.slice(0, 3);
-  };
-
-  const getAgreementPdfBase64 = async (agreementData) => {
+    const getAgreementPdfBase64 = async (agreementData) => {
+      const { PDFDocument, rgb } = await import('pdf-lib');
+      const fontkit = await import('@pdf-lib/fontkit'); // Import fontkit
+      const url = '/tb_agreement.pdf';
+      const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
+    
+      const pdfDoc = await PDFDocument.load(existingPdfBytes);
+      pdfDoc.registerFontkit(fontkit.default); // Register fontkit
+      // Fetch a font that supports a wide range of characters
+      const fontUrl = 'https://cdn.jsdelivr.net/npm/notosans-fontface@latest/fonts/NotoSans-Regular.ttf';
+      const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
+      const notoSansFont = await pdfDoc.embedFont(fontBytes);
+    
+      const pages = pdfDoc.getPages();
+      const firstPage = pages[0];
+      const secondPage = pages[1];
+    
+      firstPage.drawText(agreementData.preparedByNew || '', {
+        x: 60,
+        y: 52,
+        font: notoSansFont,
+        size: 15,
+        color: rgb(0.466, 0.466, 0.466),
+      });
+    
+      for (let i = 1; i < pages.length; i++) {
+        pages[i].drawText(agreementData.agreementNumber || '', {
+          x: 480,
+          y: 729,
+          font: notoSansFont,
+          size: 8.5,
+          color: rgb(0.466, 0.466, 0.466),
+        });
+        pages[i].drawText(`(${agreementData.memberLegalName || ''})`, {
+          x: 89,
+          y: 105,
+          font: notoSansFont,
+          size: 11,
+          color: rgb(0, 0, 0),
+        });
+      }
+    
+      if (secondPage) {
+        secondPage.drawText(agreementData.serviceAgreementType || '', { x: 185, y: 394, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(`${agreementData.totalMonthlyPayment || ''} /-`, { x: 275, y: 380, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(formatDate(agreementData.endDate) || '', { x: 350, y: 408, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(formatDate(agreementData.startDate) || '', { x: 175, y: 408, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.agreementNumber || '', { x: 160, y: 437, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(formatDate(agreementData.agreementDate) || '', { x: 145, y: 451, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+    
+        secondPage.drawText(agreementData.memberLegalName || '', { x: 170, y: 608, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.memberCIN || '', { x: 130, y: 594, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.memberGST || '', { x: 174, y: 579, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.memberPAN || '', { x: 133, y: 565, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.memberKYC || '', { x: 133, y: 551, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+    
+        const address = (agreementData.memberAddress || '').replace(/\n/g, ' ');
+        const addressLines = splitTextIntoLines(address, notoSansFont, 9.5, 300);
+        let y = 536.5;
+        for (const line of addressLines) {
+          secondPage.drawText(line, { x: 150, y, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+          y -= 12;
+        }
+    
+        secondPage.drawText(agreementData.clientAuthorizorName || '', { x: 150, y: 280, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.clientAuthorizorTitle || '', { x: 150, y: 266, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+    
+        secondPage.drawText(agreementData.authorizorName || '', { x: 370, y: 280, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.designation || '', { x: 370, y: 266, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        const currentDate = new Date();
+        secondPage.drawText(formatDate(currentDate), { x: 415, y: 252, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(formatDate(currentDate), { x: 150, y: 252, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+      }
+    
+      const pdfBytes = await pdfDoc.save();
+      let binary = '';
+      for (let i = 0; i < pdfBytes.length; i++) {
+        binary += String.fromCharCode(pdfBytes[i]);
+      }
+      return btoa(binary);
+    };
+  
+  const getVOPdfBase64 = async (agreementData, voPlan) => {
     const { PDFDocument, rgb } = await import('pdf-lib');
-    const fontkit = await import('@pdf-lib/fontkit'); // Import fontkit
-    const url = '/tb_agreement.pdf';
+    const fontkit = await import('@pdf-lib/fontkit');
+
+    let url;
+    if (voPlan === 'Basic' || voPlan === 'Plus') {
+        url = '/Basic_and_plus_Package_Virtual_Agreement.pdf';
+    } else if (voPlan === 'Platinum') {
+        url = '/Platinum_Package_Virtual_Agreement.pdf';
+    } else {
+        console.error('Invalid Virtual Office plan selected for PDF generation:', voPlan);
+        toast.error('Could not generate PDF: Invalid VO plan.');
+        return;
+    }
+
     const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
-  
     const pdfDoc = await PDFDocument.load(existingPdfBytes);
-    pdfDoc.registerFontkit(fontkit.default); // Register fontkit
-    // Fetch a font that supports a wide range of characters
+    pdfDoc.registerFontkit(fontkit.default);
+
     const fontUrl = 'https://cdn.jsdelivr.net/npm/notosans-fontface@latest/fonts/NotoSans-Regular.ttf';
     const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
     const notoSansFont = await pdfDoc.embedFont(fontBytes);
-  
+
+    const boldFontUrl = 'https://cdn.jsdelivr.net/npm/notosans-fontface@latest/fonts/NotoSans-Bold.ttf';
+    const boldFontBytes = await fetch(boldFontUrl).then(res => res.arrayBuffer());
+    const notoSansBoldFont = await pdfDoc.embedFont(boldFontBytes);
+    
     const pages = pdfDoc.getPages();
     const firstPage = pages[0];
     const secondPage = pages[1];
-  
-    firstPage.drawText(agreementData.preparedByNew || '', {
-      x: 60,
-      y: 52,
-      font: notoSansFont,
-      size: 15,
-      color: rgb(0.466, 0.466, 0.466),
-    });
-  
-    for (let i = 1; i < pages.length; i++) {
-      pages[i].drawText(agreementData.agreementNumber || '', {
-        x: 480,
-        y: 729,
+
+    if (agreementData.seatNumber) {
+      firstPage.drawText(String(agreementData.seatNumber), {
+        x: 425,
+        y: 304,
         font: notoSansFont,
-        size: 8.5,
-        color: rgb(0.466, 0.466, 0.466),
-      });
-      pages[i].drawText(`(${agreementData.memberLegalName || ''})`, {
-        x: 89,
-        y: 105,
-        font: notoSansFont,
-        size: 11,
+        size: 12,
         color: rgb(0, 0, 0),
       });
     }
-  
-    if (secondPage) {
-      secondPage.drawText(agreementData.serviceAgreementType || '', { x: 185, y: 394, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(`${agreementData.totalMonthlyPayment || ''} /-`, { x: 275, y: 380, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(agreementData.endDate) || '', { x: 350, y: 408, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(agreementData.startDate) || '', { x: 175, y: 408, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.agreementNumber || '', { x: 160, y: 437, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(agreementData.agreementDate) || '', { x: 145, y: 451, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-  
-      secondPage.drawText(agreementData.memberLegalName || '', { x: 170, y: 608, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.memberCIN || '', { x: 130, y: 594, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.memberGST || '', { x: 174, y: 579, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.memberPAN || '', { x: 133, y: 565, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.memberKYC || '', { x: 133, y: 551, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-  
-      const address = (agreementData.memberAddress || '').replace(/\n/g, ' ');
-      const addressLines = splitTextIntoLines(address, notoSansFont, 9.5, 300);
-      let y = 536.5;
-      for (const line of addressLines) {
-        secondPage.drawText(line, { x: 150, y, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-        y -= 12;
-      }
-  
-      secondPage.drawText(agreementData.clientAuthorizorName || '', { x: 150, y: 280, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.clientAuthorizorTitle || '', { x: 150, y: 266, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-  
-      secondPage.drawText(agreementData.authorizorName || '', { x: 370, y: 280, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(agreementData.designation || '', { x: 370, y: 266, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      const currentDate = new Date();
-      secondPage.drawText(formatDate(currentDate), { x: 415, y: 252, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
-      secondPage.drawText(formatDate(currentDate), { x: 150, y: 252, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+
+    // Draw 'LEGAL NAME (Second Party) on Agreement Date)'
+    if (agreementData.memberLegalName && agreementData.agreementDate) {
+        const legalName = agreementData.memberLegalName.toUpperCase();
+        const agreementDateStr = formatDate(agreementData.agreementDate);
+        const text1 = `${legalName} (Second Party) `;
+        const text2 = 'on ';
+        const text3 = `${agreementDateStr}`;
+
+        const x = 200;
+        const y = 664;
+        const size = 11;
+        const color = rgb(0, 0, 0);
+        
+        firstPage.drawText(text1, { x, y, font: notoSansBoldFont, size, color });
+        const text1Width = notoSansBoldFont.widthOfTextAtSize(text1, size);
+        
+        firstPage.drawText(text2, { x: x + text1Width, y, font: notoSansFont, size, color });
+        const text2Width = notoSansFont.widthOfTextAtSize(text2, size);
+
+        firstPage.drawText(text3, { x: x + text1Width + text2Width, y, font: notoSansBoldFont, size, color });
     }
-  
+
+    firstPage.drawText(formatDate(agreementData.startDate) || '', { x: 395, y: 514, font: notoSansFont, size: 11, color: rgb(0, 0, 0) });
+    firstPage.drawText(`${agreementData.agreementLength || ''}`, { x: 237, y: 484, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+    firstPage.drawText(`(${agreementData.memberLegalName || ''})`, { x: 190, y: 85, font: notoSansBoldFont, size: 10, color: rgb(0, 0, 0) });
+    firstPage.drawText(`Agreement Number: ${agreementData.agreementNumber || ''}`, { x: 440, y: 840, font: notoSansBoldFont, size: 9, color: rgb(0, 0, 0) });
+
+
+    if(secondPage) {
+        secondPage.drawText(agreementData.authorizorName || '', { x: 105, y: 206, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.designation || '', { x: 105, y: 191, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+        secondPage.drawText(formatDate(new Date()) || '', { x: 105, y: 176, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.clientAuthorizorName || '', { x: 105, y: 100, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+        secondPage.drawText(agreementData.clientAuthorizorTitle || '', { x: 105, y: 85, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+        secondPage.drawText(formatDate(new Date()) || '', { x: 105, y: 69, font: notoSansFont, size: 10, color: rgb(0, 0, 0) });
+
+    }
+
     const pdfBytes = await pdfDoc.save();
     let binary = '';
     for (let i = 0; i < pdfBytes.length; i++) {
@@ -495,7 +647,6 @@ export default function Agreements() {
     }
     return btoa(binary);
   };
-
   const handleEarlyExit = async () => {
     if (!hasPermission('agreements:early_exit')) {
       toast.error("You don't have permission to terminate agreements.");
@@ -550,7 +701,12 @@ export default function Agreements() {
 
     setIsSendingEmail(true);
     try {
-      const pdfBase64 = await getAgreementPdfBase64(agreementGenerated);
+      const pdfBase64 = isVirtualOfficeFlow 
+        ? await getVOPdfBase64(agreementGenerated, selectedVOPlan)
+        : await getAgreementPdfBase64(agreementGenerated);
+
+      if (!pdfBase64) return; // Stop if PDF generation failed
+
       await sendAgreementEmailCallable({
         toEmail: agreementGenerated.convertedEmail,
         ccEmail: agreementGenerated.ccEmail,
@@ -641,7 +797,24 @@ export default function Agreements() {
                       <span className={styles.nameText}>{agreement.memberLegalName || agreement.name}</span>
                     </td>
                     <td>
-                      {agreement.purposeOfVisit}
+                      {(() => {
+                        if (agreement.purposeOfVisit === 'Virtual Office' && agreement.serviceAgreementType) {
+                          const parts = agreement.serviceAgreementType.split(' - ');
+                          if (parts.length > 1 && ['Basic', 'Plus', 'Platinum'].includes(parts[1])) {
+                            return (
+                              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                <Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>
+                                  {agreement.purposeOfVisit}
+                                </Typography>
+                                <Typography component="span" sx={{ fontSize: '12px', color: '#757575' }}>
+                                  {parts[1]}
+                                </Typography>
+                              </Box>
+                            );
+                          }
+                        }
+                        return agreement.purposeOfVisit;
+                      })()}
                     </td>
                     <td>{agreement.convertedEmail}</td>
                     <td>{agreement.phone}</td>
@@ -714,7 +887,12 @@ export default function Agreements() {
                 <Button
                   onClick={async () => {
                     try {
-                      const pdfBase64 = await getAgreementPdfBase64(agreementGenerated);
+                      const pdfBase64 = isVirtualOfficeFlow 
+                        ? await getVOPdfBase64(agreementGenerated, selectedVOPlan)
+                        : await getAgreementPdfBase64(agreementGenerated);
+
+                      if (!pdfBase64) return;
+                        
                       const byteCharacters = atob(pdfBase64);
                       const byteArray = Uint8Array.from(byteCharacters, char => char.charCodeAt(0));
                       const blob = new Blob([byteArray], { type: 'application/pdf' });
@@ -740,6 +918,106 @@ export default function Agreements() {
                 </Button>
               </div>
             </div>
+          ) : isVirtualOfficeFlow ? (
+            !selectedVOPlan ? (
+              <div style={{ padding: '20px', textAlign: 'center' }}>
+                <h3 style={{ color: '#1a4d5c', fontSize: '18px', fontWeight: 600 }}>Select a Virtual Office Plan</h3>
+                <p style={{ margin: '4px 0 24px 0', color: '#64748b', fontSize: '14px' }}>
+                  For member: <strong>{selectedAgreement?.name}</strong>
+                </p>
+                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 3 }}>
+                  <Button variant="outlined" onClick={() => setSelectedVOPlan('Basic')} sx={{ borderColor: '#2b7a8e', color: '#2b7a8e', '&:hover': { borderColor: '#1a4d5c', backgroundColor: '#f0f7f8' }}}>Basic</Button>
+                  <Button variant="outlined" onClick={() => setSelectedVOPlan('Plus')} sx={{ borderColor: '#2b7a8e', color: '#2b7a8e', '&:hover': { borderColor: '#1a4d5c', backgroundColor: '#f0f7f8' }}}>Plus</Button>
+                  <Button variant="outlined" onClick={() => setSelectedVOPlan('Platinum')} sx={{ borderColor: '#2b7a8e', color: '#2b7a8e', '&:hover': { borderColor: '#1a4d5c', backgroundColor: '#f0f7f8' }}}>Platinum</Button>
+                </Box>
+              </div>
+            ) : (
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <form onSubmit={handleSubmit}>
+                  <div className={styles.section}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                      <h3 className={styles.sectionTitle} style={{ margin: '0' }}>Member & Agreement Details</h3>
+                      <Select
+                        value={selectedVOPlan}
+                        onChange={(e) => setSelectedVOPlan(e.target.value)}
+                        size="small"
+                        disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
+                        sx={{ minWidth: 150 }}
+                      >
+                        <MenuItem value="Basic">Plan: Basic</MenuItem>
+                        <MenuItem value="Plus">Plan: Plus</MenuItem>
+                        <MenuItem value="Platinum">Plan: Platinum</MenuItem>
+                      </Select>
+                    </div>
+                    <div className={styles.formGrid}>
+                      <TextField label="Member Legal Name" name="memberLegalName" value={formData.memberLegalName} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                      <DatePicker label="Agreement Date" value={formData.agreementDate ? dayjs(formData.agreementDate) : null} onChange={(newValue) => handleDateChange('agreementDate', newValue)} format="DD/MM/YYYY" slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small' } }} disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                      <TextField label="Agreement Number" name="agreementNumber" value={formData.agreementNumber} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled />
+                      <DatePicker label="Start Date" value={formData.startDate ? dayjs(formData.startDate) : null} onChange={(newValue) => handleDateChange('startDate', newValue)} format="DD/MM/YYYY" slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small' } }} disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                      <TextField label="Length of Agreement" name="agreementLength" value={formData.agreementLength} onChange={handleInputChange} fullWidth variant="outlined" size="small" select disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}>
+                        <MenuItem value={6}>6 months</MenuItem>
+                        <MenuItem value={11}>11 months</MenuItem>
+                      </TextField>
+                      <DatePicker label="End Date" value={formData.endDate ? dayjs(formData.endDate) : null} onChange={(newValue) => handleDateChange('endDate', newValue)} format="DD/MM/YYYY" slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small', disabled: true } }} />
+                      <TextField label="Seat Number" name="seatNumber" type="number" value={formData.seatNumber} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                    </div>
+                  </div>
+
+                  <div className={styles.section}>
+                    <h3 className={styles.sectionTitle}>Client Authorization Details</h3>
+                    <div className={styles.formGrid}>
+                      <TextField label="Name" name="clientAuthorizorName" value={formData.clientAuthorizorName} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                      <TextField label="Title" name="clientAuthorizorTitle" value={formData.clientAuthorizorTitle} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                    </div>
+                  </div>
+
+                  <div className={styles.section}>
+                    <h3 className={styles.sectionTitle}>Authorization Details</h3>
+                    <div className={styles.formGrid}>
+                      <TextField label="Authorizor Name" name="authorizorName" value={formData.authorizorName} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                      <TextField label="Designation" name="designation" value={formData.designation} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
+                    </div>
+                  </div>
+
+                  <div className={styles.modalActions}>
+                    {hasPermission('agreements:delete') && selectedAgreement?.status !== 'terminated' && ( <Button onClick={handleDeleteClick} variant="outlined" style={{ color: '#f44336', borderColor: '#f44336', textTransform: 'none', padding: '8px 24px', marginRight: '12px' }} disabled={isDeleting}>{isDeleting ? <CircularProgress size={24} /> : 'Delete'}</Button> )}
+                    {hasPermission('agreements:early_exit') && selectedAgreement?.status !== 'terminated' && ( <Button onClick={handleEarlyExit} variant="outlined" style={{ color: '#ff9800', borderColor: '#ff9800', textTransform: 'none', padding: '8px 24px', marginRight: 'auto' }} disabled={isExiting}>{isExiting ? <CircularProgress size={24} /> : 'Early Exit'}</Button> )}
+                    {selectedAgreement && (
+                      <Button
+                        onClick={async () => {
+                          try {
+                            const pdfBase64 = await getVOPdfBase64(formData, selectedVOPlan);
+                            if (!pdfBase64) return;
+                            const byteCharacters = atob(pdfBase64);
+                            const byteArray = Uint8Array.from(byteCharacters, char => char.charCodeAt(0));
+                            const blob = new Blob([byteArray], { type: 'application/pdf' });
+                            saveAs(blob, `${formData.agreementNumber || 'agreement'}.pdf`);
+                            toast.success("Agreement downloaded successfully!");
+                          } catch (error) {
+                            console.error("Error downloading agreement:", error);
+                            toast.error("Failed to download agreement.");
+                          }
+                        }}
+                        variant="outlined"
+                        style={{ color: '#2b7a8e', borderColor: '#2b7a8e', textTransform: 'none', padding: '8px 24px' }}
+                      >
+                        Download Current Agreement
+                      </Button>
+                    )}
+                     {selectedAgreement?.status !== 'terminated' && (
+                        <Button onClick={handleCloseModal} variant="outlined" style={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', padding: '8px 24px' }} disabled={isSubmitting}>
+                        Cancel
+                        </Button>
+                      )}
+                      {hasPermission('agreements:edit') && selectedAgreement?.status !== 'terminated' && (
+                        <Button type="submit" variant="contained" style={{ backgroundColor: '#2b7a8e', color: 'white', textTransform: 'none', padding: '8px 24px' }} disabled={isSubmitting}>
+                          {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Update Agreement'}
+                        </Button>
+                      )}
+                  </div>
+                </form>
+              </LocalizationProvider>
+            )
           ) : (
             <LocalizationProvider dateAdapter={AdapterDayjs}>
             <form onSubmit={handleSubmit}>
@@ -804,7 +1082,12 @@ export default function Agreements() {
                   <Button
                     onClick={async () => {
                       try {
-                        const pdfBase64 = await getAgreementPdfBase64(formData);
+                        const pdfBase64 = isVirtualOfficeFlow
+                            ? await getVOPdfBase64(formData, selectedVOPlan)
+                            : await getAgreementPdfBase64(formData);
+
+                        if (!pdfBase64) return;
+
                         const byteCharacters = atob(pdfBase64);
                         const byteArray = Uint8Array.from(byteCharacters, char => char.charCodeAt(0));
                         const blob = new Blob([byteArray], { type: 'application/pdf' });
