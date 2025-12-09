@@ -936,6 +936,8 @@ export default function Agreements() {
                   </div>
 
                   <div className={styles.modalActions}>
+                    {hasPermission('agreements:delete') && selectedAgreement?.status !== 'terminated' && ( <Button onClick={handleDeleteClick} variant="outlined" style={{ color: '#f44336', borderColor: '#f44336', textTransform: 'none', padding: '8px 24px', marginRight: '12px' }} disabled={isDeleting}>{isDeleting ? <CircularProgress size={24} /> : 'Delete'}</Button> )}
+                    {hasPermission('agreements:early_exit') && selectedAgreement?.status !== 'terminated' && ( <Button onClick={handleEarlyExit} variant="outlined" style={{ color: '#ff9800', borderColor: '#ff9800', textTransform: 'none', padding: '8px 24px', marginRight: 'auto' }} disabled={isExiting}>{isExiting ? <CircularProgress size={24} /> : 'Early Exit'}</Button> )}
                     {selectedAgreement && (
                       <Button
                         onClick={async () => {
@@ -953,7 +955,7 @@ export default function Agreements() {
                           }
                         }}
                         variant="outlined"
-                        style={{ color: '#2b7a8e', borderColor: '#2b7a8e', textTransform: 'none', padding: '8px 24px', marginRight: 'auto' }}
+                        style={{ color: '#2b7a8e', borderColor: '#2b7a8e', textTransform: 'none', padding: '8px 24px' }}
                       >
                         Download Current Agreement
                       </Button>
