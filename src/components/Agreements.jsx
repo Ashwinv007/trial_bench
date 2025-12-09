@@ -99,6 +99,7 @@ export default function Agreements() {
     clientAuthorizorName: '',
     clientAuthorizorTitle: '',
     agreementLength: '',
+    seatNumber: '',
   });
 
   const functions = getFunctions();
@@ -244,6 +245,7 @@ export default function Agreements() {
                 authorizorName: agreement.authorizorName || latestAuthDetails.authorizorName,
                 designation: agreement.designation || latestAuthDetails.designation,
                 preparedByNew: agreement.preparedByNew || latestAuthDetails.preparedByNew,
+                seatNumber: agreement.seatNumber || '',
             });
         } else {
             setSelectedVOPlan(''); // This will trigger plan selection UI
@@ -260,6 +262,7 @@ export default function Agreements() {
                 authorizorName: latestAuthDetails.authorizorName,
                 designation: latestAuthDetails.designation,
                 preparedByNew: latestAuthDetails.preparedByNew,
+                seatNumber: '',
             });
         }
         setIsModalOpen(true);
@@ -588,6 +591,16 @@ export default function Agreements() {
     const pages = pdfDoc.getPages();
     const firstPage = pages[0];
     const secondPage = pages[1];
+
+    if (agreementData.seatNumber) {
+      firstPage.drawText(String(agreementData.seatNumber), {
+        x: 425,
+        y: 304,
+        font: notoSansFont,
+        size: 12,
+        color: rgb(0, 0, 0),
+      });
+    }
 
     // Draw 'LEGAL NAME (Second Party) on Agreement Date)'
     if (agreementData.memberLegalName && agreementData.agreementDate) {
@@ -929,6 +942,7 @@ export default function Agreements() {
                         <MenuItem value={11}>11 months</MenuItem>
                       </TextField>
                       <DatePicker label="End Date" value={formData.endDate ? dayjs(formData.endDate) : null} onChange={(newValue) => handleDateChange('endDate', newValue)} format="DD/MM/YYYY" slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small', disabled: true } }} />
+                      <TextField label="Seat Number" name="seatNumber" type="number" value={formData.seatNumber} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
                     </div>
                   </div>
 
