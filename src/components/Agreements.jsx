@@ -905,7 +905,20 @@ export default function Agreements() {
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <form onSubmit={handleSubmit}>
                   <div className={styles.section}>
-                    <h3 className={styles.sectionTitle}>Member & Agreement Details (Plan: {selectedVOPlan})</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                      <h3 className={styles.sectionTitle} style={{ margin: '0' }}>Member & Agreement Details</h3>
+                      <Select
+                        value={selectedVOPlan}
+                        onChange={(e) => setSelectedVOPlan(e.target.value)}
+                        size="small"
+                        disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'}
+                        sx={{ minWidth: 150 }}
+                      >
+                        <MenuItem value="Basic">Plan: Basic</MenuItem>
+                        <MenuItem value="Plus">Plan: Plus</MenuItem>
+                        <MenuItem value="Platinum">Plan: Platinum</MenuItem>
+                      </Select>
+                    </div>
                     <div className={styles.formGrid}>
                       <TextField label="Member Legal Name" name="memberLegalName" value={formData.memberLegalName} onChange={handleInputChange} fullWidth variant="outlined" size="small" disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
                       <DatePicker label="Agreement Date" value={formData.agreementDate ? dayjs(formData.agreementDate) : null} onChange={(newValue) => handleDateChange('agreementDate', newValue)} format="DD/MM/YYYY" slotProps={{ textField: { fullWidth: true, variant: 'outlined', size: 'small' } }} disabled={!hasPermission('agreements:edit') || selectedAgreement?.status === 'terminated'} />
