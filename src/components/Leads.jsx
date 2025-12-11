@@ -242,12 +242,12 @@ export default function Leads() {
                   InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#9e9e9e', fontSize: '20px' }} /></InputAdornment>) }}
                 />
             </Box>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, justifyContent: 'flex-end', flex: '1 1 400px' }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, justifyContent: 'flex-end' }}>
                 <Select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                   size="small"
-                  sx={{ minWidth: 150, flexGrow: 1, bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } } }
+                  sx={{ minWidth: 150, bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } } }
                 >
                   <MenuItem value="All Statuses">All Statuses</MenuItem>
                   <MenuItem value="New">New</MenuItem>
@@ -259,7 +259,7 @@ export default function Leads() {
                   value={purposeFilter}
                   onChange={(e) => setPurposeFilter(e.target.value)}
                   size="small"
-                  sx={{ minWidth: 150, flexGrow: 1, bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } } }
+                  sx={{ minWidth: 150, bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } } }
                 >
                   <MenuItem value="All Purposes">All Purposes</MenuItem>
                   {purposeOptions.map(option => <MenuItem key={option} value={option}>{option}</MenuItem>)}
@@ -269,7 +269,7 @@ export default function Leads() {
                   value={dateFilter}
                   onChange={(e) => setDateFilter(e.target.value)}
                   size="small"
-                  sx={{ minWidth: 150, flexGrow: 1, bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } } }
+                  sx={{ minWidth: 150, bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } } }
                 >
                   <MenuItem value="All Time">All Time</MenuItem>
                   <MenuItem value="This Week">This Week</MenuItem>
@@ -284,7 +284,7 @@ export default function Leads() {
                       setPurposeFilter('All Purposes');
                       setDateFilter('All Time');
                     }}
-                    sx={{ textTransform: 'none', fontSize: '14px', color: '#424242', borderColor: '#e0e0e0', bgcolor: '#ffffff', px: 2, flexGrow: 1, '&:hover': { borderColor: '#2b7a8e', bgcolor: '#ffffff' } }}
+                    sx={{ textTransform: 'none', fontSize: '14px', color: '#424242', borderColor: '#e0e0e0', bgcolor: '#ffffff', px: 2, '&:hover': { borderColor: '#2b7a8e', bgcolor: '#ffffff' } }}
                 >
                   Clear
                 </Button>
@@ -292,7 +292,7 @@ export default function Leads() {
                   <Button
                       variant="contained"
                       startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <UploadFile />}
-                      sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', flexGrow: 1, '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
+                      sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
                       onClick={handleExport}
                       disabled={isExporting}
                   >
@@ -303,7 +303,7 @@ export default function Leads() {
                   <Button
                     variant="contained"
                     startIcon={<AddCircleOutline />}
-                    sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', flexGrow: 1, '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
+                    sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
                     onClick={() => navigate('/add-lead')}
                   >
                     Add Lead
