@@ -715,6 +715,13 @@ export default function Agreements() {
         pdfBase64: pdfBase64,
       });
       toast.success("Agreement email sent successfully!");
+      logActivity(
+        db,
+        user,
+        'agreement_emailed',
+        `Agreement "${agreementGenerated.agreementNumber}" for "${agreementGenerated.name}" was emailed to "${agreementGenerated.convertedEmail}".`,
+        { agreementId: agreementGenerated.id, agreementNumber: agreementGenerated.agreementNumber, memberName: agreementGenerated.name, email: agreementGenerated.convertedEmail }
+      );
     } catch (error) {
       console.error("Error sending agreement email:", error);
       toast.error(error.message || "Failed to send agreement email.");
@@ -884,31 +891,37 @@ export default function Agreements() {
                 You can now download the agreement or send it via email.
               </p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
-                <Button
-                  onClick={async () => {
-                    try {
-                      const pdfBase64 = isVirtualOfficeFlow 
-                        ? await getVOPdfBase64(agreementGenerated, selectedVOPlan)
-                        : await getAgreementPdfBase64(agreementGenerated);
-
-                      if (!pdfBase64) return;
-                        
-                      const byteCharacters = atob(pdfBase64);
-                      const byteArray = Uint8Array.from(byteCharacters, char => char.charCodeAt(0));
-                      const blob = new Blob([byteArray], { type: 'application/pdf' });
-                      saveAs(blob, `${agreementGenerated.agreementNumber || 'agreement'}.pdf`);
-                      toast.success("Agreement downloaded successfully!");
-                    } catch (error) {
-                      console.error("Error downloading agreement:", error);
-                      toast.error("Failed to download agreement.");
-                    }
-                  }}
-                  variant="contained"
-                  style={{ backgroundColor: '#2b7a8e', color: 'white', textTransform: 'none', padding: '8px 24px' }}
-                >
-                  Download Agreement
-                </Button>
-                <Button
+                                  <Button
+                                  onClick={async () => {
+                                    try {
+                                      const pdfBase64 = isVirtualOfficeFlow 
+                                        ? await getVOPdfBase64(agreementGenerated, selectedVOPlan)
+                                        : await getAgreementPdfBase64(agreementGenerated);
+                
+                                      if (!pdfBase64) return;
+                                        
+                                      const byteCharacters = atob(pdfBase64);
+                                      const byteArray = Uint8Array.from(byteCharacters, char => char.charCodeAt(0));
+                                      const blob = new Blob([byteArray], { type: 'application/pdf' });
+                                      saveAs(blob, `${agreementGenerated.agreementNumber || 'agreement'}.pdf`);
+                                      toast.success("Agreement downloaded successfully!");
+                                      logActivity(
+                                        db,
+                                        user,
+                                        'agreement_downloaded_after_update',
+                                        `Agreement "${agreementGenerated.agreementNumber}" for "${agreementGenerated.memberLegalName || agreementGenerated.name}" was downloaded.`,
+                                        { agreementId: agreementGenerated.id, agreementNumber: agreementGenerated.agreementNumber, memberName: agreementGenerated.memberLegalName || agreementGenerated.name }
+                                      );
+                                    } catch (error) {
+                                      console.error("Error downloading agreement:", error);
+                                      toast.error("Failed to download agreement.");
+                                    }
+                                  }}
+                                  variant="contained"
+                                  style={{ backgroundColor: '#2b7a8e', color: 'white', textTransform: 'none', padding: '8px 24px' }}
+                                >
+                                  Download Agreement
+                                </Button>                <Button
                   onClick={handleSendAgreementEmail}
                   variant="outlined"
                   style={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', padding: '8px 24px' }}
@@ -1093,6 +1106,13 @@ export default function Agreements() {
                         const blob = new Blob([byteArray], { type: 'application/pdf' });
                         saveAs(blob, `${formData.agreementNumber || 'agreement'}.pdf`);
                         toast.success("Agreement downloaded successfully!");
+                        logActivity(
+                          db,
+                          user,
+                          'agreement_downloaded',
+                          `Agreement "${formData.agreementNumber}" for "${formData.memberLegalName || selectedAgreement.name}" was downloaded.`,
+                          { agreementId: selectedAgreement.id, agreementNumber: formData.agreementNumber, memberName: formData.memberLegalName || selectedAgreement.name }
+                        );
                       } catch (error) {
                         console.error("Error downloading agreement:", error);
                         toast.error("Failed to download agreement.");
