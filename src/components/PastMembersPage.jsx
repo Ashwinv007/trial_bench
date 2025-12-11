@@ -307,11 +307,19 @@ export default function PastMembersPage() {
                 <TableRow sx={{ bgcolor: '#fafafa' }}>
                   <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0', py: 2 }}>Name</TableCell>
                   <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Package</TableCell>
-                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Company</TableCell>
-                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Birthday</TableCell>
-                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>WhatsApp</TableCell>
-                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Email</TableCell>
-                  <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Date Removed</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Company</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Birthday</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>WhatsApp</TableCell>
+                  <TableCell sx={theme => ({
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#424242',
+                    borderBottom: '1px solid #e0e0e0',
+                    [theme.breakpoints.down(1440)]: {
+                      display: 'none',
+                    },
+                  })}>Email</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Date Removed</TableCell>
                   <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Actions</TableCell> {/* Added Actions column */}
                 </TableRow>
               </TableHead>
@@ -335,11 +343,15 @@ export default function PastMembersPage() {
                         {member.name}
                       </TableCell>
                       <TableCell data-label="Package">{member.package}</TableCell>
-                      <TableCell data-label="Company">{member.clientType === 'individual' && !member.company ? 'N/A' : member.company}</TableCell>
-                      <TableCell data-label="Birthday">{formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth)}</TableCell>
-                      <TableCell data-label="WhatsApp">{member.whatsapp}</TableCell>
-                      <TableCell data-label="Email">{member.email}</TableCell>
-                      <TableCell data-label="Date Removed">{member.removedAt?.toDate().toLocaleDateString()}</TableCell>
+                      <TableCell data-label="Company" sx={{ display: { xs: 'none', sm: 'table-cell' } }}>{member.clientType === 'individual' && !member.company ? 'N/A' : member.company}</TableCell>
+                      <TableCell data-label="Birthday" sx={{ display: { xs: 'none', md: 'table-cell' } }}>{formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth)}</TableCell>
+                      <TableCell data-label="WhatsApp" sx={{ display: { xs: 'none', md: 'table-cell' } }}>{member.whatsapp}</TableCell>
+                      <TableCell data-label="Email" sx={theme => ({
+                        [theme.breakpoints.down(1440)]: {
+                          display: 'none',
+                        },
+                      })}>{member.email}</TableCell>
+                      <TableCell data-label="Date Removed" sx={{ display: { xs: 'none', sm: 'table-cell' } }}>{member.removedAt?.toDate().toLocaleDateString()}</TableCell>
                       <TableCell data-label="Actions">
                         <IconButton
                             onClick={(e) => handleViewProfileClick(e, member.leadId)}
