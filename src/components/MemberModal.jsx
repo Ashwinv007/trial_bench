@@ -130,7 +130,7 @@ const ReplacementView = ({ subMembers, onCancel, onConfirm, mode, oldPrimaryMemb
                 setShowNewMemberForm(!showNewMemberForm);
                 setSelectedMemberId('');
                 setNewMemberErrors({}); // Clear errors when toggling
-            }} sx={{mb: 2}}>
+            }} sx={{mb: 2, '@media (max-width: 500px)': { fontSize: '0.8125rem', padding: '4px 10px' }}}>
                 {showNewMemberForm ? 'Cancel Adding New Member' : 'Add New Member to be Primary'}
             </Button>
 
@@ -183,9 +183,9 @@ const ReplacementView = ({ subMembers, onCancel, onConfirm, mode, oldPrimaryMemb
                 </Box>
             )}
             
-            <DialogActions sx={{ p: '16px 0 0', gap: 1.5 }}>
-                <Button onClick={onCancel} variant="outlined" disabled={isReplacing}>Cancel</Button>
-                <Button onClick={handleConfirm} variant="contained" sx={{ bgcolor: '#2b7a8e' }} disabled={isReplacing}>
+            <DialogActions sx={{ p: '16px 0 0', gap: 1.5, flexDirection: { xs: 'column-reverse', sm: 'row' }, justifyContent: 'flex-end' }}>
+                <Button sx={{width: {xs: '100%', sm: 'auto'}, '@media (max-width: 500px)': { fontSize: '0.8125rem', padding: '4px 10px' }}} onClick={onCancel} variant="outlined" disabled={isReplacing}>Cancel</Button>
+                <Button sx={{width: {xs: '100%', sm: 'auto'}, bgcolor: '#2b7a8e', '@media (max-width: 500px)': { fontSize: '0.8125rem', padding: '4px 10px' } }} onClick={handleConfirm} variant="contained" disabled={isReplacing}>
                     {isReplacing ? <CircularProgress size={24} color="inherit" /> : 'Confirm Replacement'}
                 </Button>
             </DialogActions>
@@ -605,31 +605,31 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ p: '16px 24px 24px', justifyContent: 'space-between' }}>
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
+      <DialogActions sx={{ p: '16px 24px 24px', justifyContent: 'space-between', display: 'flex', flexDirection: { xs: 'column-reverse', sm: 'row' }, gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 1.5, width: {xs: '100%', sm: 'auto'}, justifyContent: {xs: 'center', sm: 'flex-start'} }}>
             {editMember && editMember.primary && hasPermission('members:replace') && (
-            <>
                 <Button
                     onClick={() => setReplacementAction('replace')}
                     variant="outlined"
+                    sx={{width: {xs: '100%', sm: 'auto'}, '@media (max-width: 500px)': { fontSize: '0.8125rem', padding: '4px 10px' }}}
                 >
                     Replace
                 </Button>
-            </>
             )}
         </Box>
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', gap: 1.5, width: {xs: '100%', sm: 'auto'}, justifyContent: {xs: 'center', sm: 'flex-end'}, flexDirection: {xs: 'column-reverse', sm: 'row'} }}>
             {editMember && editMember.primary && (
             <Button
                 onClick={() => handleViewProfile(editMember)}
                 onMouseEnter={() => editMember.leadId && prefetchClientProfile(editMember.leadId)}
                 variant="outlined"
+                sx={{width: {xs: '100%', sm: 'auto'}, '@media (max-width: 500px)': { fontSize: '0.8125rem', padding: '4px 10px' }}}
             >
                 View Client Profile
             </Button>
             )}
-            <Button onClick={onClose} variant="outlined">Cancel</Button>
-            <Button onClick={handleSubmit} variant="contained" sx={{ bgcolor: '#2b7a8e' }}>
+            <Button onClick={onClose} variant="outlined" sx={{width: {xs: '100%', sm: 'auto'}, '@media (max-width: 500px)': { fontSize: '0.8125rem', padding: '4px 10px' }}}>Cancel</Button>
+            <Button onClick={handleSubmit} variant="contained" sx={{ bgcolor: '#2b7a8e', width: {xs: '100%', sm: 'auto'}, '@media (max-width: 500px)': { fontSize: '0.8125rem', padding: '4px 10px' } }}>
             {editMember ? 'Update Member' : 'Add Member'}
             </Button>
         </Box>
