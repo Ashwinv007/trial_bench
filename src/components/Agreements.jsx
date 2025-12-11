@@ -342,6 +342,11 @@ export default function Agreements() {
     
     if (!selectedAgreement) return;
 
+    if (!isVirtualOfficeFlow && (!formData.authorizorName || !formData.designation || !formData.preparedByNew)) {
+      toast.error("Authorization details are mandatory for non-virtual agreements.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
         let serviceAgreementType;
