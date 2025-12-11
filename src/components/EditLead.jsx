@@ -266,14 +266,6 @@ export default function EditLead() {
             ccEmail: memberCcEmailToUpdate,
             lastEditedAt: serverTimestamp(),
           });
-          // Log activity for member update
-          logActivity(
-            db,
-            user,
-            'member_updated',
-            `Primary member's email details updated for lead "${formData.name}".`,
-            { memberId: primaryMemberDoc.id, leadId: id }
-          );
 
           // Find the agreement associated with this lead and update its email details
           const agreementsCollectionRef = collection(db, 'agreements');
@@ -290,14 +282,6 @@ export default function EditLead() {
               company: formData.companyName,
               lastEditedAt: serverTimestamp(),
             });
-            // Log activity for agreement update
-            logActivity(
-              db,
-              user,
-              'agreement_updated',
-              `Agreement's email details updated for lead "${formData.name}".`,
-              { agreementId: agreementDoc.id, leadId: id }
-            );
           }
         }
       }
