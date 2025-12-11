@@ -809,9 +809,9 @@ export default function Invoices() {
                 <th>Payment Status</th>
                 <th>Invoice No.</th>
                 <th>Name</th>
-                <th>Phone</th>
+                <th className={styles.hideOnTablet}>Phone</th>
                 <th>Amount</th>
-                <th>Date of Payment</th>
+                <th className={styles.hideOnTablet}>Date of Payment</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -825,17 +825,17 @@ export default function Invoices() {
               ) : filteredInvoices.length > 0 ? (
                 filteredInvoices.map((invoice) => (
                   <tr key={invoice.id} onClick={(e) => handleEditInvoice(invoice, e)} className={hasPermission('invoices:edit') ? styles.clickableRow : ''}>
-                    <td>
+                    <td data-label="Payment Status">
                       <span className={`${styles.statusBadge} ${styles[invoice.paymentStatus ? invoice.paymentStatus.toLowerCase().replace(' ', '') : 'unpaid']}`} onClick={(e) => togglePaymentStatus(invoice, e)}>
                         {invoice.paymentStatus || 'Unpaid'}
                       </span>
                     </td>
-                    <td>{invoice.invoiceNumber}</td>
-                    <td><span className={styles.nameText}>{invoice.name}</span></td>
-                    <td>{invoice.phone}</td>
-                    <td>₹{invoice.totalAmountPayable}</td>
-                    <td>{invoice.paymentStatus === 'Paid' ? formatDate(invoice.dateOfPayment) : '-'}</td>
-                    <td>
+                    <td data-label="Invoice No.">{invoice.invoiceNumber}</td>
+                    <td data-label="Name"><span className={styles.nameText}>{invoice.name}</span></td>
+                    <td data-label="Phone" className={styles.hideOnTablet}>{invoice.phone}</td>
+                    <td data-label="Amount">₹{invoice.totalAmountPayable}</td>
+                    <td data-label="Date of Payment" className={styles.hideOnTablet}>{invoice.paymentStatus === 'Paid' ? formatDate(invoice.dateOfPayment) : '-'}</td>
+                    <td data-label="Actions">
                       {hasPermission('invoices:add') && (
                         <IconButton onClick={(e) => handleGenerateInvoiceForMember(invoice.leadId, e)} size="small" color="primary" aria-label="generate invoice">
                           <AddCircleOutline />

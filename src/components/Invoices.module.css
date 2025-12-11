@@ -62,6 +62,7 @@
   display: flex;
   gap: 12px;
   margin-bottom: var(--spacing-xl);
+  flex-wrap: wrap;
 }
 
 .filterTab {
@@ -109,6 +110,14 @@
 .activeFilter .filterCount {
   background-color: rgba(255, 255, 255, 0.2);
 }
+
+.filterControls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
 
 .tableCard {
   background-color: var(--color-white);
@@ -246,4 +255,106 @@
   gap: 16px;
   align-items: center;
   margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+/* --- Responsive Styles --- */
+
+.hideOnTablet,
+.hideOnMobile {
+  display: none;
+}
+
+@media (min-width: 1025px) {
+  .hideOnTablet,
+  .hideOnMobile {
+    display: table-cell;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  .hideOnMobile {
+    display: table-cell;
+  }
+  .hideOnTablet {
+    display: none;
+  }
+  .content {
+    padding: var(--spacing-xl);
+  }
+  .filterControls {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 767px) {
+    .content {
+        padding: var(--spacing-lg);
+    }
+    .header {
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+    .addButton {
+        width: 100%;
+        justify-content: center;
+    }
+    .filterControls, .filterContainer {
+        flex-direction: column;
+    }
+    .tableCard {
+        overflow-x: initial;
+        border: none;
+        background-color: transparent;
+    }
+    .table {
+        min-width: 0;
+        border: 0;
+    }
+    .table thead {
+        display: none;
+    }
+    .table tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid var(--color-gray-200);
+        border-radius: var(--radius-md);
+        background-color: var(--color-white);
+        padding: 0.5rem;
+    }
+    .table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.8rem 1rem;
+        border-bottom: 1px solid var(--color-gray-100);
+        text-align: right;
+    }
+    .table td:last-child {
+        border-bottom: none;
+    }
+    .table td::before {
+        content: attr(data-label);
+        font-weight: 500;
+        text-align: left;
+        padding-right: 1rem;
+    }
+    .hideOnMobile, .hideOnTablet {
+        display: flex;
+    }
+    .statusBadge {
+        width: 100%;
+    }
+    .formGrid, .itemRow {
+        grid-template-columns: 1fr;
+    }
+    .itemRow {
+        gap: 8px;
+    }
+    .modalActions {
+        flex-direction: column;
+    }
+    .modalActions > button {
+        width: 100%;
+    }
 }
