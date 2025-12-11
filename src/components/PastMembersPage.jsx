@@ -19,7 +19,9 @@ import {
   Select,
   CircularProgress,
   IconButton, // Added IconButton
+  useMediaQuery,
 } from '@mui/material';
+import styles from './PastMembersPage.module.css';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import UploadFile from '@mui/icons-material/UploadFile';
@@ -74,6 +76,7 @@ export default function PastMembersPage() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false); // Added for ClientProfileModal
   const [selectedClientId, setSelectedClientId] = useState(null); // Added for ClientProfileModal
   const location = useLocation();
+  const isMobile = useMediaQuery('(max-width:825px)');
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -233,13 +236,13 @@ export default function PastMembersPage() {
         </Box>
 
         <Box sx={{ p: '32px 40px' }}>
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center', flexWrap: 'wrap' }}>
             <TextField
               placeholder="Search past members..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               size="small"
-              sx={{ flex: 1, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { fontSize: '14px', '& fieldset': { borderColor: '#e0e0e0' }, '&:hover fieldset': { borderColor: '#2b7a8e' }, '&.Mui-focused fieldset': { borderColor: '#2b7a8e' } } }}
+              sx={{ flex: 1, minWidth: '200px', bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { fontSize: '14px', '& fieldset': { borderColor: '#e0e0e0' }, '&:hover fieldset': { borderColor: '#2b7a8e' }, '&.Mui-focused fieldset': { borderColor: '#2b7a8e' } } }}
               InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#9e9e9e', fontSize: '20px' }} /></InputAdornment>) }}
             />
             <Button
@@ -299,7 +302,7 @@ export default function PastMembersPage() {
           </Box>
 
           <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid #e0e0e0', borderRadius: '8px' }}>
-            <Table>
+            <Table className={styles.table}>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#fafafa' }}>
                   <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0', py: 2 }}>Name</TableCell>
@@ -328,18 +331,16 @@ export default function PastMembersPage() {
                 ) : (
                   filteredMembers.map((member) => (
                     <TableRow key={member.id} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
-                      <TableCell component="th" scope="row">
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          {member.name}
-                        </Box>
+                      <TableCell data-label="Name" component="th" scope="row">
+                        {member.name}
                       </TableCell>
-                      <TableCell>{member.package}</TableCell>
-                      <TableCell>{member.clientType === 'individual' && !member.company ? 'N/A' : member.company}</TableCell>
-                      <TableCell>{formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth)}</TableCell>
-                      <TableCell>{member.whatsapp}</TableCell>
-                      <TableCell>{member.email}</TableCell>
-                      <TableCell>{member.removedAt?.toDate().toLocaleDateString()}</TableCell>
-                      <TableCell>
+                      <TableCell data-label="Package">{member.package}</TableCell>
+                      <TableCell data-label="Company">{member.clientType === 'individual' && !member.company ? 'N/A' : member.company}</TableCell>
+                      <TableCell data-label="Birthday">{formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth)}</TableCell>
+                      <TableCell data-label="WhatsApp">{member.whatsapp}</TableCell>
+                      <TableCell data-label="Email">{member.email}</TableCell>
+                      <TableCell data-label="Date Removed">{member.removedAt?.toDate().toLocaleDateString()}</TableCell>
+                      <TableCell data-label="Actions">
                         <IconButton
                             onClick={(e) => handleViewProfileClick(e, member.leadId)}
                             size="small"

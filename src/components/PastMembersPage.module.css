@@ -1,0 +1,45 @@
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* On screens smaller than 825px */
+@media (max-width: 825px) {
+    /* Hide the table header, we will use data-labels instead */
+    .table thead {
+        display: none;
+    }
+
+    /* Make each row look like a card */
+    .table tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        overflow: hidden; /* To contain the cells */
+    }
+
+    /* Style the table cells */
+    .table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.8rem 1rem;
+        text-align: right;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .table tr td:last-child {
+        border-bottom: none;
+    }
+
+    /* Add the data-label text before the cell content */
+    .table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        text-align: left;
+        margin-right: 1rem;
+        color: #424242;
+    }
+}
