@@ -760,20 +760,20 @@ export default function Agreements() {
           </div>
         </div>
 
-        <Box sx={{ display: 'flex', gap: 2, my: 3, alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, my: 3, alignItems: 'center' }}>
           <TextField
             placeholder="Search by name, email, or phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             size="small"
-            sx={{ flex: 1, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { fontSize: '14px', '& fieldset': { borderColor: '#e0e0e0' }, '&:hover fieldset': { borderColor: '#2b7a8e' }, '&.Mui-focused fieldset': { borderColor: '#2b7a8e' } } }}
+            sx={{ width: { xs: '100%', sm: 'auto' }, flexGrow: { sm: 1 }, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { fontSize: '14px', '& fieldset': { borderColor: '#e0e0e0' }, '&:hover fieldset': { borderColor: '#2b7a8e' }, '&.Mui-focused fieldset': { borderColor: '#2b7a8e' } } }}
             InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#9e9e9e', fontSize: '20px' }} /></InputAdornment>) }}
           />
           <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             size="small"
-            sx={{ minWidth: 200, bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } }}
+            sx={{ width: { xs: '100%', sm: 200 }, bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } }}
           >
             <MenuItem value="Active">Active Agreements</MenuItem>
             <MenuItem value="Terminated">Terminated Agreements</MenuItem>
@@ -785,10 +785,10 @@ export default function Agreements() {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Package</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Actions</th>
+                <th className={styles.hideOnMobile}>Package</th>
+                <th className={styles.hideOnMobile}>Email</th>
+                <th className={styles.hideOnTablet}>Phone</th>
+                <th className={styles.hideOnMobile}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -808,7 +808,7 @@ export default function Agreements() {
                     <td>
                       <span className={styles.nameText}>{agreement.memberLegalName || agreement.name}</span>
                     </td>
-                    <td>
+                    <td className={styles.hideOnMobile}>
                       {(() => {
                         if (agreement.purposeOfVisit === 'Virtual Office' && agreement.serviceAgreementType) {
                           const parts = agreement.serviceAgreementType.split(' - ');
@@ -828,9 +828,9 @@ export default function Agreements() {
                         return agreement.purposeOfVisit;
                       })()}
                     </td>
-                    <td>{agreement.convertedEmail}</td>
-                    <td>{agreement.phone}</td>
-                    <td>
+                    <td className={styles.hideOnMobile}>{agreement.convertedEmail}</td>
+                    <td className={styles.hideOnTablet}>{agreement.phone}</td>
+                    <td className={styles.hideOnMobile}>
                       <IconButton
                         onClick={(e) => handleViewProfileClick(e, agreement.leadId)}
                         onMouseEnter={() => prefetchClientProfile(agreement.leadId)}

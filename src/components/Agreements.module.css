@@ -122,3 +122,65 @@
   padding-top: 24px;
   border-top: 1px solid var(--color-gray-200);
 }
+
+/* --- Responsive Styles --- */
+
+.hideOnTablet,
+.hideOnMobile {
+  display: none; /* Hidden by default on small screens */
+}
+
+/* Desktop */
+@media (min-width: 1025px) {
+  .hideOnTablet,
+  .hideOnMobile {
+    display: table-cell; /* Show on desktop */
+  }
+}
+
+/* Tablet */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .hideOnMobile {
+    display: table-cell; /* Show on tablet */
+  }
+  .content {
+    padding: var(--spacing-xl);
+  }
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+  .content {
+    padding: var(--spacing-lg);
+  }
+  .header {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+  .title {
+    font-size: var(--font-size-xl);
+  }
+  .subtitle {
+    font-size: var(--font-size-sm);
+  }
+  .tableCard {
+    overflow-x: auto;
+  }
+  .table {
+    min-width: 600px; /* Ensure table has a minimum width */
+  }
+  .table thead th,
+  .table tbody td {
+    padding: 12px;
+    font-size: var(--font-size-sm);
+  }
+  .formGrid {
+    grid-template-columns: 1fr; /* Stack form fields */
+  }
+  .modalActions {
+    flex-direction: column;
+  }
+  .modalActions > button {
+    width: 100%;
+  }
+}
