@@ -5,6 +5,7 @@ import Header from '../components/Header';
 import { FirebaseContext } from '../store/Context';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { usePermissions } from '../auth/usePermissions';
+import styles from '../components/Sidebar.module.css';
 
 const getPageTitle = (pathname) => {
   const titles = {
@@ -33,7 +34,7 @@ function HomePage() {
   const { hasPermission } = usePermissions();
   const [notifications, setNotifications] = useState([]);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1300);
   const location = useLocation();
   const pageTitle = getPageTitle(location.pathname);
 
@@ -47,7 +48,7 @@ function HomePage() {
 
   useEffect(() => {
     const handleResize = () => {
-      const desktop = window.innerWidth >= 768;
+      const desktop = window.innerWidth >= 1300;
       setIsDesktop(desktop);
       if (desktop) {
         setSidebarOpen(false); // Close mobile sidebar when switching to desktop
@@ -186,7 +187,11 @@ function HomePage() {
 
   return (
     <div style={{ display: 'flex', height: '100vh' }}>
-      <Sidebar isOpen={isSidebarOpen} onClose={handleCloseSidebar} />
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onClose={handleCloseSidebar}
+        className={isDesktop ? styles.sidebarDesktop : ''}
+      />
       <div 
         style={{ 
           display: 'flex', 

@@ -16,11 +16,11 @@ export default function Header({ pageTitle = 'Dashboard', notifications, setNoti
 
   const [notificationAnchor, setNotificationAnchor] = useState(null);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1300);
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
+      setIsMobile(window.innerWidth < 1300);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);

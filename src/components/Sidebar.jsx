@@ -26,7 +26,7 @@ const navItems = [
     { label: 'Logs', icon: History, path: '/logs', permission: 'logs:view' }
 ];
 
-export default function Sidebar({ isOpen, onClose }) {
+export default function Sidebar({ isOpen, onClose, className }) {
   const { user } = useContext(AuthContext);
   const { hasPermission, hasAtLeastOnePermission } = usePermissions();
   const location = useLocation();
@@ -41,7 +41,7 @@ export default function Sidebar({ isOpen, onClose }) {
         className={`${styles.backdrop} ${isOpen ? styles.backdropVisible : ''}`}
         onClick={onClose}
       />
-      <div className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ''}`}>
+      <div className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ''} ${className || ''}`}>
         <button className={styles.closeButton} onClick={onClose} aria-label="Close menu">
           <CloseIcon />
         </button>

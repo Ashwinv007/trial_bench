@@ -7,28 +7,39 @@
   flex-direction: column;
   position: relative;
   transition: transform 0.3s ease;
+  flex-shrink: 0; /* Prevent sidebar from shrinking */
+}
+
+.sidebarDesktop {
+  display: flex;
 }
 
 /* Mobile: Fixed positioning with slide-in animation */
-@media (max-width: 767px) {
+@media (max-width: 1299px) {
   .sidebar {
     position: fixed;
     left: 0;
     top: 0;
     z-index: 1000;
     transform: translateX(-100%);
-    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 2px 0 8px rgba(0,0,0,0.1);
   }
 
   .sidebar.sidebarOpen {
     transform: translateX(0);
   }
+  
+  /* Hide desktop sidebar on mobile */
+  .sidebarDesktop {
+    display: none;
+  }
 }
 
 /* Tablet and Desktop: Normal positioning */
-@media (min-width: 768px) {
+@media (min-width: 1300px) {
   .sidebar {
     position: relative;
+    transform: translateX(0);
   }
 }
 
@@ -52,7 +63,7 @@
 }
 
 /* Hide backdrop on larger screens */
-@media (min-width: 768px) {
+@media (min-width: 1300px) {
   .backdrop {
     display: none;
   }
@@ -82,7 +93,7 @@
 }
 
 /* Hide close button on desktop */
-@media (min-width: 768px) {
+@media (min-width: 1300px) {
   .closeButton {
     display: none;
   }

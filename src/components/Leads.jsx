@@ -1,12 +1,14 @@
 import { AddCircleOutline, Person, Delete, UploadFile } from '@mui/icons-material';
 import styles from './Leads.module.css';
 import { useContext, useMemo, useState } from 'react';
+
 import { FirebaseContext, AuthContext } from '../store/Context'; // Keep FirebaseContext for db operations
 import { doc, deleteDoc } from 'firebase/firestore'; 
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../auth/usePermissions';
 import { useData } from '../store/DataContext'; // Corrected import
 import { logActivity } from '../utils/logActivity';
+
 
 import { toast } from 'sonner';
 import {
@@ -31,12 +33,12 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 
 export default function Leads() {
+
   const { db } = useContext(FirebaseContext); // Get db from FirebaseContext
   const { user } = useContext(AuthContext);
   const { leads, loading, refreshing, refreshData } = useData(); // Use leads, loading, refreshing, refreshData from DataContext
+
   const { hasPermission } = usePermissions();
-  // const [leads, setLeads] = useState([]); // Removed local leads state
-  // const [isLoading, setIsLoading] = useState(true); // Removed local isLoading state
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,8 +47,6 @@ export default function Leads() {
   const [dateFilter, setDateFilter] = useState('All Time');
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  // const [totalLeadsCount, setTotalLeadsCount] = useState(0); // Handled by leads.length from context
-  // const [allLeadsFetched, setAllLeadsFetched] = useState(false); // No longer needed as all leads are fetched once
   
   const purposeOptions = [
     "Dedicated Desk",
@@ -58,9 +58,8 @@ export default function Leads() {
   ];
 
   const filteredLeads = useMemo(() => {
-    let currentLeads = leads; // Start with all fetched leads from context
+    let currentLeads = leads; 
 
-    // Apply search query filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       currentLeads = currentLeads.filter(
@@ -71,12 +70,10 @@ export default function Leads() {
       );
     }
 
-    // Apply status filter
     if (statusFilter !== 'All Statuses') {
       currentLeads = currentLeads.filter((lead) => lead.status === statusFilter);
     }
 
-    // Apply purpose of visit filter
     if (purposeFilter !== 'All Purposes') {
       if (purposeFilter === 'Others') {
         currentLeads = currentLeads.filter(
@@ -89,7 +86,6 @@ export default function Leads() {
       }
     }
 
-    // Apply date filter
     if (dateFilter !== 'All Time') {
       currentLeads = currentLeads.filter(lead => {
         if (!lead.createdAt || typeof lead.createdAt.toDate !== 'function') {
@@ -124,16 +120,8 @@ export default function Leads() {
         return null;
       };
 
-      let dateA;
-      let dateB;
-
-      if (dateFilter === 'All Time') {
-        dateA = getDate(a.lastEditedAt || a.createdAt);
-        dateB = getDate(b.lastEditedAt || b.createdAt);
-      } else { 
-        dateA = getDate(a.createdAt);
-        dateB = getDate(b.createdAt);
-      }
+      let dateA = getDate(a.lastEditedAt || a.createdAt);
+      let dateB = getDate(b.lastEditedAt || b.createdAt);
 
       if (dateA && dateB) {
         return dateB.getTime() - dateA.getTime();
@@ -142,9 +130,7 @@ export default function Leads() {
       if (dateB) return 1; 
       return 0;
     });
-  }, [leads, searchQuery, statusFilter, purposeFilter, dateFilter]); 
-
-  // Removed useEffect for fetching leads, now handled by DataContext
+  }, [leads, searchQuery, statusFilter, purposeFilter, dateFilter, purposeOptions]); 
 
   const getStatusClass = (status) => {
     if (!status) return '';
@@ -220,8 +206,8 @@ export default function Leads() {
   if (!hasPermission('leads:view')) {
     return (
         <Box sx={{ flex: 1, bgcolor: '#fafafa', minHeight: '100vh', overflow: 'auto' }}>
-            <Box sx={{ p: '32px 40px', bgcolor: '#ffffff', borderBottom: '1px solid #e0e0e0' }}>
-                <Typography sx={{ fontSize: '28px', fontWeight: 600, color: '#1a4d5c', mb: 0.5 }}>
+            <Box sx={{ p: { xs: 2, sm: '32px 40px' }, bgcolor: '#ffffff', borderBottom: '1px solid #e0e0e0' }}>
+                <Typography sx={{ fontSize: { xs: '24px', sm: '28px' }, fontWeight: 600, color: '#1a4d5c', mb: 0.5 }}>
                     Permission Denied
                 </Typography>
                 <Typography sx={{ fontSize: '14px', color: '#2b7a8e' }}>
@@ -234,8 +220,8 @@ export default function Leads() {
 
   return (
     <Box sx={{ flex: 1, bgcolor: '#fafafa', minHeight: '100vh', overflow: 'auto' }}>
-      <Box sx={{ p: '32px 40px', bgcolor: '#ffffff', borderBottom: '1px solid #e0e0e0' }}>
-        <Typography sx={{ fontSize: '28px', fontWeight: 600, color: '#1a4d5c', mb: 0.5 }}>
+      <Box sx={{ p: { xs: 2, sm: '32px 40px' }, bgcolor: '#ffffff', borderBottom: '1px solid #e0e0e0' }}>
+        <Typography sx={{ fontSize: { xs: '24px', sm: '28px' }, fontWeight: 600, color: '#1a4d5c', mb: 0.5 }}>
           Leads
         </Typography>
         <Typography sx={{ fontSize: '14px', color: '#2b7a8e' }}>
@@ -243,106 +229,104 @@ export default function Leads() {
         </Typography>
       </Box>
 
-      <Box sx={{ p: '32px 40px' }}>
-        {/* Filter and Search Section */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
-          <TextField
-            placeholder="Search leads by name, email, or phone..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            size="small"
-            sx={{ flex: 1, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { fontSize: '14px', '& fieldset': { borderColor: '#e0e0e0' }, '&:hover fieldset': { borderColor: '#2b7a8e' }, '&.Mui-focused fieldset': { borderColor: '#2b7a8e' } } }}
-            InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#9e9e9e', fontSize: '20px' }} /></InputAdornment>) }}
-          />
-          <Button
-            variant="outlined"
-            startIcon={<FilterListIcon />}
-            onClick={() => {
-              setSearchQuery('');
-              setStatusFilter('All Statuses');
-              setPurposeFilter('All Purposes');
-              setDateFilter('All Time');
-            }}
-            sx={{ textTransform: 'none', fontSize: '14px', color: '#424242', borderColor: '#e0e0e0', bgcolor: '#ffffff', px: 2, '&:hover': { borderColor: '#2b7a8e', bgcolor: '#ffffff' } }}
-          >
-            Clear
-          </Button>
-          <Select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            size="small"
-            sx={{ minWidth: '150px', bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } } }
-          >
-            <MenuItem value="All Statuses">All Statuses</MenuItem>
-            <MenuItem value="New">New</MenuItem>
-            <MenuItem value="Follow Up">Follow Up</MenuItem>
-            <MenuItem value="Converted">Converted</MenuItem>
-            <MenuItem value="Not Interested">Not Interested</MenuItem>
-          </Select>
-          <Select
-            value={purposeFilter}
-            onChange={(e) => setPurposeFilter(e.target.value)}
-            size="small"
-            sx={{ minWidth: '150px', bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } } }
-          >
-            <MenuItem value="All Purposes">All Purposes</MenuItem>
-            <MenuItem value="Dedicated Desk">Dedicated Desk</MenuItem>
-            <MenuItem value="Flexible Desk">Flexible Desk</MenuItem>
-            <MenuItem value="Private Cabin">Private Cabin</MenuItem>
-            <MenuItem value="Virtual Office">Virtual Office</MenuItem>
-            <MenuItem value="Meeting Room">Meeting Room</MenuItem>
-            <MenuItem value="Day Pass">Day Pass</MenuItem>
-            <MenuItem value="Others">Others</MenuItem>
-          </Select>
-          <Select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            size="small"
-            sx={{ minWidth: '150px', bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } } }
-          >
-            <MenuItem value="All Time">All Time</MenuItem>
-            <MenuItem value="This Week">This Week</MenuItem>
-            <MenuItem value="This Month">This Month</MenuItem>
-          </Select>
-          {hasPermission('leads:add') && (
-            <Button
-              variant="contained"
-              startIcon={<AddCircleOutline />}
-              sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
-              onClick={() => navigate('/add-lead')}
-            >
-              Add Lead
-            </Button>
-          )}
-          {hasPermission('leads:export') && (
-            <Button
-                variant="contained"
-                startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <UploadFile />}
-                sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
-                onClick={handleExport}
-                disabled={isExporting}
-            >
-                {isExporting ? 'Exporting...' : 'Export'}
-            </Button>
-          )}
+      <Box sx={{ p: { xs: 2, sm: '32px 40px' } }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 3 }}>
+            <Box sx={{ flex: '1 1 300px' }}>
+                <TextField
+                  fullWidth
+                  placeholder="Search leads..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  size="small"
+                  sx={{ bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { fontSize: '14px', '& fieldset': { borderColor: '#e0e0e0' }, '&:hover fieldset': { borderColor: '#2b7a8e' }, '&.Mui-focused fieldset': { borderColor: '#2b7a8e' } } }}
+                  InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#9e9e9e', fontSize: '20px' }} /></InputAdornment>) }}
+                />
+            </Box>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, justifyContent: 'flex-end', flex: '1 1 400px' }}>
+                <Select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  size="small"
+                  sx={{ minWidth: 150, flexGrow: 1, bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } } }
+                >
+                  <MenuItem value="All Statuses">All Statuses</MenuItem>
+                  <MenuItem value="New">New</MenuItem>
+                  <MenuItem value="Follow Up">Follow Up</MenuItem>
+                  <MenuItem value="Converted">Converted</MenuItem>
+                  <MenuItem value="Not Interested">Not Interested</MenuItem>
+                </Select>
+                <Select
+                  value={purposeFilter}
+                  onChange={(e) => setPurposeFilter(e.target.value)}
+                  size="small"
+                  sx={{ minWidth: 150, flexGrow: 1, bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } } }
+                >
+                  <MenuItem value="All Purposes">All Purposes</MenuItem>
+                  {purposeOptions.map(option => <MenuItem key={option} value={option}>{option}</MenuItem>)}
+                  <MenuItem value="Others">Others</MenuItem>
+                </Select>
+                <Select
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                  size="small"
+                  sx={{ minWidth: 150, flexGrow: 1, bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } } }
+                >
+                  <MenuItem value="All Time">All Time</MenuItem>
+                  <MenuItem value="This Week">This Week</MenuItem>
+                  <MenuItem value="This Month">This Month</MenuItem>
+                </Select>
+                <Button
+                    variant="outlined"
+                    startIcon={<FilterListIcon />}
+                    onClick={() => {
+                      setSearchQuery('');
+                      setStatusFilter('All Statuses');
+                      setPurposeFilter('All Purposes');
+                      setDateFilter('All Time');
+                    }}
+                    sx={{ textTransform: 'none', fontSize: '14px', color: '#424242', borderColor: '#e0e0e0', bgcolor: '#ffffff', px: 2, flexGrow: 1, '&:hover': { borderColor: '#2b7a8e', bgcolor: '#ffffff' } }}
+                >
+                  Clear
+                </Button>
+                {hasPermission('leads:export') && (
+                  <Button
+                      variant="contained"
+                      startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <UploadFile />}
+                      sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', flexGrow: 1, '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
+                      onClick={handleExport}
+                      disabled={isExporting}
+                  >
+                      {isExporting ? 'Exporting...' : 'Export'}
+                  </Button>
+                )}
+                {hasPermission('leads:add') && (
+                  <Button
+                    variant="contained"
+                    startIcon={<AddCircleOutline />}
+                    sx={{ textTransform: 'none', fontSize: '14px', bgcolor: '#2b7a8e', px: 3, boxShadow: 'none', flexGrow: 1, '&:hover': { bgcolor: '#1a4d5c', boxShadow: 'none' } }}
+                    onClick={() => navigate('/add-lead')}
+                  >
+                    Add Lead
+                  </Button>
+                )}
+            </Box>
         </Box>
 
-        {/* Table */}
         <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid #e0e0e0', borderRadius: '8px' }}>
           <Table>
             <TableHead>
               <TableRow sx={{ bgcolor: '#fafafa' }}>
                 <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0', py: 2 }}>Name</TableCell>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Status</TableCell>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Purpose of Visit</TableCell>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Phone</TableCell>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Whatsapp</TableCell>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Source</TableCell>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Actions</TableCell>
+                <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Status</TableCell>
+                <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Purpose</TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Phone</TableCell>
+                <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' }, fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Whatsapp</TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Source</TableCell>
+                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0', width: { xs: '1%' }, px: { xs: 1 } }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {loading.leads || refreshing.leads ? ( // Use loading and refreshing state from context
+              {loading.leads || refreshing.leads ? (
                 <TableRow>
                   <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
                     <CircularProgress />
@@ -358,28 +342,30 @@ export default function Leads() {
                 filteredLeads.map((lead) => (
                   <TableRow key={lead.id} sx={{ '&:hover': { backgroundColor: '#f5f5f5' }, cursor: hasPermission('leads:edit') ? 'pointer' : 'default' }}>
                     <TableCell onClick={() => handleRowClick(lead.id)}>
-                      <Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.name}</Typography>
+                      <Typography component="span" title={lead.name} sx={{ fontSize: '14px', color: '#424242', display: 'block', maxWidth: { sm: 120, md: 180 }, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {lead.name}
+                      </Typography>
                     </TableCell>
-                    <TableCell onClick={() => handleRowClick(lead.id)}>
+                    <TableCell onClick={() => handleRowClick(lead.id)} sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
                       <span className={`${styles.statusBadge} ${styles[getStatusClass(lead.status)]}`}>
                         {lead.status}
                       </span>
                     </TableCell>
-                    <TableCell onClick={() => handleRowClick(lead.id)}>
+                    <TableCell onClick={() => handleRowClick(lead.id)} sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Person sx={{ fontSize: '18px', color: '#9e9e9e' }} />
                         <Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.purposeOfVisit}</Typography>
                       </Box>
                     </TableCell>
-                    <TableCell onClick={() => handleRowClick(lead.id)}><Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.phone}</Typography></TableCell>
-                    <TableCell onClick={() => handleRowClick(lead.id)}><Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.convertedWhatsapp}</Typography></TableCell>
-                    <TableCell onClick={() => handleRowClick(lead.id)}>
+                    <TableCell onClick={() => handleRowClick(lead.id)} sx={{ display: { xs: 'none', md: 'table-cell' } }}><Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.phone}</Typography></TableCell>
+                    <TableCell onClick={() => handleRowClick(lead.id)} sx={{ display: { xs: 'none', lg: 'table-cell' } }}><Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.convertedWhatsapp}</Typography></TableCell>
+                    <TableCell onClick={() => handleRowClick(lead.id)} sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                         <Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>{lead.sourceType}</Typography>
                         <Typography component="span" sx={{ fontSize: '12px', color: '#757575' }}>{lead.sourceDetail}</Typography>
                       </Box>
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ width: { xs: '1%' }, px: { xs: 1 } }}>
                       {hasPermission('leads:delete') && (
                         <IconButton color="error" onClick={(e) => { e.stopPropagation(); handleDelete(lead.id); }} disabled={isDeleting}>
                           {isDeleting ? <CircularProgress size={24} /> : <Delete />}
@@ -393,7 +379,6 @@ export default function Leads() {
           </Table>
         </TableContainer>
 
-        {/* Summary of filtered leads */}
          <Typography sx={{ mt: 2, fontSize: '13px', color: '#757575' }}>
             {`Showing ${filteredLeads.length} of ${leads.length} leads`}
        </Typography>
