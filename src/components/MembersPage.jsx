@@ -359,6 +359,21 @@ export default function MembersPage() {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Members");
         XLSX.writeFile(wb, "members.xlsx");
+        logActivity(
+            db,
+            user,
+            'members_exported',
+            `Exported ${dataToExport.length} members.`,
+            {
+                count: dataToExport.length,
+                filters: {
+                    package: packageFilter,
+                    primaryMember: primaryMemberFilter,
+                    birthdayMonth: birthdayMonthFilter,
+                    search: searchQuery
+                }
+            }
+        );
     } catch (error) {
         console.error("Error exporting members:", error);
         toast.error("Failed to export members.");
