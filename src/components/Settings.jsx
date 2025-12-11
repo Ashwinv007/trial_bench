@@ -13,7 +13,7 @@ import { AuthContext } from '../store/Context';
 import { usePermissions } from '../auth/usePermissions';
 
 const permissionGroups = {
-    'Leads': ['leads:view', 'leads:add', 'leads:edit', 'leads:delete'],
+    'Leads': ['leads:view', 'leads:add', 'leads:edit', 'leads:delete', 'leads:export'],
     'Clients & Members': ['members:view', 'members:add', 'members:edit', 'members:delete', 'members:export', 'members:replace'],
     'Agreements': ['agreements:view', 'agreements:add', 'agreements:edit', 'agreements:delete', 'agreements:early_exit'],
     'Invoices': ['invoices:view', 'invoices:add', 'invoices:edit', 'invoices:delete'],
