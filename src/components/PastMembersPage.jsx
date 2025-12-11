@@ -158,6 +158,20 @@ export default function PastMembersPage() {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "PastMembers");
         XLSX.writeFile(wb, "past_members.xlsx");
+        logActivity(
+            db,
+            user,
+            'past_members_exported',
+            `Exported ${dataToExport.length} past members.`,
+            {
+                count: dataToExport.length,
+                filters: {
+                    package: packageFilter,
+                    birthdayMonth: birthdayMonthFilter,
+                    search: searchQuery
+                }
+            }
+        );
     } catch (error) {
         console.error("Error exporting past members:", error);
         toast.error("Failed to export past members.");
