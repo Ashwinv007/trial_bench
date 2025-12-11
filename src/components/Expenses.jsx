@@ -739,9 +739,9 @@ export default function Expenses() {
               <th>Date</th>
               <th>Category</th>
               <th>Amount</th>
-              <th>Bill Number</th>
-              <th>Notes</th>
-              <th>Added By</th>
+              <th className={styles.hideOnMobile}>Bill Number</th>
+              <th className={styles.hideOnTablet}>Notes</th>
+              <th className={styles.hideOnTablet}>Added By</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -776,8 +776,8 @@ export default function Expenses() {
                   </tr>
                   {groupData.expenses.map((expense) => (
                     <tr key={expense.id} className={styles.groupedRow}>
-                      <td>{formatDate(expense.date)}</td>
-                      <td>
+                      <td data-label="Date">{formatDate(expense.date)}</td>
+                      <td data-label="Category">
                         <span 
                           className={styles.categoryBadge}
                           style={{ 
@@ -789,11 +789,11 @@ export default function Expenses() {
                           {expense.category}
                         </span>
                       </td>
-                      <td className={styles.amount}>{formatCurrency(expense.amount)}</td>
-                      <td>{expense.billNumber || '-'}</td>
-                      <td className={styles.notes}>{expense.notes || '-'}</td>
-                      <td>{expense.addedBy || 'N/A'}</td>
-                      <td>
+                      <td data-label="Amount" className={styles.amount}>{formatCurrency(expense.amount)}</td>
+                      <td data-label="Bill No." className={styles.hideOnMobile}>{expense.billNumber || '-'}</td>
+                      <td data-label="Notes" className={`${styles.notes} ${styles.hideOnTablet}`}>{expense.notes || '-'}</td>
+                      <td data-label="Added By" className={styles.hideOnTablet}>{expense.addedBy || 'N/A'}</td>
+                      <td data-label="Actions">
                         <div className={styles.actions}>
                           {hasPermission('expenses:edit') && (
                             <IconButton 
@@ -824,8 +824,8 @@ export default function Expenses() {
               // Ungrouped view
               filteredExpenses.sort((a, b) => new Date(b.date) - new Date(a.date)).map((expense) => (
                 <tr key={expense.id}>
-                  <td>{formatDate(expense.date)}</td>
-                  <td>
+                  <td data-label="Date">{formatDate(expense.date)}</td>
+                  <td data-label="Category">
                     <span 
                       className={styles.categoryBadge}
                       style={{ 
@@ -837,11 +837,11 @@ export default function Expenses() {
                       {expense.category}
                     </span>
                   </td>
-                  <td className={styles.amount}>{formatCurrency(expense.amount)}</td>
-                  <td>{expense.billNumber || '-'}</td>
-                  <td className={styles.notes}>{expense.notes || '-'}</td>
-                  <td>{expense.addedBy || 'N/A'}</td>
-                  <td>
+                  <td data-label="Amount" className={styles.amount}>{formatCurrency(expense.amount)}</td>
+                  <td data-label="Bill No." className={styles.hideOnMobile}>{expense.billNumber || '-'}</td>
+                  <td data-label="Notes" className={`${styles.notes} ${styles.hideOnTablet}`}>{expense.notes || '-'}</td>
+                  <td data-label="Added By" className={styles.hideOnTablet}>{expense.addedBy || 'N/A'}</td>
+                  <td data-label="Actions">
                     <div className={styles.actions}>
                       {hasPermission('expenses:edit') && (
                         <IconButton 

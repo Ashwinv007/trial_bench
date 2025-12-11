@@ -34,6 +34,7 @@
 .headerButtons {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .exportButton {
@@ -83,22 +84,29 @@
 }
 
 .table thead {
-  background-color: #1a4d5c;
-  color: white;
+  background-color: #f8fafc;
+  color: #334155;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .table th {
   padding: 16px;
   text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .table td {
   padding: 16px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 14px;
 }
 
 .table tbody tr:hover {
-  background-color: #f9f9f9;
+  background-color: #f8fafc;
 }
 
 .table tbody tr:last-child td {
@@ -108,12 +116,15 @@
 .categoryBadge {
   display: inline-block;
   padding: 4px 12px;
-  border-radius: 4px;
+  border-radius: 16px;
+  font-weight: 500;
+  font-size: 13px;
   transition: all 0.2s;
 }
 
 .amount {
   color: #1a4d5c;
+  font-weight: 600;
 }
 
 .notes {
@@ -224,12 +235,11 @@
   gap: 4px;
 }
 
-/* Filters Section */
 .filtersContainer {
   background-color: white;
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
   margin-bottom: 24px;
   display: flex;
   gap: 16px;
@@ -254,7 +264,6 @@
   border-color: #999 !important;
 }
 
-/* Category Usage Count */
 .categoryInfo {
   display: flex;
   flex-direction: column;
@@ -266,7 +275,6 @@
   color: #666;
 }
 
-/* Reports Button */
 .reportsButton {
   background-color: white !important;
   color: #1a4d5c !important;
@@ -279,7 +287,6 @@
   border-color: #2b7a8e !important;
 }
 
-/* Reports Modal */
 .reportTabs {
   margin-bottom: 24px !important;
   border-bottom: 1px solid #e0e0e0;
@@ -372,30 +379,145 @@
   text-align: right;
 }
 
-/* Grouped Expense Rows */
 .groupHeader {
-  background-color: #e8f4f8 !important;
+  background-color: #f1f5f9 !important;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .groupHeader:hover {
-  background-color: #e8f4f8 !important;
+  background-color: #f1f5f9 !important;
 }
 
 .groupHeaderContent {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
+  padding: 8px 16px;
 }
 
 .groupLabel {
-  color: #1a4d5c;
+  color: #1e293b;
+  font-weight: 600;
 }
 
 .groupTotal {
-  color: #2b7a8e;
+  color: #475569;
+  font-size: 13px;
 }
 
 .groupedRow {
-  background-color: #fafafa;
+  background-color: #ffffff;
+}
+.hideOnTablet,
+.hideOnMobile {
+  display: none;
+}
+
+@media (min-width: 1025px) {
+  .hideOnTablet,
+  .hideOnMobile {
+    display: table-cell;
+  }
+}
+@media (min-width: 768px) and (max-width: 1024px) {
+  .hideOnMobile {
+    display: table-cell;
+  }
+  .hideOnTablet {
+    display: none;
+  }
+  .container {
+    padding: 24px;
+  }
+  .filtersContainer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+@media (max-width: 767px) {
+  .container {
+    padding: 16px;
+  }
+  .header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .headerButtons {
+    justify-content: stretch;
+  }
+  .headerButtons > button {
+    flex-grow: 1;
+  }
+  .filtersContainer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tableContainer {
+    overflow-x: initial;
+    border: none;
+    background-color: transparent;
+    box-shadow: none;
+  }
+  .table {
+    min-width: 0;
+    border: 0;
+  }
+  .table thead {
+    display: none;
+  }
+  .table tr {
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background-color: #ffffff;
+    padding: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  }
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 8px;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: right;
+  }
+  .table td:last-child {
+    border-bottom: none;
+  }
+  .table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #334155;
+    text-align: left;
+    padding-right: 1rem;
+  }
+  .hideOnMobile, .hideOnTablet {
+    display: flex;
+  }
+  .actions {
+    justify-content: flex-end;
+    flex: 1;
+  }
+  .groupHeader {
+    top: -16px; 
+    margin: 0 -16px; 
+    width: calc(100% + 32px);
+  }
+  .groupHeader td {
+    border: none;
+  }
+  .groupHeader:hover {
+    background-color: #f1f5f9 !important;
+  }
+  .table .groupHeader tr, .table tr.groupHeader {
+    padding: 0;
+    border: none;
+    background-color: transparent;
+    box-shadow: none;
+    margin-bottom: 8px;
+  }
 }
