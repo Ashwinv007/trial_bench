@@ -9,6 +9,7 @@ import {
   ContactPage,
   Description,
   History,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import styles from './Sidebar.module.css';
 import { AuthContext } from '../store/Context';
@@ -25,7 +26,7 @@ const navItems = [
     { label: 'Logs', icon: History, path: '/logs', permission: 'logs:view' }
 ];
 
-export default function Sidebar({ isCollapsed }) {
+export default function Sidebar({ isOpen, onClose }) {
   const { user } = useContext(AuthContext);
   const { hasPermission, hasAtLeastOnePermission } = usePermissions();
   const location = useLocation();
@@ -35,32 +36,37 @@ export default function Sidebar({ isCollapsed }) {
   }
 
   return (
-    <div className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
-      <div className={styles.header}>
-        {!isCollapsed && (
-          <div className={styles.logoContainer}>
-            <img src="/tblogo.png" alt="Trial Bench" className={styles.logo} />
-          </div>
-        )}
-      </div>
+    <>
+      <div
+        className={`${styles.backdrop} ${isOpen ? styles.backdropVisible : ''}`}
+        onClick={onClose}
+      />
+      <div className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ''}`}>
+        <button className={styles.closeButton} onClick={onClose} aria-label="Close menu">
+          <CloseIcon />
+        </button>
+        <div className={styles.logoContainer}>
+          <img src="/tblogo.png" alt="Trial Bench" className={styles.logo} />
+        </div>
 
-      <nav className={styles.nav}>
-        {navItems.map((item) => {
-          const showItem = item.path === '/' ? true : (item.permission ? hasPermission(item.permission) : (item.permissions ? hasAtLeastOnePermission(item.permissions) : false));
-          return (
-            showItem && (
-              <NavLink
-                key={item.label}
-                to={item.path}
-                className={`${styles.navItem} ${location.pathname === item.path ? styles.active : ''}`}
-              >
-                <item.icon className={styles.navIcon} />
-                {!isCollapsed && <span>{item.label}</span>}
-              </NavLink>
-            )
-          );
-        })}
-      </nav>
-    </div>
+        <nav className={styles.nav}>
+          {navItems.map((item) => {
+            const showItem = item.path === '/' ? true : (item.permission ? hasPermission(item.permission) : (item.permissions ? hasAtLeastOnePermission(item.permissions) : false));
+            return (
+              showItem && (
+                <NavLink
+                  key={item.label}
+                  to={item.path}
+                  className={`${styles.navItem} ${location.pathname === item.path ? styles.active : ''}`}
+                >
+                  <item.icon className={styles.navIcon} />
+                  <span>{item.label}</span>
+                </NavLink>
+              )
+            );
+          })}
+        </nav>
+      </div>
+    </>
   );
 }

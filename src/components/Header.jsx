@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../auth/usePermissions';
 import NotificationsComponent from './Notifications'; // Renamed to avoid conflict
 
-export default function Header({ pageTitle = 'Dashboard', notifications, setNotifications, isSidebarCollapsed }) {
+export default function Header({ pageTitle = 'Dashboard', notifications, setNotifications, onMenuClick }) {
   const { user } = useContext(AuthContext);
   const { hasAtLeastOnePermission } = usePermissions();
   const navigate = useNavigate();
@@ -87,9 +87,19 @@ export default function Header({ pageTitle = 'Dashboard', notifications, setNoti
   const canViewSettings = hasAtLeastOnePermission(['settings:manage_roles', 'settings:manage_users', 'settings:manage_templates']);
 
   return (
-    <header className={`${styles.header} ${isSidebarCollapsed ? styles.collapsed : ''}`}>
+    <header className={styles.header}>
       <div className={styles.container}>
         <div className={styles.titleSection}>
+          {isMobile && (
+            <IconButton
+              edge="start"
+              className={styles.menuButton}
+              onClick={onMenuClick}
+              aria-label="open sidebar"
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
           <h1 className={styles.pageTitle}>{pageTitle}</h1>
         </div>
 
@@ -212,3 +222,4 @@ export default function Header({ pageTitle = 'Dashboard', notifications, setNoti
     </header>
   );
 }
+

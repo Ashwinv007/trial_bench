@@ -1,0 +1,456 @@
+.container {
+  flex: 1;
+  overflow: auto;
+  background-color: var(--color-gray-50);
+}
+
+.content {
+  padding: var(--spacing-2xl);
+  padding-top: 40px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-2xl);
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+}
+
+.title {
+  color: var(--color-navy);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-xs);
+  line-height: 1.2;
+}
+
+.subtitle {
+  color: var(--color-gray-500);
+  font-size: var(--font-size-base);
+}
+
+.addButton {
+  background-color: var(--color-teal);
+  color: var(--color-white);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  transition: background-color 0.2s ease;
+}
+
+.addButton:hover {
+  background-color: #236672;
+}
+
+.addIcon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Filter Tabs */
+.filterContainer {
+  display: flex;
+  gap: 12px;
+  margin-bottom: var(--spacing-xl);
+}
+
+.filterTab {
+  background-color: var(--color-white);
+  color: var(--color-gray-600);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-sm);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  transition: all 0.2s ease;
+}
+
+.filterTab:hover {
+  background-color: var(--color-gray-50);
+  border-color: var(--color-teal);
+}
+
+.activeFilter {
+  background-color: var(--color-teal);
+  color: var(--color-white);
+  border-color: var(--color-teal);
+}
+
+.activeFilter:hover {
+  background-color: #236672;
+  border-color: #236672;
+}
+
+.filterCount {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: inherit;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  min-width: 24px;
+  text-align: center;
+}
+
+.activeFilter .filterCount {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.tableCard {
+  background-color: var(--color-white);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-gray-200);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead {
+  background-color: var(--color-gray-50);
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.table thead th {
+  padding: 16px;
+  text-align: left;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-gray-600);
+  white-space: nowrap;
+}
+
+.table tbody tr {
+  border-bottom: 1px solid var(--color-gray-100);
+  transition: background-color 0.2s ease;
+}
+
+.table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.clickableRow {
+  cursor: pointer;
+}
+
+.clickableRow:hover {
+  background-color: var(--color-gray-50);
+}
+
+.table tbody td {
+  padding: 16px;
+  font-size: var(--font-size-base);
+  color: var(--color-gray-600);
+  vertical-align: middle;
+}
+
+.nameText {
+  font-size: var(--font-size-base);
+  color: var(--color-navy);
+  font-weight: var(--font-weight-medium);
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  min-width: 80px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.statusBadge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.statusBadge.paid {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.statusBadge.unpaid {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* Empty State */
+.emptyState {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--color-gray-500);
+  font-size: var(--font-size-base);
+}
+
+/* Modal Styles */
+.section {
+  margin-bottom: 24px;
+}
+
+.section:last-of-type {
+  margin-bottom: 0;
+}
+
+.sectionTitle {
+  color: var(--color-navy);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--color-gray-200);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-gray-200);
+}
+
+/* Responsive Styles */
+
+/* Tablets (1024px and below) */
+@media (max-width: 1024px) {
+  .content {
+    padding: 24px 20px;
+    padding-top: 36px;
+  }
+
+  .header {
+    margin-bottom: 20px;
+  }
+
+  .filterContainer {
+    margin-bottom: 20px;
+  }
+
+  /* Hide Phone column on tablets */
+  .table thead th:nth-child(3),
+  .table tbody td:nth-child(3) {
+    display: none;
+  }
+
+  /* Adjust modal form grid to single column on smaller tablets */
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tablets and Mobile Landscape (768px and below) */
+@media (max-width: 768px) {
+  .content {
+    padding: 20px 16px;
+    padding-top: 32px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .addButton {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 20px;
+  }
+
+  .filterContainer {
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .filterTab {
+    width: 100%;
+    justify-content: space-between;
+    padding: 12px 16px;
+  }
+
+  /* Hide Email column on smaller tablets */
+  .table thead th:nth-child(4),
+  .table tbody td:nth-child(4) {
+    display: none;
+  }
+
+  .table thead th,
+  .table tbody td {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .statusBadge {
+    min-width: 70px;
+    font-size: 12px;
+    padding: 3px 10px;
+  }
+}
+
+/* Mobile Portrait (599px and below) */
+@media (max-width: 599px) {
+  .content {
+    padding: 16px 12px;
+    padding-top: 28px;
+  }
+
+  .header {
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .addButton {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+
+  .addIcon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .filterContainer {
+    margin-bottom: 12px;
+  }
+
+  .filterTab {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  .filterCount {
+    font-size: 12px;
+    padding: 2px 6px;
+    min-width: 20px;
+  }
+
+  .tableCard {
+    overflow-x: auto;
+  }
+
+  /* Show only essential columns on mobile */
+  .table {
+    min-width: 450px;
+  }
+
+  .table thead th:first-child,
+  .table tbody td:first-child {
+    position: sticky;
+    left: 0;
+    background-color: inherit;
+    z-index: 1;
+  }
+
+  .table thead th:first-child {
+    background-color: var(--color-gray-50);
+  }
+
+  .clickableRow td:first-child {
+    background-color: var(--color-white);
+  }
+
+  .clickableRow:hover td:first-child {
+    background-color: var(--color-gray-50);
+  }
+
+  .table thead th,
+  .table tbody td {
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .nameText {
+    font-size: 14px;
+  }
+
+  .statusBadge {
+    min-width: 60px;
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .emptyState {
+    padding: 32px 16px;
+    font-size: 14px;
+  }
+
+  /* Modal adjustments for mobile */
+  .sectionTitle {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+
+  .modalActions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .modalActions button {
+    width: 100%;
+  }
+}
+
+/* Extra small devices (480px and below) */
+@media (max-width: 480px) {
+  .content {
+    padding: 12px 8px;
+    padding-top: 24px;
+  }
+
+  .addButton {
+    font-size: 13px;
+    padding: 9px 14px;
+  }
+
+  .filterTab {
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+
+  .table {
+    min-width: 400px;
+  }
+
+  .table thead th,
+  .table tbody td {
+    padding: 8px 6px;
+    font-size: 12px;
+  }
+
+  .statusBadge {
+    min-width: 55px;
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+}

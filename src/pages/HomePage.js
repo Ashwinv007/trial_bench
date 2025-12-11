@@ -26,31 +26,31 @@ const getPageTitle = (pathname) => {
   return titles[pathname] || 'Dashboard';
 };
 
-const SIDEBAR_WIDTH_EXPANDED = '256px';
-const SIDEBAR_WIDTH_COLLAPSED = '80px';
+const SIDEBAR_WIDTH = '256px';
 
 function HomePage() {
   const { db } = useContext(FirebaseContext);
   const { hasPermission } = usePermissions();
   const [notifications, setNotifications] = useState([]);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(window.innerWidth < 768);
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const location = useLocation();
   const pageTitle = getPageTitle(location.pathname);
 
-  // The toggleSidebar function is not used by the Header anymore, but might be used by the Sidebar itself.
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
+  const handleMenuClick = () => {
+    setSidebarOpen(true);
+  };
+
+  const handleCloseSidebar = () => {
+    setSidebarOpen(false);
   };
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) {
-        setIsSidebarCollapsed(true);
-      } else {
-        // Only expand if not manually collapsed previously or if screen size changes from small to large
-        if (isSidebarCollapsed && window.innerWidth >= 768) {
-          setIsSidebarCollapsed(false);
-        }
+      const desktop = window.innerWidth >= 768;
+      setIsDesktop(desktop);
+      if (desktop) {
+        setSidebarOpen(false); // Close mobile sidebar when switching to desktop
       }
     };
 
@@ -58,7 +58,7 @@ function HomePage() {
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [isSidebarCollapsed]); // Added isSidebarCollapsed to dependencies to prevent stale closure
+  }, []);
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -185,22 +185,14 @@ function HomePage() {
   }, [db, hasPermission]);
 
   return (
-    <div 
-      style={{ 
-        display: 'flex', 
-        height: '100vh',
-        '--sidebar-width-expanded': SIDEBAR_WIDTH_EXPANDED,
-        '--sidebar-width-collapsed': SIDEBAR_WIDTH_COLLAPSED,
-        '--current-sidebar-width': isSidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED,
-      }}
-    >
-      <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
+    <div style={{ display: 'flex', height: '100vh' }}>
+      <Sidebar isOpen={isSidebarOpen} onClose={handleCloseSidebar} />
       <div 
         style={{ 
           display: 'flex', 
           flexDirection: 'column', 
           flexGrow: 1, 
-          marginLeft: isSidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED, 
+          marginLeft: isDesktop ? SIDEBAR_WIDTH : '0', 
           transition: 'margin-left 0.3s' 
         }}
       >
@@ -208,8 +200,7 @@ function HomePage() {
           pageTitle={pageTitle} 
           notifications={notifications} 
           setNotifications={setNotifications}
-          toggleSidebar={toggleSidebar} /* Pass toggleSidebar to Header */
-          isSidebarCollapsed={isSidebarCollapsed}
+          onMenuClick={handleMenuClick}
         />
         <main style={{ flexGrow: 1, padding: '20px', overflowY: 'auto' }}>
           <Outlet />

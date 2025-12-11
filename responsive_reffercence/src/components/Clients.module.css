@@ -1,0 +1,497 @@
+.container {
+  flex: 1;
+  background-color: var(--color-gray-50);
+  overflow-y: auto;
+}
+
+.content {
+  padding: var(--spacing-2xl);
+  padding-top: 40px;
+  max-width: 1400px;
+}
+
+/* Header Styles */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-xl);
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.title {
+  color: var(--color-navy);
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--color-gray-600);
+  margin: 0;
+}
+
+.exportButton {
+  background-color: var(--color-teal);
+  color: var(--color-white);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  transition: background-color 0.2s ease;
+}
+
+.exportButton:hover {
+  background-color: #236672;
+}
+
+.exportIcon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Filter Tabs */
+.filterContainer {
+  display: flex;
+  gap: 12px;
+  margin-bottom: var(--spacing-xl);
+}
+
+.filterTab {
+  background-color: var(--color-white);
+  color: var(--color-gray-600);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-sm);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  transition: all 0.2s ease;
+}
+
+.filterTab:hover {
+  background-color: var(--color-gray-50);
+  border-color: var(--color-teal);
+}
+
+.activeFilter {
+  background-color: var(--color-teal);
+  color: var(--color-white);
+  border-color: var(--color-teal);
+}
+
+.activeFilter:hover {
+  background-color: #236672;
+  border-color: #236672;
+}
+
+.filterCount {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: inherit;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  min-width: 24px;
+  text-align: center;
+}
+
+.activeFilter .filterCount {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Table Styles */
+.tableCard {
+  background-color: var(--color-white);
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead {
+  background-color: var(--color-gray-100);
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.table th {
+  padding: 16px;
+  text-align: left;
+  color: var(--color-gray-700);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.table tbody tr {
+  border-bottom: 1px solid var(--color-gray-100);
+  transition: background-color 0.2s ease;
+}
+
+.primaryRow:hover {
+  background-color: var(--color-gray-50);
+}
+
+.nestedRow {
+  background-color: #f8fafc;
+}
+
+.nestedRow:hover {
+  background-color: #f1f5f9;
+}
+
+.table td {
+  padding: 16px;
+  color: var(--color-gray-700);
+  font-size: var(--font-size-base);
+}
+
+.nameCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nestedNameCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nestedIndicator {
+  color: var(--color-gray-400);
+  font-family: monospace;
+  font-size: 14px;
+  margin-left: 8px;
+}
+
+.nameText {
+  color: var(--color-navy);
+  font-weight: var(--font-weight-medium);
+}
+
+.primaryBadge {
+  background-color: #dbeafe;
+  color: #1e40af;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.packageBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #e0f2f1;
+  color: var(--color-teal);
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.packageDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-teal);
+}
+
+.expandButton {
+  color: var(--color-gray-600);
+  padding: 4px;
+}
+
+.expandButton:hover {
+  background-color: var(--color-gray-100);
+}
+
+.addMemberButton {
+  color: var(--color-teal);
+  padding: 4px;
+}
+
+.addMemberButton:hover {
+  background-color: #e0f2f1;
+}
+
+/* Empty State */
+.emptyState {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--color-gray-500);
+  font-size: var(--font-size-base);
+}
+
+/* Modal Styles */
+.formGrid {
+  display: flex;
+  flex-direction: column;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* Responsive Styles */
+
+/* Tablets (1024px and below) */
+@media (max-width: 1024px) {
+  .content {
+    padding: 24px 20px;
+    padding-top: 36px;
+  }
+
+  .header {
+    margin-bottom: 20px;
+  }
+
+  .filterContainer {
+    margin-bottom: 20px;
+  }
+
+  /* Hide Phone column on tablets */
+  .table th:nth-child(4),
+  .table td:nth-child(4) {
+    display: none;
+  }
+}
+
+/* Tablets and Mobile Landscape (768px and below) */
+@media (max-width: 768px) {
+  .content {
+    padding: 20px 16px;
+    padding-top: 32px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .exportButton {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 20px;
+  }
+
+  .filterContainer {
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .filterTab {
+    width: 100%;
+    justify-content: space-between;
+    padding: 12px 16px;
+  }
+
+  /* Hide Email column on smaller tablets */
+  .table th:nth-child(3),
+  .table td:nth-child(3) {
+    display: none;
+  }
+
+  .table th,
+  .table td {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .packageBadge {
+    font-size: 12px;
+    padding: 4px 10px;
+  }
+
+  .primaryBadge {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+}
+
+/* Mobile Portrait (599px and below) */
+@media (max-width: 599px) {
+  .content {
+    padding: 16px 12px;
+    padding-top: 28px;
+  }
+
+  .header {
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .exportButton {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+
+  .exportIcon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .filterContainer {
+    margin-bottom: 12px;
+  }
+
+  .filterTab {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  .filterCount {
+    font-size: 12px;
+    padding: 2px 6px;
+    min-width: 20px;
+  }
+
+  .tableCard {
+    overflow-x: auto;
+  }
+
+  /* Show only essential columns on mobile */
+  .table {
+    min-width: 450px;
+  }
+
+  .table th:first-child,
+  .table td:first-child {
+    position: sticky;
+    left: 0;
+    background-color: inherit;
+    z-index: 1;
+  }
+
+  .table thead th:first-child {
+    background-color: var(--color-gray-100);
+  }
+
+  .primaryRow td:first-child {
+    background-color: var(--color-white);
+  }
+
+  .primaryRow:hover td:first-child {
+    background-color: var(--color-gray-50);
+  }
+
+  .nestedRow td:first-child {
+    background-color: #f8fafc;
+  }
+
+  .nestedRow:hover td:first-child {
+    background-color: #f1f5f9;
+  }
+
+  .table th,
+  .table td {
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .nameText {
+    font-size: 14px;
+  }
+
+  .packageBadge {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .primaryBadge {
+    font-size: 9px;
+    padding: 2px 5px;
+  }
+
+  .nestedIndicator {
+    font-size: 12px;
+    margin-left: 4px;
+  }
+
+  .emptyState {
+    padding: 32px 16px;
+    font-size: 14px;
+  }
+
+  /* Modal adjustments for mobile */
+  .modalActions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .modalActions button {
+    width: 100%;
+  }
+}
+
+/* Extra small devices (480px and below) */
+@media (max-width: 480px) {
+  .content {
+    padding: 12px 8px;
+    padding-top: 24px;
+  }
+
+  .exportButton {
+    font-size: 13px;
+    padding: 9px 14px;
+  }
+
+  .filterTab {
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+
+  .table {
+    min-width: 400px;
+  }
+
+  .table th,
+  .table td {
+    padding: 8px 6px;
+    font-size: 12px;
+  }
+
+  .packageBadge {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .packageDot {
+    width: 4px;
+    height: 4px;
+  }
+
+  .primaryBadge {
+    font-size: 8px;
+    padding: 2px 4px;
+  }
+
+  .addMemberButton,
+  .expandButton {
+    padding: 2px;
+  }
+}

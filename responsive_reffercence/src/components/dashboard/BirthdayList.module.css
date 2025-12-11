@@ -1,0 +1,160 @@
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.titleWrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.headerIcon {
+  color: #2b7a8e;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.count {
+  background: #2b7a8e;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+
+.item:hover {
+  background: rgba(43, 122, 142, 0.05);
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2b7a8e, #1a4d5c);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.date {
+  font-size: 13px;
+  color: #666;
+  margin-top: 2px;
+}
+
+/* Responsive Styles */
+@media (max-width: 767px) {
+  .card {
+    padding: 20px;
+  }
+
+  .header {
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+  }
+
+  .title {
+    font-size: 15px;
+  }
+
+  .count {
+    font-size: 12px;
+    padding: 3px 10px;
+  }
+
+  .list {
+    gap: 10px;
+  }
+
+  .item {
+    padding: 10px;
+  }
+
+  .avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
+  }
+
+  .name {
+    font-size: 13px;
+  }
+
+  .date {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 599px) {
+  .card {
+    padding: 18px;
+  }
+
+  .header {
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+  }
+
+  .title {
+    font-size: 14px;
+  }
+
+  .headerIcon {
+    font-size: 20px;
+  }
+}

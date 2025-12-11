@@ -1,0 +1,252 @@
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.titleWrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.headerIcon {
+  color: #2b7a8e;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: #666;
+  margin-left: 30px;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.stats {
+  display: flex;
+  gap: 24px;
+}
+
+.stat {
+  text-align: right;
+}
+
+.statValue {
+  font-size: 24px;
+  font-weight: 600;
+  color: #2b7a8e;
+  line-height: 1.2;
+}
+
+.statLabel {
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
+}
+
+.dropdown {
+  position: relative;
+}
+
+.dropdownButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropdownButton:hover {
+  background: rgba(43, 122, 142, 0.05);
+  border-color: #2b7a8e;
+}
+
+.dropdownButton svg {
+  color: #666;
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  z-index: 10;
+  min-width: 140px;
+}
+
+.dropdownItem {
+  padding: 10px 16px;
+  font-size: 13px;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.dropdownItem:hover {
+  background: rgba(43, 122, 142, 0.05);
+}
+
+.dropdownItem.active {
+  background: rgba(43, 122, 142, 0.1);
+  color: #2b7a8e;
+  font-weight: 600;
+}
+
+.chartContainer {
+  flex: 1;
+  min-height: 300px;
+}
+
+/* Responsive Styles */
+@media (max-width: 1023px) {
+  .card {
+    padding: 20px;
+  }
+
+  .header {
+    padding-bottom: 16px;
+    margin-bottom: 20px;
+  }
+
+  .title {
+    font-size: 17px;
+  }
+
+  .chartContainer {
+    min-height: 280px;
+  }
+}
+
+@media (max-width: 767px) {
+  .card {
+    padding: 18px;
+  }
+
+  .header {
+    gap: 12px;
+    padding-bottom: 14px;
+    margin-bottom: 16px;
+  }
+
+  .title {
+    font-size: 16px;
+  }
+
+  .subtitle {
+    margin-left: 26px;
+    font-size: 12px;
+  }
+
+  .headerRight {
+    width: 100%;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .stats {
+    gap: 16px;
+  }
+
+  .statValue {
+    font-size: 20px;
+  }
+
+  .statLabel {
+    font-size: 11px;
+  }
+
+  .dropdownButton {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .chartContainer {
+    min-height: 260px;
+  }
+}
+
+@media (max-width: 599px) {
+  .card {
+    padding: 16px;
+  }
+
+  .header {
+    gap: 10px;
+  }
+
+  .title {
+    font-size: 15px;
+  }
+
+  .subtitle {
+    display: none;
+  }
+
+  .headerRight {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    gap: 12px;
+  }
+
+  .stats {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .stat {
+    text-align: left;
+  }
+
+  .statValue {
+    font-size: 18px;
+  }
+
+  .dropdownButton {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .chartContainer {
+    min-height: 240px;
+  }
+}

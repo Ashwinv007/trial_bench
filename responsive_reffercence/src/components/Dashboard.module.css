@@ -1,0 +1,174 @@
+.container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafb 0%, #f1f5f9 100%);
+}
+
+.content {
+  padding: 40px;
+  padding-top: 120px;
+  max-width: 1800px;
+  margin: 0 auto;
+}
+
+/* Stats Cards Grid */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+/* Main Content Grid */
+.mainGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.leftColumn,
+.rightColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.listCard {
+  height: fit-content;
+}
+
+.chartCard {
+  height: 100%;
+  min-height: 400px;
+}
+
+/* Lead Conversions Chart - Full Width Row */
+.leadConversionsRow {
+  margin-bottom: 32px;
+}
+
+/* Charts Row */
+.chartsRow {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+/* Responsive Design */
+
+/* Large Tablets and Small Desktops (1024px - 1280px) */
+@media (max-width: 1280px) {
+  .content {
+    padding: 32px 24px;
+    padding-top: 112px;
+  }
+
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+
+/* Tablets (768px - 1023px) */
+@media (max-width: 1023px) {
+  .content {
+    padding: 24px 20px;
+    padding-top: 104px;
+  }
+
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .mainGrid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  .chartsRow {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .chartCard {
+    min-height: 350px;
+  }
+
+  .leadConversionsRow {
+    margin-bottom: 20px;
+  }
+}
+
+/* Mobile Landscape and Small Tablets (600px - 767px) */
+@media (max-width: 767px) {
+  .content {
+    padding: 20px 16px;
+    padding-top: 100px;
+  }
+
+  .statsGrid {
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .mainGrid {
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .leftColumn,
+  .rightColumn {
+    gap: 16px;
+  }
+
+  .chartsRow {
+    gap: 16px;
+  }
+
+  .chartCard {
+    min-height: 320px;
+  }
+
+  .leadConversionsRow {
+    margin-bottom: 16px;
+  }
+}
+
+/* Mobile Portrait (below 600px) */
+@media (max-width: 599px) {
+  .content {
+    padding: 16px 12px;
+    padding-top: 96px;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .mainGrid {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .leftColumn,
+  .rightColumn {
+    gap: 12px;
+  }
+
+  .chartsRow {
+    gap: 12px;
+  }
+
+  .chartCard {
+    min-height: 280px;
+  }
+
+  .leadConversionsRow {
+    margin-bottom: 12px;
+  }
+}

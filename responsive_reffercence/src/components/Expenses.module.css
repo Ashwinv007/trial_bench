@@ -1,0 +1,751 @@
+.container {
+  flex: 1;
+  padding: 32px;
+  padding-top: 40px;
+  background-color: #f5f5f5;
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  margin: 0 0 8px 0;
+  color: #1a4d5c;
+}
+
+.subtitle {
+  margin: 0;
+  color: #666;
+}
+
+.totalAmount {
+  color: #2b7a8e;
+}
+
+.filterInfo {
+  color: #666;
+  font-size: 0.9em;
+}
+
+.headerButtons {
+  display: flex;
+  gap: 12px;
+}
+
+.exportButton {
+  background-color: white !important;
+  color: #1a4d5c !important;
+  border-color: #1a4d5c !important;
+  text-transform: none !important;
+}
+
+.exportButton:hover {
+  background-color: #f0f9fb !important;
+  border-color: #2b7a8e !important;
+}
+
+.categoryButton {
+  background-color: white !important;
+  color: #2b7a8e !important;
+  border-color: #2b7a8e !important;
+  text-transform: none !important;
+}
+
+.categoryButton:hover {
+  background-color: #f0f9fb !important;
+  border-color: #1a4d5c !important;
+}
+
+.addButton {
+  background-color: #2b7a8e !important;
+  color: white !important;
+  text-transform: none !important;
+}
+
+.addButton:hover {
+  background-color: #1a4d5c !important;
+}
+
+.tableContainer {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead {
+  background-color: #1a4d5c;
+  color: white;
+}
+
+.table th {
+  padding: 16px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.table tbody tr:hover {
+  background-color: #f9f9f9;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.categoryBadge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.amount {
+  color: #1a4d5c;
+}
+
+.notes {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emptyState {
+  text-align: center !important;
+  color: #999;
+  padding: 40px !important;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.editButton {
+  color: #2b7a8e !important;
+}
+
+.editButton:hover {
+  background-color: #e3f2f7 !important;
+}
+
+.deleteButton {
+  color: #d32f2f !important;
+}
+
+.deleteButton:hover {
+  background-color: #ffebee !important;
+}
+
+.closeButton {
+  position: absolute !important;
+  right: 8px;
+  top: 8px;
+  color: #666 !important;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 8px 0;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.saveButton {
+  background-color: #2b7a8e !important;
+  color: white !important;
+  text-transform: none !important;
+}
+
+.saveButton:hover {
+  background-color: #1a4d5c !important;
+}
+
+.categoryForm {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 8px 0;
+}
+
+.categoryInput {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.categoryInputActions {
+  display: flex;
+  gap: 8px;
+}
+
+.categoryList {
+  border-top: 1px solid #e0e0e0;
+  padding-top: 16px;
+}
+
+.categoryList h3 {
+  margin: 0 0 16px 0;
+  color: #1a4d5c;
+}
+
+.categoryItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.categoryItemActions {
+  display: flex;
+  gap: 4px;
+}
+
+/* Filters Section */
+.filtersContainer {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 24px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filterControl {
+  min-width: 200px;
+  flex: 1;
+}
+
+.resetButton {
+  background-color: white !important;
+  color: #666 !important;
+  border-color: #ccc !important;
+  text-transform: none !important;
+}
+
+.resetButton:hover {
+  background-color: #f5f5f5 !important;
+  border-color: #999 !important;
+}
+
+/* Category Usage Count */
+.categoryInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.usageCount {
+  font-size: 0.85em;
+  color: #666;
+}
+
+/* Reports Button */
+.reportsButton {
+  background-color: white !important;
+  color: #1a4d5c !important;
+  border-color: #1a4d5c !important;
+  text-transform: none !important;
+}
+
+.reportsButton:hover {
+  background-color: #f0f9fb !important;
+  border-color: #2b7a8e !important;
+}
+
+/* Reports Modal */
+.reportTabs {
+  margin-bottom: 24px !important;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.reportContent {
+  padding: 16px 0;
+}
+
+.reportSectionTitle {
+  margin: 0 0 24px 0;
+  color: #1a4d5c;
+}
+
+.emptyReportMessage {
+  text-align: center;
+  color: #999;
+  padding: 40px;
+}
+
+.reportCard {
+  margin-bottom: 24px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.reportCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.reportCardHeader h4 {
+  margin: 0;
+  color: #1a4d5c;
+}
+
+.reportTotal {
+  color: #2b7a8e;
+  font-size: 1.2em;
+}
+
+.chartContainer {
+  margin-bottom: 24px;
+}
+
+.categoryBreakdown {
+  margin-top: 24px;
+}
+
+.categoryBreakdown h5 {
+  margin: 0 0 16px 0;
+  color: #1a4d5c;
+}
+
+.categoryBreakdownItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.categoryLabelWithColor {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.categoryColorDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.categoryAmount {
+  color: #1a4d5c;
+  margin: 0 16px;
+}
+
+.categoryPercentage {
+  color: #666;
+  font-size: 0.9em;
+  min-width: 60px;
+  text-align: right;
+}
+
+/* Grouped Expense Rows */
+.groupHeader {
+  background-color: #e8f4f8 !important;
+}
+
+.groupHeader:hover {
+  background-color: #e8f4f8 !important;
+}
+
+.groupHeaderContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.groupLabel {
+  color: #1a4d5c;
+}
+
+.groupTotal {
+  color: #2b7a8e;
+}
+
+.groupedRow {
+  background-color: #fafafa;
+}
+
+/* Responsive Styles */
+
+/* Tablets (1024px and below) */
+@media (max-width: 1024px) {
+  .container {
+    padding: 24px 20px;
+    padding-top: 36px;
+  }
+
+  .header {
+    margin-bottom: 20px;
+  }
+
+  .headerButtons {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .filtersContainer {
+    margin-bottom: 20px;
+  }
+
+  .filterControl {
+    min-width: 150px;
+  }
+
+  /* Hide Bill Number column on tablets */
+  .table th:nth-child(4),
+  .table td:nth-child(4) {
+    display: none;
+  }
+
+  .chartContainer {
+    margin-bottom: 20px;
+  }
+}
+
+/* Tablets and Mobile Landscape (768px and below) */
+@media (max-width: 768px) {
+  .container {
+    padding: 20px 16px;
+    padding-top: 32px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .headerButtons {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .headerButtons button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .filtersContainer {
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .filterControl {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .resetButton {
+    width: 100%;
+  }
+
+  /* Hide Notes column on smaller tablets */
+  .table th:nth-child(5),
+  .table td:nth-child(5) {
+    display: none;
+  }
+
+  .table th,
+  .table td {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .categoryBadge {
+    font-size: 12px;
+    padding: 3px 10px;
+  }
+
+  .actions {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .groupHeaderContent {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .chartContainer {
+    margin-bottom: 16px;
+  }
+
+  .reportCardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .categoryBreakdownItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .categoryAmount,
+  .categoryPercentage {
+    margin: 0;
+  }
+}
+
+/* Mobile Portrait (599px and below) */
+@media (max-width: 599px) {
+  .container {
+    padding: 16px 12px;
+    padding-top: 28px;
+  }
+
+  .header {
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .headerButtons {
+    gap: 8px;
+  }
+
+  .headerButtons button {
+    font-size: 13px;
+    padding: 8px 16px;
+  }
+
+  .filtersContainer {
+    padding: 12px;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .tableContainer {
+    overflow-x: auto;
+  }
+
+  /* Show only essential columns on mobile */
+  .table {
+    min-width: 500px;
+  }
+
+  .table th:first-child,
+  .table td:first-child {
+    position: sticky;
+    left: 0;
+    background-color: inherit;
+    z-index: 1;
+  }
+
+  .table thead th:first-child {
+    background-color: #1a4d5c;
+  }
+
+  .table tbody tr td:first-child {
+    background-color: white;
+  }
+
+  .table tbody tr:hover td:first-child {
+    background-color: #f9f9f9;
+  }
+
+  .groupHeader td:first-child {
+    background-color: #e8f4f8;
+  }
+
+  .groupedRow td:first-child {
+    background-color: #fafafa;
+  }
+
+  .table th,
+  .table td {
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .categoryBadge {
+    font-size: 11px;
+    padding: 2px 8px;
+  }
+
+  .amount {
+    font-size: 14px;
+  }
+
+  .actions {
+    gap: 2px;
+  }
+
+  .groupLabel,
+  .groupTotal {
+    font-size: 13px;
+  }
+
+  .emptyState {
+    padding: 32px 16px !important;
+    font-size: 14px;
+  }
+
+  /* Modal adjustments for mobile */
+  .form {
+    gap: 16px;
+  }
+
+  .modalActions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .modalActions button {
+    width: 100%;
+  }
+
+  .categoryInput {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .categoryInput button {
+    width: 100%;
+  }
+
+  .categoryInputActions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .categoryInputActions button {
+    width: 100%;
+  }
+
+  .categoryItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .categoryItemActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .reportSectionTitle {
+    font-size: 18px;
+  }
+
+  .reportCardHeader h4 {
+    font-size: 16px;
+  }
+
+  .reportTotal {
+    font-size: 1.1em;
+  }
+
+  .categoryBreakdown h5 {
+    font-size: 14px;
+  }
+
+  .categoryLabelWithColor {
+    gap: 8px;
+  }
+
+  .categoryColorDot {
+    width: 10px;
+    height: 10px;
+  }
+
+  .chartContainer {
+    margin-bottom: 12px;
+  }
+}
+
+/* Extra small devices (480px and below) */
+@media (max-width: 480px) {
+  .container {
+    padding: 12px 8px;
+    padding-top: 24px;
+  }
+
+  .headerButtons button {
+    font-size: 12px;
+    padding: 7px 14px;
+  }
+
+  .table {
+    min-width: 450px;
+  }
+
+  .table th,
+  .table td {
+    padding: 8px 6px;
+    font-size: 12px;
+  }
+
+  .categoryBadge {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .amount {
+    font-size: 13px;
+  }
+
+  .groupLabel,
+  .groupTotal {
+    font-size: 12px;
+  }
+
+  .filtersContainer {
+    padding: 10px;
+  }
+
+  .reportCard {
+    margin-bottom: 16px !important;
+  }
+
+  .reportCardHeader {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+  }
+
+  .categoryBreakdownItem {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+}
