@@ -740,4 +740,87 @@
   display: none;
 }
 
+/* Responsive Design */
 
+/* Large Tablets and Small Desktops (1024px - 1280px) */
+@media (max-width: 1280px) {
+  .content {
+    padding: 32px 24px;
+  }
+}
+
+/* Tablets (768px - 1023px) */
+@media (max-width: 1023px) {
+  .content {
+    padding: 24px 20px;
+  }
+
+  .chartsRow {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .chartCard {
+    min-height: 350px;
+  }
+
+  .mainGrid, .leadConversionsRow {
+    margin-bottom: 24px;
+  }
+}
+
+/* Mobile Landscape and Small Tablets (600px - 767px) */
+@media (max-width: 767px) {
+  .content {
+    padding: 20px 16px;
+  }
+
+  .statsGrid {
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  
+  .mainGrid, .mainGrid_column {
+    gap: 16px;
+  }
+
+  .mainGrid, .leadConversionsRow {
+    margin-bottom: 20px;
+  }
+
+  .chartsRow {
+    gap: 16px;
+  }
+
+  .chartCard {
+    min-height: 320px;
+  }
+}
+
+/* Mobile Portrait (below 600px) */
+@media (max-width: 599px) {
+  .content {
+    padding: 16px 12px;
+  }
+
+  .statsGrid {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .mainGrid, .mainGrid_column {
+    gap: 12px;
+  }
+  
+  .mainGrid, .leadConversionsRow {
+    margin-bottom: 16px;
+  }
+
+  .chartsRow {
+    gap: 12px;
+  }
+
+  .chartCard {
+    min-height: 280px;
+  }
+}

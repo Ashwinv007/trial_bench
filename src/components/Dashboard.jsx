@@ -28,9 +28,7 @@ export default function Dashboard() {
 
     const breakpointColumnsObj = {
         default: 2,
-        1100: 2,
-        700: 1,
-        500: 1
+        1023: 1
     };
 
 
