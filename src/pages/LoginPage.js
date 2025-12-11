@@ -154,21 +154,7 @@ function LoginPage() {
                   Sign in
                 </Button>
 
-                <Box sx={{ textAlign: 'center' }}>
-                  <Link
-                    href="#"
-                    underline="hover"
-                    sx={{
-                      color: '#666',
-                      fontSize: '0.875rem',
-                      '&:hover': {
-                        color: '#1976d2',
-                      },
-                    }}
-                  >
-                    Forgot your password?
-                  </Link>
-                </Box>
+                
               </Stack>
             </Box>
           </Stack>
