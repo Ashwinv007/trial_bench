@@ -46,6 +46,7 @@ function App() {
         <Routes>
           <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" />} />
           
+          
           {/* Protected Routes within HomePage Layout */}
           <Route path="/" element={user ? <HomePage /> : <Navigate to="/login" />}>
             <Route index element={<Dashboard />} />

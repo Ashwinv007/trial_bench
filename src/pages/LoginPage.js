@@ -36,7 +36,7 @@ function LoginPage() {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        backgroundColor: '#fbf9fa'
+        backgroundColor: 'var(--color-gray-50)'
       }}
     >
       <Card 
@@ -44,8 +44,9 @@ function LoginPage() {
           maxWidth: 400, 
           width: '100%', 
           mx: 2,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          borderRadius: 2
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--color-gray-200)'
         }}
       >
         <CardContent sx={{ p: 4 }}>
@@ -54,8 +55,8 @@ function LoginPage() {
               <Typography 
                 variant="h6" 
                 sx={{ 
-                  color: '#1976d2',
-                  fontWeight: 600
+                  color: 'var(--color-navy)',
+                  fontWeight: 'var(--font-weight-semibold)'
                 }}
               >
                 Trial Bench
@@ -66,8 +67,8 @@ function LoginPage() {
               variant="h4" 
               component="h1"
               sx={{ 
-                fontWeight: 600,
-                color: '#1a1a1a'
+                fontWeight: 'var(--font-weight-semibold)',
+                color: 'var(--color-navy)'
               }}
             >
               Sign in
@@ -80,8 +81,8 @@ function LoginPage() {
                     variant="body2" 
                     sx={{ 
                       mb: 0.5,
-                      color: '#333',
-                      fontWeight: 500
+                      color: 'var(--color-gray-600)',
+                      fontWeight: 'var(--font-weight-medium)'
                     }}
                   >
                     Email
@@ -96,9 +97,10 @@ function LoginPage() {
                     variant="outlined"
                     sx={{
                       '& .MuiOutlinedInput-root': {
-                        backgroundColor: '#fff',
+                        backgroundColor: 'var(--color-white)',
+                        borderRadius: 'var(--radius-sm)',
                         '&:hover fieldset': {
-                          borderColor: '#1976d2',
+                          borderColor: 'var(--color-teal)',
                         },
                       }
                     }}
@@ -110,8 +112,8 @@ function LoginPage() {
                     variant="body2" 
                     sx={{ 
                       mb: 0.5,
-                      color: '#333',
-                      fontWeight: 500
+                      color: 'var(--color-gray-600)',
+                      fontWeight: 'var(--font-weight-medium)'
                     }}
                   >
                     Password
@@ -126,9 +128,10 @@ function LoginPage() {
                     variant="outlined"
                     sx={{
                       '& .MuiOutlinedInput-root': {
-                        backgroundColor: '#fff',
+                        backgroundColor: 'var(--color-white)',
+                        borderRadius: 'var(--radius-sm)',
                         '&:hover fieldset': {
-                          borderColor: '#1976d2',
+                          borderColor: 'var(--color-teal)',
                         },
                       }
                     }}
@@ -142,19 +145,22 @@ function LoginPage() {
                   sx={{
                     py: 1.5,
                     mt: 1,
-                    backgroundColor: '#1a1a2e',
+                    backgroundColor: 'var(--color-navy)',
+                    borderRadius: 'var(--radius-sm)',
                     textTransform: 'none',
-                    fontSize: '1rem',
-                    fontWeight: 500,
+                    fontSize: 'var(--font-size-lg)',
+                    fontWeight: 'var(--font-weight-medium)',
+                    boxShadow: 'none',
                     '&:hover': {
-                      backgroundColor: '#0f0f1e',
+                      backgroundColor: 'var(--color-teal-dark)',
+                      boxShadow: 'none',
                     },
                   }}
                 >
                   Sign in
                 </Button>
 
-                
+               
               </Stack>
             </Box>
           </Stack>
