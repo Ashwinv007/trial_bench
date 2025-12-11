@@ -31,6 +31,7 @@ import dayjs from 'dayjs';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { useData } from '../store/DataContext'; // Import useData
+import { logActivity } from '../utils/logActivity';
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -359,6 +360,10 @@ export default function Expenses() {
   };
 
   const handleExport = async () => {
+    if (!hasPermission('expenses:export')) {
+        toast.error("You don't have permission to export expenses.");
+        return;
+    }
     setIsExporting(true);
     try {
         const XLSX = await import('xlsx');
@@ -375,6 +380,20 @@ export default function Expenses() {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Expenses");
         XLSX.writeFile(wb, "expenses.xlsx");
+        logActivity(
+            db,
+            user,
+            'expenses_exported',
+            `Exported ${dataToExport.length} expenses.`,
+            {
+                count: dataToExport.length,
+                filters: {
+                    category: filterCategory,
+                    from: dateFrom ? formatDate(dateFrom) : 'N/A',
+                    to: dateTo ? formatDate(dateTo) : 'N/A',
+                }
+            }
+        );
     } catch (error) {
         console.error("Error exporting expenses:", error);
         toast.error("Failed to export expenses.");
