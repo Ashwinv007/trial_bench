@@ -2,6 +2,7 @@ import React, { useState, useMemo, useContext, useEffect } from 'react';
 import { FirebaseContext } from '../store/Context';
 import { collection, addDoc, doc, updateDoc, getDoc, deleteDoc, serverTimestamp, getDocs, query, orderBy, limit, startAfter } from 'firebase/firestore';
 import { logActivity } from '../utils/logActivity';
+import styles from './MembersPage.module.css';
 import {
   Box,
   Typography,
@@ -20,6 +21,7 @@ import {
   Select,
   IconButton,
   CircularProgress,
+  useMediaQuery,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -86,6 +88,13 @@ export default function MembersPage() {
   // Removed isLoading, totalMembersCount, allMembersFetched states
 
   const navigate = useNavigate();
+  const isMobile = useMediaQuery('(max-width:825px)');
+
+  useEffect(() => {
+    if (isMobile) {
+      setPrimaryMemberFilter('All Members');
+    }
+  }, [isMobile]);
 
   // Removed useEffect for fetching members, now handled by DataContext
 
@@ -386,17 +395,17 @@ export default function MembersPage() {
     filteredMembers.map((member) => (
       <TableRow key={member.id} sx={{ '&:hover': { backgroundColor: '#f5f5f5' }, cursor: 'pointer' }} onClick={() => handleOpenEditModal(member)}>
         <TableCell sx={{ width: '40px' }} />
-        <TableCell component="th" scope="row">
+        <TableCell data-label="Name" component="th" scope="row">
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {member.name}
           </Box>
         </TableCell>
-        <TableCell>{member.package}</TableCell>
-        <TableCell>{member.clientType === 'individual' && !member.company ? 'N/A' : member.company}</TableCell>
-        <TableCell>{formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth)}</TableCell>
-        <TableCell>{member.whatsapp}</TableCell>
-        <TableCell>{member.email}</TableCell>
-        <TableCell colSpan={2}>
+        <TableCell data-label="Package">{member.package}</TableCell>
+        <TableCell data-label="Company" className={styles.hideOnTablet}>{member.clientType === 'individual' && !member.company ? 'N/A' : member.company}</TableCell>
+        <TableCell data-label="Birthday" className={styles.hideOnTablet}>{formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth)}</TableCell>
+        <TableCell data-label="WhatsApp" className={styles.hideOnTablet}>{member.whatsapp}</TableCell>
+        <TableCell data-label="Email">{member.email}</TableCell>
+        <TableCell data-label="Actions" colSpan={2}>
             {hasPermission('members:delete') && <Button size="small" color="error" onClick={(e) => { e.stopPropagation(); handleRemoveClick(member); }}>Remove</Button>}
         </TableCell>
       </TableRow>
@@ -417,40 +426,40 @@ export default function MembersPage() {
                 </IconButton>
               )}
             </TableCell>
-            <TableCell component="th" scope="row" onClick={() => handleOpenEditModal(member)}>
+            <TableCell data-label="Name" component="th" scope="row" onClick={() => handleOpenEditModal(member)}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 {member.name}
               </Box>
             </TableCell>
-            <TableCell onClick={() => handleOpenEditModal(member)}>{member.package}</TableCell>
-            <TableCell onClick={() => handleOpenEditModal(member)}>{member.clientType === 'individual' && !member.company ? 'N/A' : member.company}</TableCell>
-            <TableCell onClick={() => handleOpenEditModal(member)}>{formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth)}</TableCell>
-            <TableCell onClick={() => handleOpenEditModal(member)}>{member.whatsapp}</TableCell>
-            <TableCell onClick={() => handleOpenEditModal(member)}>{member.email}</TableCell>
-            <TableCell>
+            <TableCell data-label="Package" onClick={() => handleOpenEditModal(member)}>{member.package}</TableCell>
+            <TableCell data-label="Company" className={styles.hideOnTablet} onClick={() => handleOpenEditModal(member)}>{member.clientType === 'individual' && !member.company ? 'N/A' : member.company}</TableCell>
+            <TableCell data-label="Birthday" className={styles.hideOnTablet} onClick={() => handleOpenEditModal(member)}>{formatBirthdayDisplay(member.birthdayDay, member.birthdayMonth)}</TableCell>
+            <TableCell data-label="WhatsApp" className={styles.hideOnTablet} onClick={() => handleOpenEditModal(member)}>{member.whatsapp}</TableCell>
+            <TableCell data-label="Email" onClick={() => handleOpenEditModal(member)}>{member.email}</TableCell>
+            <TableCell data-label="Add Sub-member">
               {hasPermission('members:add') && <IconButton onClick={(e) => { e.stopPropagation(); handleOpenAddModal(member.id); }} title="Add sub-member" sx={{ color: '#2b7a8e' }}>
                 <AddIcon />
               </IconButton>}
             </TableCell>
-            <TableCell>
+            <TableCell data-label="Actions">
               {hasPermission('members:delete') && <Button color="error" onClick={(e) => { e.stopPropagation(); handleRemoveClick(member); }}>Remove</Button>}
             </TableCell>
           </TableRow>
           {isExpanded && subMembers.map((subMember) => (
             <TableRow key={subMember.id} sx={{ backgroundColor: '#f8fafc', '&:hover': { backgroundColor: '#f1f5f9' }, cursor: 'pointer' }} onClick={() => handleOpenEditModal(subMember)}>
               <TableCell />
-              <TableCell component="th" scope="row">
+              <TableCell data-label="Name" component="th" scope="row">
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   <Typography component="span" sx={{ fontFamily: 'monospace', mr: 1, color: 'grey.500' }}>└─</Typography>
                   {subMember.name}
                 </Box>
               </TableCell>
-              <TableCell>{subMember.package}</TableCell>
-              <TableCell>{subMember.clientType === 'individual' && !subMember.company ? 'N/A' : subMember.company}</TableCell>
-              <TableCell>{formatBirthdayDisplay(subMember.birthdayDay, subMember.birthdayMonth)}</TableCell>
-              <TableCell>{subMember.whatsapp}</TableCell>
-              <TableCell>{subMember.email}</TableCell>
-              <TableCell colSpan={3}>
+              <TableCell data-label="Package">{subMember.package}</TableCell>
+              <TableCell data-label="Company" className={styles.hideOnTablet}>{subMember.clientType === 'individual' && !subMember.company ? 'N/A' : subMember.company}</TableCell>
+              <TableCell data-label="Birthday" className={styles.hideOnTablet}>{formatBirthdayDisplay(subMember.birthdayDay, subMember.birthdayMonth)}</TableCell>
+              <TableCell data-label="WhatsApp" className={styles.hideOnTablet}>{subMember.whatsapp}</TableCell>
+              <TableCell data-label="Email">{subMember.email}</TableCell>
+              <TableCell data-label="Actions" colSpan={3}>
                 {hasPermission('members:delete') && <Button size="small" color="error" onClick={(e) => { e.stopPropagation(); handleRemoveClick(subMember); }}>Remove</Button>}
               </TableCell>
             </TableRow>
@@ -472,13 +481,13 @@ export default function MembersPage() {
       </Box>
 
       <Box sx={{ p: '32px 40px' }}>
-        <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center', flexWrap: 'wrap' }}>
           <TextField
             placeholder="Search members by name, email, or phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             size="small"
-            sx={{ flex: 1, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { fontSize: '14px', '& fieldset': { borderColor: '#e0e0e0' }, '&:hover fieldset': { borderColor: '#2b7a8e' }, '&.Mui-focused fieldset': { borderColor: '#2b7a8e' } } }}
+            sx={{ flex: 1, minWidth: '200px', bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { fontSize: '14px', '& fieldset': { borderColor: '#e0e0e0' }, '&:hover fieldset': { borderColor: '#2b7a8e' }, '&.Mui-focused fieldset': { borderColor: '#2b7a8e' } } }}
             InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#9e9e9e', fontSize: '20px' }} /></InputAdornment>) }}
           />
           <Button
@@ -511,6 +520,7 @@ export default function MembersPage() {
             value={primaryMemberFilter}
             onChange={(e) => setPrimaryMemberFilter(e.target.value)}
             size="small"
+            disabled={isMobile}
             sx={{ minWidth: '150px', bgcolor: '#ffffff', fontSize: '14px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2b7a8e' } }}
           >
             <MenuItem value="All Members">All Members</MenuItem>
@@ -555,16 +565,16 @@ export default function MembersPage() {
             </Button>} */}
         </Box>
 
-        <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid #e0e0e0', borderRadius: '8px' }}>
-          <Table>
+        <TableContainer component={Paper} className={styles.tableContainer} sx={{ boxShadow: 'none', border: '1px solid #e0e0e0', borderRadius: '8px' }}>
+          <Table className={styles.table}>
             <TableHead>
               <TableRow sx={{ bgcolor: '#fafafa' }}>
                 <TableCell />
                 <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0', py: 2 }}>Name</TableCell>
                 <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Package</TableCell>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Company</TableCell>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Birthday</TableCell>
-                <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>WhatsApp</TableCell>
+                <TableCell className={styles.hideOnTablet} sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Company</TableCell>
+                <TableCell className={styles.hideOnTablet} sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Birthday</TableCell>
+                <TableCell className={styles.hideOnTablet} sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>WhatsApp</TableCell>
                 <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#424242', borderBottom: '1px solid #e0e0e0' }}>Email</TableCell>
                 <TableCell />
                 <TableCell>Actions</TableCell>
