@@ -12,6 +12,7 @@
   position: sticky;
   top: 0;
   z-index: 10;
+  transition: padding 0.3s ease;
 }
 
 .headerLeft {
@@ -23,6 +24,7 @@
 .headerLeft h2 {
   margin: 0;
   color: #1a4d5c;
+  transition: font-size 0.3s ease;
 }
 
 .backButton,
@@ -38,6 +40,7 @@
 .content {
   padding: 24px !important;
   background-color: #f8f9fa;
+  transition: padding 0.3s ease;
 }
 
 /* Profile Section */
@@ -47,16 +50,22 @@
   padding: 24px;
   margin-bottom: 24px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: padding 0.3s ease;
 }
 
 .profileHeader {
   margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  transition: all 0.3s ease;
 }
 
 .avatarSection {
   display: flex;
   align-items: center;
   gap: 20px;
+  transition: all 0.3s ease;
 }
 
 .avatar {
@@ -71,6 +80,7 @@
   font-size: 28px;
   flex-shrink: 0;
   box-shadow: 0 4px 12px rgba(43, 122, 142, 0.3);
+  transition: width 0.3s ease, height 0.3s ease, font-size 0.3s ease;
 }
 
 .basicInfo {
@@ -81,6 +91,7 @@
   margin: 0 0 8px 0;
   color: #1a4d5c;
   font-size: 24px;
+  transition: font-size 0.3s ease;
 }
 
 .primaryBadge {
@@ -93,12 +104,14 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 20px;
+  transition: grid-template-columns 0.3s ease, gap 0.3s ease;
 }
 
 .detailItem {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  transition: all 0.3s ease;
 }
 
 .detailLabel {
@@ -120,112 +133,7 @@
   font-size: 15px;
   color: #1a4d5c;
   padding-left: 26px;
-}
-
-/* Members Section */
-.membersSection {
-  background: #fff;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.sectionTitle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0 0 20px 0;
-  color: #1a4d5c;
-  font-size: 18px;
-}
-
-.sectionIcon {
-  color: #2b7a8e;
-  font-size: 22px !important;
-}
-
-.membersList {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.memberCard {
-  border: 1px solid #e8f4f8 !important;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05) !important;
-  transition: all 0.3s ease;
-}
-
-.memberCard:hover {
-  box-shadow: 0 4px 12px rgba(43, 122, 142, 0.1) !important;
-  border-color: #2b7a8e !important;
-}
-
-.memberCardContent {
-  padding: 16px !important;
-}
-
-.memberHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.memberInfo {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.memberAvatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #2b7a8e 0%, #1a4d5c 100%);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-.memberName {
-  color: #1a4d5c;
-  font-size: 15px;
-  margin-bottom: 4px;
-}
-
-.memberPackage {
-  color: #666;
-  font-size: 13px;
-}
-
-.expandButton {
-  color: #2b7a8e !important;
-}
-
-.memberDetails {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #e8f4f8;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.memberDetailItem {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #666;
-  font-size: 14px;
-}
-
-.memberDetailIcon {
-  color: #2b7a8e;
-  font-size: 18px !important;
+  transition: padding 0.3s ease;
 }
 
 /* Tabs Section */
@@ -239,6 +147,7 @@
 .tabs {
   border-bottom: 2px solid #e8f4f8;
   padding: 0 24px;
+  transition: padding 0.3s ease;
 }
 
 .tabs .MuiTab-root {
@@ -246,6 +155,7 @@
   font-weight: 500 !important;
   font-size: 14px !important;
   letter-spacing: 0.5px !important;
+  transition: font-size 0.3s ease;
 }
 
 .tabs .MuiTab-root.Mui-selected {
@@ -259,6 +169,7 @@
 
 .tabContent {
   padding: 24px;
+  transition: padding 0.3s ease;
 }
 
 .tabSectionTitle {
@@ -284,32 +195,33 @@
   font-size: 16px;
 }
 
-/* Agreements List */
-.agreementsList {
-  display: flex;
-  flex-direction: column;
+/* Fluid Card Lists */
+.agreementsList, .invoicesList, .membersList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 16px;
 }
 
-.agreementCard {
+.agreementCard, .invoiceCard, .memberCard {
   border: 1px solid #e8f4f8 !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
   transition: all 0.3s ease;
 }
 
-.agreementCard:hover {
+.agreementCard:hover, .invoiceCard:hover, .memberCard:hover {
   box-shadow: 0 4px 12px rgba(43, 122, 142, 0.1) !important;
   border-color: #2b7a8e !important;
+  transform: translateY(-2px);
 }
 
-.agreementHeader {
+.agreementHeader, .invoiceHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
 }
 
-.agreementNumber {
+.agreementNumber, .invoiceNumber {
   color: #1a4d5c;
   font-size: 16px;
 }
@@ -319,124 +231,139 @@
   color: #2b7a8e !important;
 }
 
-.agreementDetails {
+.agreementDetails, .invoiceDetails {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.agreementDetailRow {
+.agreementDetailRow, .invoiceDetailRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
   border-bottom: 1px solid #f5f5f5;
-}
-
-.agreementDetailRow:last-child {
-  border-bottom: none;
-}
-
-.agreementLabel {
-  color: #666;
-  font-size: 14px;
-}
-
-.agreementValue {
-  color: #1a4d5c;
-  font-size: 14px;
-  text-align: right;
-}
-
-/* Invoices List */
-.invoicesList {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.invoiceCard {
-  border: 1px solid #e8f4f8 !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
   transition: all 0.3s ease;
 }
 
-.invoiceCard:hover {
-  box-shadow: 0 4px 12px rgba(43, 122, 142, 0.1) !important;
-  border-color: #2b7a8e !important;
-}
-
-.invoiceHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.invoiceNumber {
-  color: #1a4d5c;
-  font-size: 16px;
-}
-
-.invoiceDetails {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.invoiceDetailRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #f5f5f5;
-}
-
-.invoiceDetailRow:last-child {
+.agreementDetailRow:last-child, .invoiceDetailRow:last-child {
   border-bottom: none;
 }
 
-.invoiceLabel {
+.agreementLabel, .invoiceLabel {
   color: #666;
   font-size: 14px;
 }
 
-.invoiceValue {
+.agreementValue, .invoiceValue {
   color: #1a4d5c;
   font-size: 14px;
   text-align: right;
+  transition: text-align 0.3s ease;
 }
 
-/* Responsive Design */
+/* --- Responsive Styles --- */
 @media (max-width: 768px) {
-  .detailsGrid {
-    grid-template-columns: 1fr;
+  .content {
+    padding: 16px !important;
+  }
+  
+  .header, .profileSection, .tabContent {
+    padding: 16px;
+  }
+  
+  .headerLeft h2 {
+    font-size: 18px;
+  }
+
+  .profileHeader {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
   }
 
   .avatarSection {
     flex-direction: column;
     text-align: center;
+    width: 100%;
   }
 
   .avatar {
-    width: 60px;
-    height: 60px;
-    font-size: 22px;
+    width: 70px;
+    height: 70px;
+    font-size: 26px;
   }
 
   .clientName {
-    font-size: 20px;
+    font-size: 22px;
+  }
+  
+  .detailsGrid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  
+  .detailItem {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 8px;
+    border-bottom: 1px solid #f0f0f0;
+    gap: 12px;
+  }
+  
+  .detailItem:last-child {
+    border-bottom: none;
+  }
+  
+  .detailValue {
+    padding-left: 0;
+    text-align: right;
+    flex-shrink: 0;
   }
 
+  .tabs {
+    padding: 0;
+  }
+  
+  .tabs .MuiTab-root {
+    font-size: 13px !important;
+    min-width: 0;
+    flex: 1;
+  }
+  
   .agreementDetailRow,
   .invoiceDetailRow {
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
+    padding: 10px 0;
   }
 
   .agreementValue,
   .invoiceValue {
     text-align: left;
+    font-weight: 500;
+  }
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding: 12px !important;
+  }
+  .header, .profileSection, .tabContent {
+    padding: 12px;
+  }
+  .clientName {
+    font-size: 20px;
+  }
+  .avatar {
+    width: 60px;
+    height: 60px;
+  }
+  
+  /* Make card lists single column on very small screens if needed */
+  .agreementsList, .invoicesList, .membersList {
+    grid-template-columns: 1fr;
   }
 }
