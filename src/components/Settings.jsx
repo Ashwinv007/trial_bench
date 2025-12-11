@@ -595,9 +595,9 @@ export default function Settings() {
                     const isCurrentUserRole = role.id === currentUserRoleId;
                     return (
                       <tr key={role.id}>
-                        <td>{role.name}</td>
-                        <td><PermissionChips permissions={role.permissions} /></td>
-                        <td>
+                        <td data-label="Role">{role.name}</td>
+                        <td data-label="Permissions"><PermissionChips permissions={role.permissions} /></td>
+                        <td data-label="Actions">
                           <div className={styles.actions}>
                             <IconButton className={styles.editButton} onClick={() => handleOpenModal(role)} disabled={role.name.toLowerCase() === 'admin' || isDeletingRole || isCurrentUserRole}><Edit /></IconButton>
                             <IconButton className={styles.deleteButton} onClick={() => handleDeleteRole(role.id)} disabled={role.name.toLowerCase() === 'admin' || isDeletingRole || isCurrentUserRole}>{isDeletingRole ? <CircularProgress size={20} /> : <Delete />}</IconButton>
@@ -623,7 +623,7 @@ export default function Settings() {
             <thead>
               <tr>
                 <th>Username</th>
-                <th>User Email</th>
+                <th className={styles.hideOnMobile}>User Email</th>
                 <th>Assigned Role</th>
                 <th>Actions</th>
               </tr>
@@ -643,9 +643,9 @@ export default function Settings() {
 
                   return (
                     <tr key={rowUser.uid}>
-                      <td>{rowUser.displayName || '-'}</td>
-                      <td>{rowUser.email}</td>
-                      <td>
+                      <td data-label="Username">{rowUser.displayName || '-'}</td>
+                      <td data-label="User Email" className={styles.hideOnMobile}>{rowUser.email}</td>
+                      <td data-label="Assigned Role">
                         <Select
                           value={rowUser.roleId || ''}
                           onChange={(e) => handleAssignRole(rowUser.email, e.target.value)}
@@ -658,7 +658,7 @@ export default function Settings() {
                           {roles.map((role) => <MenuItem key={role.id} value={role.id}>{role.name}</MenuItem>)}
                         </Select>
                       </td>
-                      <td>
+                      <td data-label="Actions">
                         <div className={styles.actions}>
                           <IconButton className={styles.editButton} onClick={() => handleOpenEditUserModal(rowUser)} disabled={isDeletingUser || !canModify}><Edit /></IconButton>
                           <IconButton className={styles.editButton} onClick={() => handleOpenResetPasswordModal(rowUser)} disabled={isDeletingUser || !canModify}><LockReset /></IconButton>
