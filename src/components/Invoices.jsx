@@ -713,6 +713,13 @@ export default function Invoices() {
         pdfBase64: pdfBase64,
       });
       toast.success("Invoice email sent successfully!");
+      logActivity(
+        db,
+        user,
+        'invoice_emailed',
+        `Invoice "${invoiceGenerated.invoiceNumber}" for "${invoiceGenerated.name}" was emailed to "${invoiceGenerated.email}".`,
+        { invoiceId: invoiceGenerated.id, invoiceNumber: invoiceGenerated.invoiceNumber, clientName: invoiceGenerated.name, email: invoiceGenerated.email }
+      );
     } catch (error) {
       console.error("Error sending invoice email:", error);
       toast.error(error.message || "Failed to send invoice email.");
@@ -884,7 +891,7 @@ export default function Invoices() {
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <p style={{ margin: '4px 0 24px 0', color: '#64748b', fontSize: '14px', fontWeight: 400 }}>You can now download the invoice or send it via email.</p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
-                <Button onClick={async () => { try { const pdfBytes = await getInvoicePdfBytes(invoiceGenerated); const blob = new Blob([pdfBytes], { type: 'application/pdf' }); saveAs(blob, `${invoiceGenerated.invoiceNumber || 'invoice'}.pdf`); toast.success("Invoice downloaded successfully!"); } catch (error) { console.error("Error downloading invoice:", error); toast.error("Failed to download invoice."); } }} variant="contained" sx={{ bgcolor: '#2b7a8e', color: 'white', textTransform: 'none', p: '8px 24px' }}>Download Invoice</Button>
+                <Button onClick={async () => { try { const pdfBytes = await getInvoicePdfBytes(invoiceGenerated); const blob = new Blob([pdfBytes], { type: 'application/pdf' }); saveAs(blob, `${invoiceGenerated.invoiceNumber || 'invoice'}.pdf`); toast.success("Invoice downloaded successfully!"); logActivity(db, user, 'invoice_downloaded_after_generate', `Generated invoice "${invoiceGenerated.invoiceNumber}" for "${invoiceGenerated.name}" was downloaded.`, { invoiceId: invoiceGenerated.id, invoiceNumber: invoiceGenerated.invoiceNumber, clientName: invoiceGenerated.name }); } catch (error) { console.error("Error downloading invoice:", error); toast.error("Failed to download invoice."); } }} variant="contained" sx={{ bgcolor: '#2b7a8e', color: 'white', textTransform: 'none', p: '8px 24px' }}>Download Invoice</Button>
                 <Button onClick={handleSendInvoiceEmail} variant="outlined" sx={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', p: '8px 24px' }} disabled={isSendingEmail}>
                   {isSendingEmail ? <CircularProgress size={24} /> : 'Send Email'}
                 </Button>
@@ -934,7 +941,7 @@ export default function Invoices() {
             </div>
             <div className={styles.modalActions}>
               <Button onClick={handleCloseModal} variant="outlined" sx={{ color: '#64748b', borderColor: '#cbd5e1', textTransform: 'none', p: '8px 24px' }} disabled={isSubmitting}>Cancel</Button>
-              {editingInvoice && <Button onClick={async () => { try { const pdfBytes = await getInvoicePdfBytes(editingInvoice); const blob = new Blob([pdfBytes], { type: 'application/pdf' }); saveAs(blob, `${editingInvoice.invoiceNumber || 'invoice'}.pdf`); toast.success("Invoice downloaded successfully!"); } catch (error) { console.error("Error downloading invoice:", error); toast.error("Failed to download invoice."); } }} variant="outlined" sx={{ color: '#2b7a8e', borderColor: '#2b7a8e', textTransform: 'none', p: '8px 24px' }}>Download Current Invoice</Button>}
+              {editingInvoice && <Button onClick={async () => { try { const pdfBytes = await getInvoicePdfBytes(editingInvoice); const blob = new Blob([pdfBytes], { type: 'application/pdf' }); saveAs(blob, `${editingInvoice.invoiceNumber || 'invoice'}.pdf`); toast.success("Invoice downloaded successfully!"); logActivity(db, user, 'invoice_downloaded', `Invoice "${editingInvoice.invoiceNumber}" for "${editingInvoice.name}" was downloaded.`, { invoiceId: editingInvoice.id, invoiceNumber: editingInvoice.invoiceNumber, clientName: editingInvoice.name }); } catch (error) { console.error("Error downloading invoice:", error); toast.error("Failed to download invoice."); } }} variant="outlined" sx={{ color: '#2b7a8e', borderColor: '#2b7a8e', textTransform: 'none', p: '8px 24px' }}>Download Current Invoice</Button>}
               {((editingInvoice && hasPermission('invoices:edit')) || (!editingInvoice && hasPermission('invoices:add'))) && <Button type="submit" variant="contained" sx={{ bgcolor: '#2b7a8e', color: 'white', textTransform: 'none', p: '8px 24px' }} disabled={isSubmitting}>{isSubmitting ? <CircularProgress size={24} color="inherit" /> : (editingInvoice ? 'Update Invoice' : 'Generate Invoice')}</Button>}
             </div>
           </form>
