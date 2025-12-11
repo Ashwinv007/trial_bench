@@ -814,7 +814,14 @@ export default function Agreements() {
                           const parts = agreement.serviceAgreementType.split(' - ');
                           if (parts.length > 1 && ['Basic', 'Plus', 'Platinum'].includes(parts[1])) {
                             return (
-                              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                              <Box sx={{ 
+                                display: 'flex', 
+                                flexDirection: 'column',
+                                alignItems: 'flex-start', // Default for desktop
+                                '@media (max-width: 767px)': {
+                                  alignItems: 'flex-end',
+                                }
+                              }}>
                                 <Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>
                                   {agreement.purposeOfVisit}
                                 </Typography>
