@@ -153,7 +153,7 @@ const ReplacementView = ({ subMembers, onCancel, onConfirm, mode, oldPrimaryMemb
                         error={!!newMemberErrors.whatsapp} 
                         helperText={newMemberErrors.whatsapp} 
                     />
-                    <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
                         <TextField
                             label="Birthday Day"
                             fullWidth
@@ -520,7 +520,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
       </DialogTitle>
 
       <DialogContent sx={{ p: '16px 24px' }}>
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: '32px' }}>
           {/* Left Panel - Member Form */}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             <TextField label="Name" fullWidth value={formData.name} onChange={(e) => handleChange('name', e.target.value)} error={!!errors.name} helperText={errors.name} />
@@ -550,7 +550,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
               />
             )}
             <TextField label="Company Name (optional)" fullWidth value={formData.company} onChange={(e) => handleChange('company', e.target.value)} />
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
               <TextField
                 label="Birthday Day"
                 fullWidth
@@ -589,7 +589,7 @@ export default function MemberModal({ open, onClose, onSave, editMember = null, 
           </Box>
 
           {/* Right Panel - Actions */}
-          <div className={styles.rightPanel} style={{paddingLeft: '10px'}}>
+          <div className={styles.rightPanel} style={{ sx: { pl: { md: '10px' } } }}>
             <div className={styles.timelineCard}>
               <h2 className={styles.sectionTitle}>Actions</h2>
               {editMember && editMember.primary && (
