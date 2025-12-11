@@ -171,7 +171,7 @@
 
 /* User Menu */
 .userMenu {
-  width: 280px !important;
+  min-width: 280px !important;
   margin-top: 8px !important;
   border-radius: 12px !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
@@ -259,7 +259,8 @@
   }
 
   .userMenu {
-    display: none; /* Hide user menu on mobile */
+    width: 250px !important;
+    min-width: 0 !important;
   }
 }
 
@@ -270,5 +271,9 @@
 
   .notificationMenu {
     width: 280px !important;
+  }
+
+  .userMenu {
+    width: 90vw !important;
   }
 }
