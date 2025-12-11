@@ -1,11 +1,12 @@
 import { AddCircleOutline, Person, Delete, UploadFile } from '@mui/icons-material';
 import styles from './Leads.module.css';
 import { useContext, useMemo, useState } from 'react';
-import { FirebaseContext } from '../store/Context'; // Keep FirebaseContext for db operations
+import { FirebaseContext, AuthContext } from '../store/Context'; // Keep FirebaseContext for db operations
 import { doc, deleteDoc } from 'firebase/firestore'; 
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../auth/usePermissions';
 import { useData } from '../store/DataContext'; // Corrected import
+import { logActivity } from '../utils/logActivity';
 
 import { toast } from 'sonner';
 import {
@@ -31,6 +32,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 
 export default function Leads() {
   const { db } = useContext(FirebaseContext); // Get db from FirebaseContext
+  const { user } = useContext(AuthContext);
   const { leads, loading, refreshing, refreshData } = useData(); // Use leads, loading, refreshing, refreshData from DataContext
   const { hasPermission } = usePermissions();
   // const [leads, setLeads] = useState([]); // Removed local leads state
@@ -192,6 +194,21 @@ export default function Leads() {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Leads");
         XLSX.writeFile(wb, "leads.xlsx");
+        logActivity(
+            db,
+            user,
+            'leads_exported',
+            `Exported ${dataToExport.length} leads.`,
+            {
+                count: dataToExport.length,
+                filters: {
+                    status: statusFilter,
+                    purpose: purposeFilter,
+                    date: dateFilter,
+                    search: searchQuery
+                }
+            }
+        );
     } catch (error) {
         console.error("Error exporting leads:", error);
         toast.error("Failed to export leads.");
