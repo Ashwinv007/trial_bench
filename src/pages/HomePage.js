@@ -191,9 +191,7 @@ function HomePage() {
         style={{ 
           display: 'flex', 
           flexDirection: 'column', 
-          flexGrow: 1, 
-          marginLeft: isDesktop ? SIDEBAR_WIDTH : '0', 
-          transition: 'margin-left 0.3s' 
+          flexGrow: 1
         }}
       >
         <Header 
