@@ -319,6 +319,8 @@
   margin-bottom: 24px;
   padding-bottom: 16px;
   border-bottom: 2px solid #e0e0e0;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .reportCardHeader h4 {
@@ -352,6 +354,7 @@
   background-color: #f9f9f9;
   border-radius: 8px;
   margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 
 .categoryLabelWithColor {
@@ -410,6 +413,7 @@
 .groupedRow {
   background-color: #ffffff;
 }
+
 .hideOnTablet,
 .hideOnMobile {
   display: none;
@@ -519,5 +523,29 @@
     background-color: transparent;
     box-shadow: none;
     margin-bottom: 8px;
+  }
+
+  /* Report Modal Specific */
+  .reportCardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .reportCardHeader > div {
+    flex-direction: column;
+    width: 100%;
+  }
+  .chartContainer {
+    height: 250px;
+  }
+  .categoryBreakdownItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .categoryAmount {
+    margin: 0;
+  }
+  .categoryPercentage {
+    text-align: left;
   }
 }

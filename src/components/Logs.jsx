@@ -70,7 +70,7 @@ export default function Logs() {
 
   if (!hasPermission('logs:view')) {
     return (
-        <Box sx={{ p: 3, flex: 1, overflowY: 'auto' }}>
+        <Box sx={{ p: { xs: 2, sm: 3 }, flex: 1, overflowY: 'auto' }}>
             <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 4, fontWeight: 'bold', color: '#333' }}>
                 Permission Denied
             </Typography>
@@ -89,7 +89,7 @@ export default function Logs() {
 
   if (error) {
     return (
-      <Box sx={{ textAlign: 'center', mt: 4, p: 2 }}>
+      <Box sx={{ textAlign: 'center', mt: 4, p: { xs: 2, sm: 3 } }}>
         <Typography color="error" variant="h6">Error Loading Logs</Typography>
         <Typography color="text.secondary">{error}</Typography>
         <Typography color="text.secondary" sx={{mt: 1}}>
@@ -100,12 +100,12 @@ export default function Logs() {
   }
 
   return (
-    <Box sx={{ p: 3, flex: 1, overflowY: 'auto' }}>
+    <Box sx={{ p: { xs: 2, sm: 3 }, flex: 1, overflowY: 'auto' }}>
       <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 4, fontWeight: 'bold', color: '#333' }}>
         Platform Activity Logs
       </Typography>
 
-      <Paper elevation={3} sx={{ p: 2, borderRadius: '8px' }}>
+      <Paper elevation={3} sx={{ p: { xs: 1, sm: 2 }, borderRadius: '8px' }}>
         {logs.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
             <InfoOutlined sx={{ fontSize: 40, mb: 1 }} />
@@ -119,12 +119,18 @@ export default function Logs() {
                 <ListItem alignItems="flex-start">
                   <ListItemText
                     primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: { xs: 'flex-start', sm: 'center' }, 
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        mb: 1 
+                      }}>
                         <Chip 
                           label={formatActionTitle(log.action)} 
                           size="small" 
                           sx={{ 
-                            mr: 2, 
+                            mr: { sm: 2 },
+                            mb: { xs: 1, sm: 0 },
                             fontWeight: 'bold',
                             backgroundColor: '#e0e0e0'
                           }} 
@@ -139,15 +145,25 @@ export default function Logs() {
                       </Box>
                     }
                     secondary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, color: 'text.disabled' }}>
-                        <AccessTime sx={{ fontSize: 16, mr: 0.5 }} />
-                        <Typography variant="caption" sx={{ mr: 2 }}>
-                          {log.timestamp.toLocaleString()}
-                        </Typography>
-                        <Person sx={{ fontSize: 16, mr: 0.5 }} />
-                        <Typography variant="caption">
-                          {log.user?.displayName || 'Unknown User'}
-                        </Typography>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: { xs: 'flex-start', sm: 'center' },
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        mt: 1, 
+                        color: 'text.disabled' 
+                      }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 0.5, sm: 0 } }}>
+                          <AccessTime sx={{ fontSize: 16, mr: 0.5 }} />
+                          <Typography variant="caption" sx={{ mr: { sm: 2 } }}>
+                            {log.timestamp.toLocaleString()}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Person sx={{ fontSize: 16, mr: 0.5 }} />
+                          <Typography variant="caption">
+                            {log.user?.displayName || 'Unknown User'}
+                          </Typography>
+                        </Box>
                       </Box>
                     }
                   />
