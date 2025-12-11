@@ -16,7 +16,6 @@ export default function Header({ pageTitle = 'Dashboard', notifications, setNoti
 
   const [notificationAnchor, setNotificationAnchor] = useState(null);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
-  const [mobileMenuAnchor, setMobileMenuAnchor] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
@@ -59,17 +58,8 @@ export default function Header({ pageTitle = 'Dashboard', notifications, setNoti
     setUserMenuAnchor(null);
   };
 
-  const handleMobileMenuClick = (event) => {
-    setMobileMenuAnchor(event.currentTarget);
-  };
-
-  const handleMobileMenuClose = () => {
-    setMobileMenuAnchor(null);
-  };
-
   const handleLogout = async () => {
     handleUserMenuClose();
-    handleMobileMenuClose();
     try {
       await signOut(auth);
       navigate('/login');
@@ -80,7 +70,6 @@ export default function Header({ pageTitle = 'Dashboard', notifications, setNoti
 
   const handleSettings = () => {
     handleUserMenuClose();
-    handleMobileMenuClose();
     navigate('/settings');
   };
 
@@ -104,36 +93,24 @@ export default function Header({ pageTitle = 'Dashboard', notifications, setNoti
         </div>
 
         <div className={styles.rightSection}>
-          {isMobile ? (
-            <IconButton
-              className={styles.iconButton}
-              onClick={handleMobileMenuClick}
-              aria-label="open menu"
-            >
-              <MenuIcon />
-            </IconButton>
-          ) : (
-            <>
-              <IconButton
-                className={styles.iconButton}
-                onClick={handleNotificationClick}
-                aria-label={`${unreadCount} notifications`}
-              >
-                <Badge badgeContent={unreadCount} color="error">
-                  <Notifications />
-                </Badge>
-              </IconButton>
-              <IconButton
-                className={styles.iconButton}
-                onClick={handleUserMenuClick}
-                aria-label="user account"
-              >
-                <Avatar className={styles.avatar}>
-                  {userData.initials}
-                </Avatar>
-              </IconButton>
-            </>
-          )}
+          <IconButton
+            className={styles.iconButton}
+            onClick={handleNotificationClick}
+            aria-label={`${unreadCount} notifications`}
+          >
+            <Badge badgeContent={unreadCount} color="error">
+              <Notifications />
+            </Badge>
+          </IconButton>
+          <IconButton
+            className={styles.iconButton}
+            onClick={handleUserMenuClick}
+            aria-label="user account"
+          >
+            <Avatar className={styles.avatar}>
+              {userData.initials}
+            </Avatar>
+          </IconButton>
         </div>
 
         {/* Notifications Menu */}
@@ -192,27 +169,6 @@ export default function Header({ pageTitle = 'Dashboard', notifications, setNoti
           
           <Divider />
           
-          <MenuItem onClick={handleLogout} className={styles.menuItem}>
-            <Logout className={styles.menuIcon} />
-            Logout
-          </MenuItem>
-        </Menu>
-
-        {/* Mobile Menu */}
-        <Menu
-          anchorEl={mobileMenuAnchor}
-          open={Boolean(mobileMenuAnchor)}
-          onClose={handleMobileMenuClose}
-          PaperProps={{ className: styles.mobileMenu }}
-          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-        >
-          {canViewSettings && (
-            <MenuItem onClick={handleSettings} className={styles.menuItem}>
-              <Settings className={styles.menuIcon} />
-              Settings
-            </MenuItem>
-          )}
           <MenuItem onClick={handleLogout} className={styles.menuItem}>
             <Logout className={styles.menuIcon} />
             Logout
