@@ -805,16 +805,16 @@ export default function Agreements() {
                     onClick={() => handleRowClick(agreement)}
                     className={hasPermission('agreements:view') ? styles.clickableRow : ''}
                   >
-                    <td>
+                    <td data-label="Name">
                       <span className={styles.nameText}>{agreement.memberLegalName || agreement.name}</span>
                     </td>
-                    <td className={styles.hideOnMobile}>
+                    <td className={styles.hideOnMobile} data-label="Package">
                       {(() => {
                         if (agreement.purposeOfVisit === 'Virtual Office' && agreement.serviceAgreementType) {
                           const parts = agreement.serviceAgreementType.split(' - ');
                           if (parts.length > 1 && ['Basic', 'Plus', 'Platinum'].includes(parts[1])) {
                             return (
-                              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                                 <Typography component="span" sx={{ fontSize: '14px', color: '#424242' }}>
                                   {agreement.purposeOfVisit}
                                 </Typography>
@@ -828,9 +828,9 @@ export default function Agreements() {
                         return agreement.purposeOfVisit;
                       })()}
                     </td>
-                    <td className={styles.hideOnMobile}>{agreement.convertedEmail}</td>
-                    <td className={styles.hideOnTablet}>{agreement.phone}</td>
-                    <td className={styles.hideOnMobile}>
+                    <td className={styles.hideOnMobile} data-label="Email">{agreement.convertedEmail}</td>
+                    <td className={styles.hideOnTablet} data-label="Phone">{agreement.phone}</td>
+                    <td className={styles.hideOnMobile} data-label="Actions">
                       <IconButton
                         onClick={(e) => handleViewProfileClick(e, agreement.leadId)}
                         onMouseEnter={() => prefetchClientProfile(agreement.leadId)}

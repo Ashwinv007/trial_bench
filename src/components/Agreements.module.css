@@ -164,16 +164,67 @@
     font-size: var(--font-size-sm);
   }
   .tableCard {
-    overflow-x: auto;
+    overflow-x: initial;
+    border: none;
+    background-color: transparent;
+    
   }
   .table {
-    min-width: 600px; /* Ensure table has a minimum width */
+    min-width: 0;
+    border: 0;
   }
-  .table thead th,
-  .table tbody td {
-    padding: 12px;
-    font-size: var(--font-size-sm);
+
+  .table thead {
+    display: none;
   }
+
+  .table tr {
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-md);
+    background-color: var(--color-white);
+  }
+  
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid var(--color-gray-100);
+    text-align: right;
+  }
+
+  .table td:last-child {
+    border-bottom: none;
+  }
+
+  .table td::before {
+    content: attr(data-label);
+    font-weight: 500;
+    text-align: left;
+    padding-right: 1rem;
+  }
+
+  .hideOnMobile, .hideOnTablet {
+    display: flex;
+  }
+
+  .table td[data-label="Name"] {
+    justify-content: center;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .table td[data-label="Name"]::before {
+    display: none;
+  }
+
+  .nameText {
+    font-size: 1.1rem;
+    font-weight: 500;
+  }
+  
   .formGrid {
     grid-template-columns: 1fr; /* Stack form fields */
   }
