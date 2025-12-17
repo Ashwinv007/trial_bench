@@ -533,6 +533,10 @@ export default function Agreements() {
         secondPage.drawText(formatDate(agreementData.startDate) || '', { x: 175, y: 408, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
         secondPage.drawText(agreementData.agreementNumber || '', { x: 160, y: 437, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
         secondPage.drawText(formatDate(agreementData.agreementDate) || '', { x: 145, y: 451, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
+        secondPage.drawText(
+          agreementData.agreementLength ? String(agreementData.agreementLength).padStart(2, '0') : '',
+          { x: 169, y: 422, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) }
+        );
     
         secondPage.drawText(agreementData.memberLegalName || '', { x: 170, y: 608, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
         secondPage.drawText(agreementData.memberCIN || '', { x: 130, y: 594, font: notoSansFont, size: 9.5, color: rgb(0, 0, 0) });
