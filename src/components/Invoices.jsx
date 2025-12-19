@@ -159,8 +159,22 @@ const getInvoicePdfBytes = async (invoiceData) => {
   firstPage.drawText(formatCurrency(sgstAmount), { x: 490, y: 137.5, size: 10, font, color: rgb(0, 0, 0) });
   firstPage.drawText(totalAmountPayable, { x: 490, y: 117, size: 13, font, color: rgb(0, 0, 0) });
 
+  const imageUrl = '/invoice_sign-removebg.png';
+  const imageBytes = await fetch(imageUrl).then(res => res.arrayBuffer());
+  const signatureImage = await pdfDoc.embedPng(imageBytes);
+  const imageWidth = 150;
+  const imageDimensions = signatureImage.scale(imageWidth / signatureImage.width);
+
+  firstPage.drawImage(signatureImage, {
+    x: 70,
+    y: 130,
+    width: imageWidth,
+    height: imageDimensions.height,
+  });
+
   return await pdfDoc.save();
 };
+
 
 export default function Invoices() {
   const { db } = useContext(FirebaseContext);
